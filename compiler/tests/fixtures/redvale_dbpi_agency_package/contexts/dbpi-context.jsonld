@@ -1,0 +1,324 @@
+{
+  "@context": {
+    "dbpi": "https://data.redvale.gov/ontology/dbpi/",
+    "dcp": "https://data.redvale.gov/ontology/dbpi/codelists#",
+    "identifier": "dbpi:identifier",
+    "displayName": "dbpi:displayName",
+    "legalName": "dbpi:legalName",
+    "description": "dbpi:description",
+    "submittedDate": {
+      "@id": "dbpi:submittedDate",
+      "@type": "http://www.w3.org/2001/XMLSchema#date"
+    },
+    "issuedDate": {
+      "@id": "dbpi:issuedDate",
+      "@type": "http://www.w3.org/2001/XMLSchema#date"
+    },
+    "expirationDate": {
+      "@id": "dbpi:expirationDate",
+      "@type": "http://www.w3.org/2001/XMLSchema#date"
+    },
+    "requestedDate": {
+      "@id": "dbpi:requestedDate",
+      "@type": "http://www.w3.org/2001/XMLSchema#date"
+    },
+    "scheduledFor": {
+      "@id": "dbpi:scheduledFor",
+      "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+    },
+    "completedAt": {
+      "@id": "dbpi:completedAt",
+      "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+    },
+    "hearingDate": {
+      "@id": "dbpi:hearingDate",
+      "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+    },
+    "submittedBy": {
+      "@id": "dbpi:submittedBy",
+      "@type": "@id"
+    },
+    "concernsProperty": {
+      "@id": "dbpi:concernsProperty",
+      "@type": "@id"
+    },
+    "forService": {
+      "@id": "dbpi:forService",
+      "@type": "@id"
+    },
+    "requestedPermitType": {
+      "@id": "dbpi:requestedPermitType",
+      "@type": "@id"
+    },
+    "requestedWorkType": {
+      "@id": "dbpi:requestedWorkType",
+      "@type": "@id"
+    },
+    "hasApplicationStatus": {
+      "@id": "dbpi:hasApplicationStatus",
+      "@type": "@id"
+    },
+    "hasPlanReview": {
+      "@id": "dbpi:hasPlanReview",
+      "@type": "@id"
+    },
+    "hasSupportingDocument": {
+      "@id": "dbpi:hasSupportingDocument",
+      "@type": "@id"
+    },
+    "basedOnApplication": {
+      "@id": "dbpi:basedOnApplication",
+      "@type": "@id"
+    },
+    "authorizedPermitType": {
+      "@id": "dbpi:authorizedPermitType",
+      "@type": "@id"
+    },
+    "authorizedWorkType": {
+      "@id": "dbpi:authorizedWorkType",
+      "@type": "@id"
+    },
+    "hasPermitStatus": {
+      "@id": "dbpi:hasPermitStatus",
+      "@type": "@id"
+    },
+    "forPermit": {
+      "@id": "dbpi:forPermit",
+      "@type": "@id"
+    },
+    "inspectionType": {
+      "@id": "dbpi:inspectionType",
+      "@type": "@id"
+    },
+    "hasInspectionResult": {
+      "@id": "dbpi:hasInspectionResult",
+      "@type": "@id"
+    },
+    "inspectedProperty": {
+      "@id": "dbpi:inspectedProperty",
+      "@type": "@id"
+    },
+    "performedBy": {
+      "@id": "dbpi:performedBy",
+      "@type": "@id"
+    },
+    "relatedInspection": {
+      "@id": "dbpi:relatedInspection",
+      "@type": "@id"
+    },
+    "relatedPermit": {
+      "@id": "dbpi:relatedPermit",
+      "@type": "@id"
+    },
+    "relatedProperty": {
+      "@id": "dbpi:relatedProperty",
+      "@type": "@id"
+    },
+    "hasCaseStatus": {
+      "@id": "dbpi:hasCaseStatus",
+      "@type": "@id"
+    },
+    "hasNotice": {
+      "@id": "dbpi:hasNotice",
+      "@type": "@id"
+    },
+    "hasCorrectiveAction": {
+      "@id": "dbpi:hasCorrectiveAction",
+      "@type": "@id"
+    },
+    "hasAppeal": {
+      "@id": "dbpi:hasAppeal",
+      "@type": "@id"
+    },
+    "hasAppealStatus": {
+      "@id": "dbpi:hasAppealStatus",
+      "@type": "@id"
+    },
+    "forCase": {
+      "@id": "dbpi:forCase",
+      "@type": "@id"
+    },
+    "heardBy": {
+      "@id": "dbpi:heardBy",
+      "@type": "@id"
+    },
+    "issuedBy": {
+      "@id": "dbpi:issuedBy",
+      "@type": "@id"
+    },
+    "assignedToUnit": {
+      "@id": "dbpi:assignedToUnit",
+      "@type": "@id"
+    },
+    "assignedToEmployee": {
+      "@id": "dbpi:assignedToEmployee",
+      "@type": "@id"
+    },
+    "fulfillsRequest": {
+      "@id": "dbpi:fulfillsRequest",
+      "@type": "@id"
+    },
+    "requestedInspectionType": {
+      "@id": "dbpi:requestedInspectionType",
+      "@type": "@id"
+    },
+    "resultedInPermit": {
+      "@id": "dbpi:resultedInPermit",
+      "@type": "@id"
+    },
+    "hasInspectionStatus": {
+      "@id": "dbpi:hasInspectionStatus",
+      "@type": "@id"
+    },
+    "citesCodeSection": {
+      "@id": "dbpi:citesCodeSection",
+      "@type": "@id"
+    },
+    "note": "dbpi:note",
+    "memberOf": {
+      "@id": "dbpi:memberOf",
+      "@type": "@id"
+    },
+    "hasRole": {
+      "@id": "dbpi:hasRole",
+      "@type": "@id"
+    },
+    "reportsTo": {
+      "@id": "dbpi:reportsTo",
+      "@type": "@id"
+    },
+    "employeeNumber": "dbpi:employeeNumber",
+    "openedDate": {
+      "@id": "dbpi:openedDate",
+      "@type": "http://www.w3.org/2001/XMLSchema#date"
+    },
+    "violationCaseNumber": "dbpi:violationCaseNumber",
+    "inspectionNumber": "dbpi:inspectionNumber",
+    "applicationNumber": "dbpi:applicationNumber",
+    "permitNumber": "dbpi:permitNumber",
+    "email": "dbpi:email",
+    "line1": "dbpi:line1",
+    "city": "dbpi:city",
+    "regionCode": "dbpi:regionCode",
+    "postalCode": "dbpi:postalCode",
+    "countryCode": "dbpi:countryCode",
+    "parcelNumber": "dbpi:parcelNumber",
+    "documentNumber": "dbpi:documentNumber",
+    "documentDate": {
+      "@id": "dbpi:documentDate",
+      "@type": "http://www.w3.org/2001/XMLSchema#date"
+    },
+    "hasAddress": {
+      "@id": "dbpi:hasAddress",
+      "@type": "@id"
+    },
+    "hasParcel": {
+      "@id": "dbpi:hasParcel",
+      "@type": "@id"
+    },
+    "hasOwner": {
+      "@id": "dbpi:hasOwner",
+      "@type": "@id"
+    },
+    "locatedInJurisdiction": {
+      "@id": "dbpi:locatedInJurisdiction",
+      "@type": "@id"
+    },
+    "amount": "dbpi:amount",
+    "currencyCode": "dbpi:currencyCode",
+    "paidDate": {
+      "@id": "dbpi:paidDate",
+      "@type": "http://www.w3.org/2001/XMLSchema#date"
+    },
+    "hasFee": {
+      "@id": "dbpi:hasFee",
+      "@type": "@id"
+    },
+    "hasPayment": {
+      "@id": "dbpi:hasPayment",
+      "@type": "@id"
+    },
+    "reviewedBy": {
+      "@id": "dbpi:reviewedBy",
+      "@type": "@id"
+    },
+    "decisionDate": {
+      "@id": "dbpi:decisionDate",
+      "@type": "http://www.w3.org/2001/XMLSchema#date"
+    },
+    "dueDate": {
+      "@id": "dbpi:dueDate",
+      "@type": "http://www.w3.org/2001/XMLSchema#date"
+    },
+    "requestedBy": {
+      "@id": "dbpi:requestedBy",
+      "@type": "@id"
+    },
+    "hasSubUnit": {
+      "@id": "dbpi:hasSubUnit",
+      "@type": "@id"
+    },
+    "hasContactPoint": {
+      "@id": "dbpi:hasContactPoint",
+      "@type": "@id"
+    },
+    "managesUnit": {
+      "@id": "dbpi:managesUnit",
+      "@type": "@id"
+    },
+    "hasRequirement": {
+      "@id": "dbpi:hasRequirement",
+      "@type": "@id"
+    },
+    "hasReviewComment": {
+      "@id": "dbpi:hasReviewComment",
+      "@type": "@id"
+    },
+    "hasStatus": {
+      "@id": "dbpi:hasStatus",
+      "@type": "@id"
+    },
+    "telephone": "dbpi:telephone",
+    "url": {
+      "@id": "dbpi:url",
+      "@type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    },
+    "externalReference": "dbpi:externalReference",
+    "line2": "dbpi:line2",
+    "closedDate": {
+      "@id": "dbpi:closedDate",
+      "@type": "http://www.w3.org/2001/XMLSchema#date"
+    },
+    "startDate": {
+      "@id": "dbpi:startDate",
+      "@type": "http://www.w3.org/2001/XMLSchema#date"
+    },
+    "endDate": {
+      "@id": "dbpi:endDate",
+      "@type": "http://www.w3.org/2001/XMLSchema#date"
+    },
+    "createdAt": {
+      "@id": "dbpi:createdAt",
+      "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+    },
+    "updatedAt": {
+      "@id": "dbpi:updatedAt",
+      "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+    },
+    "gis": "https://data.redvale.gov/ontology/gis/",
+    "fin": "https://data.redvale.gov/ontology/finance/",
+    "latitude": {
+      "@id": "gis:latitude",
+      "@type": "http://www.w3.org/2001/XMLSchema#decimal"
+    },
+    "longitude": {
+      "@id": "gis:longitude",
+      "@type": "http://www.w3.org/2001/XMLSchema#decimal"
+    },
+    "zoneDesignation": "gis:zoneDesignation",
+    "floodZoneCode": "gis:floodZoneCode",
+    "revenueClassificationCode": "fin:revenueClassificationCode",
+    "generalLedgerAccount": "fin:generalLedgerAccount",
+    "fiscalYearCode": "fin:fiscalYearCode"
+  }
+}

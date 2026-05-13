@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<catalog prefer="public" xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog">
+  <uri id="core" name="https://data.redvale.gov/ontology/dbpi/core" uri="ontology/dbpi-core.ttl"/>
+  <uri id="organization" name="https://data.redvale.gov/ontology/dbpi/organization" uri="ontology/dbpi-organization.ttl"/>
+  <uri id="permitting" name="https://data.redvale.gov/ontology/dbpi/permitting" uri="ontology/dbpi-permitting.ttl"/>
+  <uri id="inspections" name="https://data.redvale.gov/ontology/dbpi/inspections" uri="ontology/dbpi-inspections.ttl"/>
+  <uri id="enforcement" name="https://data.redvale.gov/ontology/dbpi/enforcement" uri="ontology/dbpi-enforcement.ttl"/>
+  <uri id="all" name="https://data.redvale.gov/ontology/dbpi/all" uri="ontology/dbpi-all.ttl"/>
+  <uri id="workflows" name="https://data.redvale.gov/ontology/dbpi/workflows" uri="ontology/dbpi-workflows.ttl"/>
+  <uri id="codelists" name="https://data.redvale.gov/ontology/dbpi/codelists" uri="vocab/dbpi-codelists.ttl"/>
+  <uri id="shapes" name="https://data.redvale.gov/ontology/dbpi/shapes" uri="shapes/dbpi-shapes.ttl"/>
+  <uri id="augmentations" name="https://data.redvale.gov/ontology/dbpi/augmentations" uri="ontology/dbpi-augmentations.ttl"/>
+  <uri id="gis" name="https://data.redvale.gov/ontology/gis" uri="ontology/dbpi-augmentations.ttl"/>
+  <uri id="finance" name="https://data.redvale.gov/ontology/finance" uri="ontology/dbpi-augmentations.ttl"/>
+  <uri id="examples" name="https://data.redvale.gov/ontology/dbpi/examples" uri="seed-data/dbpi-seed-data.ttl"/>
+</catalog>

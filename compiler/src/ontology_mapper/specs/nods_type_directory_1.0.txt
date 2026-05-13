@@ -1,0 +1,177 @@
+# Type Directory — one line per type for efficient semantic matching
+# Format: qname | baseType | pattern | propCount | definition | topProperties
+# Total: 112 types
+#
+hs:JuvenilePlacementType | hs:PlacementType | object | 0 | A data type for information about where a juvenile is directed to reside during the pendency of a delinquency proceeding | 
+hs:PlacementType | nc:ActivityType | object | 1 | A data type for the placement history of a child or youth. | PlacementCategoryAbstract
+j:ArrestType | nc:ActivityType | object | 6 | A data type for the apprehension of a subject by a peace official. | ArrestAgency, ArrestAgencyRecordIdentification, ArrestCharge, ArrestOfficial, ArrestSequenceID, ArrestSubject
+j:BailBondType | nc:ActivityType | object | 1 | A data type for an agreement between a bondsman and a subject in which a bondsman pays the subject's bail or portion of  | BailBondAmount
+j:CaseOfficialType | j:JudicialOfficialType | object | 3 | A data type for an official's involvement in a case. | CaseOfficialEndDate, CaseOfficialRoleText, CaseOfficialStartDate
+j:ChargeDispositionType | nc:DispositionType | object | 0 | A data type for the results or processing of a charge. | 
+j:ChargeType | - | object | 11 | A data type for a formal allegation that a specific person has committed a specific offense. | ChargeDegreeText, ChargeDescriptionText, ChargeDisposition, ChargeOriginatorEntity, ChargeFilingDate, ChargeSequenceID, ChargeSeverityText, ChargeSpecialAllegationText
+j:CommercialVehicleType | nc:VehicleType | object | 1 | A data type for a class of vehicle that includes motor vehicles with a gross vehicle weight rating of 26,001 pounds or m | CommercialVehicleMotorCarrier
+j:ConditionalReleaseType | nc:ReleaseType | object | 2 | A data type for a release of a person or item from confinement, holding, or obligation, that is dependent upon certain c | ConditionalReleaseCondition, ConditionalReleaseRevokedReasonText
+j:CourtAppearanceType | - | object | 1 | A data type for an appearance required of a party in a court of law on a certain date. | CourtAppearanceEntity
+j:CourtEventType | nc:ActivityType | object | 2 | A data type for a court occurrence. | CourtEventAppearance, CourtEventJudge
+j:CourtOrderType | nc:ActivityType | object | 6 | A data type for a direction of a judge not including a judgment, which determines some point or directs some steps in pr | CourtOrderDesignatedSubject, CourtOrderIssuingDate, CourtOrderIssuingJudicialOfficial, CourtOrderRecallDate, CourtOrderRecallReasonText, CourtOrderRequestReasonText
+j:CourtType | nc:OrganizationType | object | 1 | A data type for a court or a unit of a court responsible for trying justice proceedings. | CourtName
+j:DriverLicenseType | nc:LicenseType | object | 2 | A data type for a license issued to a person granting driving privileges. | DriverLicenseCommercialClassAbstract, DriverLicenseCardIdentification
+j:DriverLicenseWithdrawalType | nc:ActivityType | object | 2 | A data type for a driver license withdrawal. | DriverLicenseWithdrawalEffectiveDate, DriverLicenseWithdrawalReinstatementDate
+j:DrivingIncidentType | nc:IncidentType | object | 4 | A data type for details of an incident involving a vehicle. | DrivingIncidentCMVAbstract, DrivingIncidentRecordedSpeedRateMeasure, DrivingIncidentHazMatAbstract, DrivingIncidentLegalSpeedRateMeasure
+j:EnforcementOfficialType | nc:PersonType | object | 1 | A data type for a person involved in the enforcement of law. | EnforcementOfficialBadgeIdentification
+j:FinancialCompilationType | - | object | 2 | A data type for a set of financial details for a person. | FinancialCompilationDate, FinancialAccount
+j:HearingType | nc:ActivityType | object | 1 | A data type for a proceeding before an administrative agency or authority to decide how to deal with failure to comply w | HearingContinuationReasonText
+j:IntakeType | nc:ActivityType | object | 1 | A data type for a process of receiving persons into an institution. | IntakeScreening
+j:JudicialOfficialType | nc:PersonType | object | 2 | A data type for a person involved in a judicial area of government. | JudicialOfficialFirm, JudicialOfficialRegistrationIdentification
+j:MotorCarrierType | nc:OrganizationType | object | 1 | A data type for an organization providing commercial motor vehicle transportation for compensation. | MotorCarrierDOTIdentification
+j:OffenseType | nc:ActivityType | object | 1 | A data type for an alleged violation of a statute, ordinance, or rule. | OffenseViolatedStatute
+j:PleaType | nc:ActivityType | object | 1 | A data type for an answer which a defendant in an action at law makes to charges. | PleaDescriptionText
+j:ProgramViolationType | j:OffenseType | object | 2 | A data type for a set of details describing activities and infractions of a subject in a program. | ProgramViolationCategoryAbstract, ProgramViolationOutcomeAbstract
+j:SanctionType | nc:ActivityType | object | 2 | A data type for a sanction or penalty ordered for a subject as a result of a disposition of a charge. | SanctionSetObligation, SanctionCategoryText
+j:SentenceType | nc:ActivityType | object | 5 | A data type for a punishment resulting from conviction of charges in a court case. | SentenceCondition, SentenceConfinementCreditDayQuantity, SentenceDescriptionText, SentenceSuspendedIndicator, SentenceTerm
+j:StatuteType | - | object | 3 | A data type for a law, rule, or ordinance within a jurisdiction. | StatuteCodeIdentification, StatuteEnactmentDate, StatuteOffenseIdentification
+j:SubjectType | nc:EntityType | object | 0 | A data type for a person or organization that is involved or suspected of being involved in a violation of a criminal st | 
+j:TermType | nc:ActivityType | object | 2 | A data type for a duration length either in specific terms or as a range. | TermDuration, TermLifeIndicator
+j:WarrantType | j:CourtOrderType | object | 0 | A data type for an authorization for an enforcement official to perform a specified action. | 
+nc:ActivityType | - | object | 14 | A data type for a single or set of related actions, events, or process steps. | ActivityIdentification, ActivityApprovedIndicator, ActivityAssignedDate, ActivityCategoryAbstract, ActivityCompletedIndicator, ActivityDate, ActivityDisposition, ActivityLocation
+nc:AddressType | - | object | 3 | A data type for a geophysical location described by postal information. | AddressFullText, AddressState, AddressPostalCode
+nc:AmountType | - | object | 0 | A data type for an amount of money. | 
+nc:AssessmentType | nc:ActivityType | object | 3 | A data type for an evaluation, appraisal, or assessment of something or someone. | AssessmentPerson, AssessmentScoreAbstract, AssessmentToolName
+nc:AssociationType | - | association | 0 | A data type for an association, connection, relationship, or involvement somehow linking people, things, and/or activiti | 
+nc:CaseDispositionDecisionType | - | object | 1 | A data type for the disposition of a case occurring as a result of some decision. | CaseDispositionDecisionCategoryAbstract
+nc:CaseDispositionType | nc:DispositionType | object | 2 | A data type for an outcome or processing of a case. | CaseDispositionFinalDate, CaseDispositionDecision
+nc:CaseType | nc:ActivityType | object | 2 | A data type for an aggregation of information about a set of related activities and events. | CaseCategoryAbstract, CaseTrackingID
+nc:ConditionType | nc:ActivityType | object | 1 | A data type for a requirement or stipulation. | ConditionGroupID
+nc:ContactInformationType | - | object | 1 | A data type for how to contact a person or an organization. | ContactMeansAbstract
+nc:ConveyanceType | nc:ItemType | object | 0 | A data type for a means of transport from place to place. | 
+nc:CountryType | - | object | 1 | A data type for a country, territory, dependency, or other such geopolitical subdivision of a location. | CountryRepresentation
+nc:DateRangeType | - | object | 2 | A data type for a range of dates. | StartDate, EndDate
+nc:DateType | - | object | 1 | A data type for a calendar date. | DateRepresentation
+nc:DispositionType | - | object | 3 | A data type for a result or outcome that is the product of handling, processing, or finalizing something. | DispositionCategoryAbstract, DispositionDate, DispositionText
+nc:DocumentType | - | object | 6 | A data type for a paper or electronic document. | DocumentCategoryAbstract, DocumentFiledDate, DocumentSource, DocumentSourceText, DocumentSubmitter, DocumentTitleText
+nc:EntityType | - | object | 1 | A data type for a person, organization, or item. | EntityRepresentation
+nc:FinancialAccountType | - | object | 1 | A data type for a financial account maintained by a financial institution. | FinancialAccountPresentBalanceAmount
+nc:FullTelephoneNumberType | - | object | 1 | A data type for a full telephone number. | TelephoneNumberFullID
+nc:IdentificationType | - | object | 4 | A data type for a representation of an identity. | IdentificationID, IdentificationJurisdiction, IdentificationCategoryAbstract, IdentificationIssuerCountry
+nc:IncidentType | nc:ActivityType | object | 0 | A data type for an occurrence or an event that may require a response. | 
+nc:ItemType | - | object | 1 | A data type for an article or thing. | ItemValue
+nc:ItemValueType | - | object | 1 | A data type for an evaluation of the monetary worth of an item. | ItemValueAmount
+nc:JurisdictionType | - | object | 1 | A data type for a geopolitical area in which an organization, person, or object has a specific range of authority. | JurisdictionAbstract
+nc:LanguageType | - | object | 1 | A data type for a language. | LanguageRepresentation
+nc:LicenseEndorsementType | - | object | 1 | A data type for an endorsement on a license or license permit which authorizes specific privileges. | LicenseEndorsementAbstract
+nc:LicenseRestrictionType | - | object | 1 | A data type for a restriction applicable to a permit or license. | LicenseRestrictionAbstract
+nc:LicenseType | nc:IdentificationType | object | 2 | A data type for an authorization issued to a person granting certain privileges. | LicenseRestriction, LicenseEndorsement
+nc:LocationType | - | object | 0 | A data type for geospatial location. | 
+nc:MeasureType | - | object | 0 | A data type for a measurement. | 
+nc:ObligationType | - | object | 5 | A data type for something that is owed to an entity. | ObligationTotalAbstract, ObligationDueAbstract, ObligationRequirementDescriptionText, ObligationCategoryAbstract, ObligationRecipient
+nc:OrganizationType | - | object | 4 | A data type for a body of people organized for a particular purpose. | OrganizationIdentification, OrganizationName, OrganizationOtherIdentification, OrganizationPrimaryContactInformation
+nc:PersonCitizenshipType | - | object | 1 | A data type for a person's position or status with a country that assigns rights, duties, and privileges because of the  | PersonCitizenshipCountry
+nc:PersonLanguageType | - | object | 1 | A data type for a language capability of a person. | Language
+nc:PersonNameType | - | object | 3 | A data type for a combination of names and/or titles by which a person is known. | personNameCommentText, PersonFullName, PersonNameCategoryAbstract
+nc:PersonType | - | object | 12 | A data type for a human being. | PersonBirthDate, PersonCitizenship, PersonDeathDate, PersonName, PersonOtherIdentification, PersonPhysicalDisabilityText, PersonPrimaryLanguage, PersonRaceAbstract
+nc:PlanType | - | object | 2 | A data type for a detailed proposal for doing or achieving something. | PlanCreatedDate, PlanDateRange
+nc:ProgramType | nc:ActivityType | object | 2 | A data type for a set of projects, activities, or services intended to meet a need. | ProgramPerson, ProgramPurposeText
+nc:RealEstateType | nc:ItemType | object | 0 | A data type for a piece of land and any permanent structures and natural resources on it. | 
+nc:ReleaseType | nc:ActivityType | object | 0 | A data type for a freeing or discharging of someone or something from an activity, supervision, or obligation. | 
+nc:SpeedMeasureType | nc:MeasureType | object | 0 | A data type for a measure of a speed or rate of motion. | 
+nc:StateType | - | object | 0 | A data type for a state, commonwealth, province, or other such geopolitical subdivision of a country. | 
+nc:StatusType | - | object | 2 | A data type for a state of something or someone. | StatusAbstract, StatusDate
+nc:SupervisionType | nc:ActivityType | object | 0 | A data type for an act of officially overseeing, supervising, or keeping track in some capacity of a person. | 
+nc:TelephoneNumberType | - | object | 1 | A data type for a telephone number for a telecommunication device. | TelephoneNumberAbstract
+nc:VehicleType | nc:ConveyanceType | object | 0 | A data type for a conveyance designed to carry an operator, passengers and/or cargo, over land. | 
+nods:AccountingType | j:FinancialCompilationType | object | 6 | Date Accounting due to Court
+Element# 15-9
+User Story: | RealEstate, AccountingCategoryCode, AccountingDueDate, FinancialAssets, PersonalProperty, TotalAssets
+nods:AlternativeDisputeResolutionType | nc:ActivityType | object | 6 | Was ADR court-ordered?
+Element# 17-3
+User Story: | ActivityDisputeResolutionCategoryCode, AlternativeDisputeResolutionCourtOrderedIndicator, AlternativeDisputeResolutionHearing, AlternativeDisputeResolutionOutcomeCode, AlternativeDisputeResolutionParticipant, AlternativeDisputeResolutionParties
+nods:AttorneyAdvocateCaseRoleType | j:CaseOfficialType | object | 5 | Is attorney admitted to practice in this jurisdiction only for this case?
+Element# 3-7
+User Story: | AttorneyAdvocateCategoryCode, AttorneyAdvocateLimitedScopeIndicator, AttorneyAdvocateProHacViceIndicator, AttorneyAdvocateRepresentedParticipant, AttorneyAdvocateRepresentedParticipantText
+nods:BondType | j:BailBondType | object | 3 | Element# 10-7
+User Story: | BondCategoryCode, BondHearingCategoryCode, DefendantStatusBondCode
+nods:CaseCourtEventType | - | object | 1 | Way that the hearing was held
+Element# 7-6
+User Story: | HearingModalityCode
+nods:CaseFilingType | nc:DocumentType | object | 7 | Is this an amended pleading?
+Element# 5-15
+User Story: | CaseFilingAmendedIndicator, CaseFilingCategoryCode, CaseFilingInOppositionIndicator, CaseFilingOpposedIndicator, CaseFilingStipulatedIndicator, MotionOutcomeCode, PetitionDenialReasonCode
+nods:CaseParticipantAssociationType | nc:AssociationType | association | 3 | Participant's role/standing in the case.
+Element# 2-18
+User Story: | RelationshipToActionCode, RelationshipToCivilActionCode, RelationshipToPersonCode
+nods:CaseParticipantType | nc:EntityType | object | 9 | Has Party opted in to text message notifications?
+Element# 2-2
+User Story: I am a clerk and I want to know how to contac | CaseParticipantAssociation, GuardianConservatorRegistrationDate, GuardianConservatorRepresentativePayeeIndicator, GuardianConservatorVAFiduciaryIndicator, ICWAChildDeterminationDate, ParticipantCategoryCode, ParticipantElectronicServiceCategoryCode, ParticipantOptInToTextNotificationsIndicator
+nods:CaseStatusType | nc:StatusType | object | 1 | Reason for change to inactive status
+Element# 4-3
+User Story: | CaseStatusInactiveReasonCode
+nods:ChargeType | j:ChargeType | object | 9 | Date when the offense occurred.
+Element# 9-1
+User Story: | Arrest, CommercialVehicle, DrivingIncident, IntoxicationLevelText, Offense, ProgramViolation, ChargeAdjudicatedDelinquentCode, IntoxicationTestRefusedIndicator
+nods:CivilJudgmentType | nc:ActivityType | object | 9 | Which party prevailed?
+Element# 12-2
+User Story: | ChildCaseParticipant, JudgementAgainstParticipant, JudgementAgainstParticipantCode, JudgmentAgainstParticipant, JudgmentMontetaryDamagesAmount, JudgmentNonMonetaryDamagesIndicator, JudgmentTotalAmount, PrevailingParticipant
+nods:CourtCaseCode | - | object | 1 | Additional legal issues in a family case, beyond case type.
+Element# 1-12
+User Story: I am a judge and I need to easily  | CaseAssociatedLegalIssueCode
+nods:CourtCaseType | nc:CaseType | object | 47 | Primary case category based on the complaint or petition
+Element# 1-5
+User Story: I am a court administrator and I want  | Arrest, ChargeDisposition, DiversionProgram, ProgramViolation, CaseDisposition, AlternativeDisputeResolution, AttorneyAdvocateCaseRole, CaseAppealedIndicator
+nods:CourtOrderType | j:CourtOrderType | object | 12 | Title of order
+Element# 8-2
+User Story: | DiversionProgram, HearingContinuationReasonText, Warrant, Assessment, Obligation, CivilOrderCategoryCode, CourtOrderContemptReasonCode, CourtOrderDismissedWithPrejudiceIndicator
+nods:DependencyPermanancyPlanType | nc:PlanType | object | 3 | The type of permanency plan selected.
+Element# 14-2
+User Story: | ChildCaseClosureReasonCode, DependencyPermanencyCategoryCode, PlanImplementationCategoryCode
+nods:FinancialCompilationType | j:FinancialCompilationType | object | 4 | Date the inventory of assets is due
+Element# 15-1
+User Story: | FinancialCompilationDueDate, PersonalPropertyPresentBalanceAmount, RealPropertyPresentBalanceAmount, TotalAssetsPresentBalanceAmount
+nods:HearingType | j:CourtEventType | object | 27 | Outcome of hearing or event
+Element# 7-5
+User Story: | Attorney, CaseOfficialEndDate, HearingEvidencePresentedIndicator, ActivityActualDuration, ActivityEstimatedDuration, CivilHearingCategoryCode, CourtEventOutcomeCode, CriminalTrafficHearingCategoryCode
+nods:JuryType | nc:ActivityType | object | 4 | Date on which jury selection began
+Element# 7-25
+User Story: | JuryAlternateJurorsQuantity, JuryJurorsQuantity, JurySelectionDate, JurySwornDate
+nods:JuvenileDetentionType | nc:SupervisionType | object | 3 | Flag to indicate the youth was placed in detention prior to adjudication
+Element# 10-22
+User Story: | JuvenileDetentionCategoryCode, PreAdjudicationDetentionIndicator, PreAdjudicationDetentionReasonCode
+nods:NODSMessageType | - | object | 1 | The base message for all NODS exchanges. | CourtCase
+nods:OnlineDisputeResolutionType | - | object | 1 | Type of on-line dispute resolution facilitation
+Element# 17-5
+User Story: | OnlineDisputeResolutionCategoryCode
+nods:PersonIndigentType | - | object | 2 | Indicator of whether individual was determined to be indigent at any point during the case.
+Element# 2-25
+User Story: | PersonIndigentIndicator, PersonIndigentMethodCode
+nods:PleadingType | nods:CaseFilingType | object | 9 | Number of counts in pleading
+Element# 5-14
+User Story: | Summons, InControversyAmount, InControversyInExcessOfAmountIndicator, InControversyUpToAmountIndicator, InitialProbatePleadingReasonText, PleadingCountsQuantity, FeeWaiverFiledDate, PleadingRequestCode
+nods:PretrialIntakeType | j:IntakeType | object | 15 | The decision made by the court for the defendant's pretrial custody status.
+Element# 10-3
+User Story: | JuvenilePlacement, ConditionalRelease, JuvenileAsAdultIndicator, ReleaseReviewDecision, Subject, Summons, SupervisionAssessment, Bond
+nods:ProbateBondType | - | object | 4 | Bond was ordered
+Element# 15-18
+User Story: | ProbateBondAmount, ProbateBondCategoryCode, ProbateBondFiledDate, ProbateBondOrderedIndicator
+nods:ProbateComplaintType | nc:DocumentType | object | 1 | Court has been alerted there is a potential cause for concern.
+Element# 15-25
+User Story: | ProbateComplaintActivity
+nods:ProbateReminderType | nc:ActivityType | object | 1 | Reminder of upcoming report or filing due to court
+Element# 15-23
+User Story: | ProbateReminderCategoryCode
+nods:ProbateReviewType | nc:ActivityType | object | 8 |  | Accounting, CaseParticipant, FinancialCompilation, ProbateBond, ProbateComplaint, ProbateReminder, ProbateWaiver, WellbeingReport
+nods:ProbateWaiverType | nc:ActivityType | object | 2 | Judicial Officer waived reporting requirement
+Element# 15-3
+User Story: | ProbateWaiverOrderedIndicator, ProbateWaiverReasonCode
+nods:ReferralType | nc:DocumentType | object | 1 | The type of agency or person that referred the incident.
+Element# 10-14
+User Story: | ReferralSourceText
+nods:RemoteParticipantType | - | object | 2 | Manner of remote witness appearance
+Element# 7-21
+User Story: | RemoteParticipantMannerCode, RemoteWitnessMannerCode
+nods:SanctionType | j:SanctionType | object | 8 | Was there a sanction or alternative to fine, such as community service
+Element# 13-12
+User Story: | DriverLicenseWithdrawal, Restitution, Sentence, MonetaryPenalty, SanctionAlternativeFineIndicator, SanctionBlendedDispositionIndicator, SanctionedCaseParticipant, SanctionPaymentPlanIndicator
+nods:WellbeingReportType | nc:DocumentType | object | 1 | Date Well-being Report due to Court
+Element# 15-16
+User Story: | ReportDueDate
+structures:AssociationType | - | association | 4 | A data type for a relationship between two or more objects, including any properties of that relationship. | appliesToParent, id, ref, uri
+structures:ObjectType | - | object | 4 | A data type for a thing with its own lifespan that has some existence. | appliesToParent, id, ref, uri

@@ -1,0 +1,92 @@
+@prefix dbpi: <https://data.redvale.gov/ontology/dbpi/> .
+@prefix dcp: <https://data.redvale.gov/ontology/dbpi/codelists#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://data.redvale.gov/ontology/dbpi/enforcement> a owl:Ontology ;
+    owl:imports <https://data.redvale.gov/ontology/dbpi/core>, <https://data.redvale.gov/ontology/dbpi/organization>, <https://data.redvale.gov/ontology/dbpi/permitting>, <https://data.redvale.gov/ontology/dbpi/inspections> ;
+    rdfs:label "DBPI Enforcement Ontology" ;
+    rdfs:comment "Enforcement, appeals, and hearing model for DBPI." .
+
+dbpi:ViolationCase a owl:Class ; rdfs:label "Violation Case" .
+dbpi:NoticeOfViolation a owl:Class ; rdfs:subClassOf dbpi:Document ; rdfs:label "Notice of Violation" .
+dbpi:CorrectiveAction a owl:Class ; rdfs:label "Corrective Action" .
+dbpi:Appeal a owl:Class ; rdfs:label "Appeal" .
+dbpi:Hearing a owl:Class ; rdfs:label "Hearing" .
+
+dbpi:relatedInspection a owl:ObjectProperty ;
+    rdfs:domain dbpi:ViolationCase ;
+    rdfs:range dbpi:Inspection ;
+    rdfs:label "related inspection" .
+
+dbpi:relatedPermit a owl:ObjectProperty ;
+    rdfs:domain dbpi:ViolationCase ;
+    rdfs:range dbpi:Permit ;
+    rdfs:label "related permit" .
+
+dbpi:relatedProperty a owl:ObjectProperty ;
+    rdfs:domain dbpi:ViolationCase ;
+    rdfs:range dbpi:Property ;
+    rdfs:label "related property" .
+
+dbpi:hasCaseStatus a owl:ObjectProperty ;
+    rdfs:domain dbpi:ViolationCase ;
+    rdfs:range skos:Concept ;
+    rdfs:label "has case status" .
+
+dbpi:hasCorrectiveAction a owl:ObjectProperty ;
+    rdfs:domain dbpi:ViolationCase ;
+    rdfs:range dbpi:CorrectiveAction ;
+    rdfs:label "has corrective action" .
+
+dbpi:hasNotice a owl:ObjectProperty ;
+    rdfs:domain dbpi:ViolationCase ;
+    rdfs:range dbpi:NoticeOfViolation ;
+    rdfs:label "has notice" .
+
+dbpi:hasAppeal a owl:ObjectProperty ;
+    rdfs:domain dbpi:ViolationCase ;
+    rdfs:range dbpi:Appeal ;
+    rdfs:label "has appeal" .
+
+dbpi:forCase a owl:ObjectProperty ;
+    rdfs:range dbpi:ViolationCase ;
+    rdfs:label "for case" .
+
+dbpi:heardBy a owl:ObjectProperty ;
+    rdfs:domain dbpi:Hearing ;
+    rdfs:range dbpi:HearingOfficer ;
+    rdfs:label "heard by" .
+
+dbpi:hasAppealStatus a owl:ObjectProperty ;
+    rdfs:domain dbpi:Appeal ;
+    rdfs:range skos:Concept ;
+    rdfs:label "has appeal status" .
+
+dbpi:violationCaseNumber a owl:DatatypeProperty ;
+    rdfs:domain dbpi:ViolationCase ;
+    rdfs:range xsd:string ;
+    rdfs:label "violation case number" .
+
+dbpi:openedDate a owl:DatatypeProperty ;
+    rdfs:domain dbpi:ViolationCase ;
+    rdfs:range xsd:date ;
+    rdfs:label "opened date" .
+
+dbpi:closedDate a owl:DatatypeProperty ;
+    rdfs:domain dbpi:ViolationCase ;
+    rdfs:range xsd:date ;
+    rdfs:label "closed date" .
+
+dbpi:dueDate a owl:DatatypeProperty ;
+    rdfs:domain dbpi:CorrectiveAction ;
+    rdfs:range xsd:date ;
+    rdfs:label "due date" .
+
+dbpi:hearingDate a owl:DatatypeProperty ;
+    rdfs:domain dbpi:Hearing ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "hearing date" .

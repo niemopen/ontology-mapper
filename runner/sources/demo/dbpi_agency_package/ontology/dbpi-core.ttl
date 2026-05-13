@@ -1,0 +1,124 @@
+@prefix dbpi: <https://data.redvale.gov/ontology/dbpi/> .
+@prefix dcp: <https://data.redvale.gov/ontology/dbpi/codelists#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://data.redvale.gov/ontology/dbpi/core> a owl:Ontology ;
+    rdfs:label "DBPI Core Ontology" ;
+    rdfs:comment "Foundational entities and shared properties for the City of Red Vale Department of Building Permits and Inspections." .
+
+### Core classes
+dbpi:Agent a owl:Class ; rdfs:label "Agent" .
+dbpi:Person a owl:Class ; rdfs:subClassOf dbpi:Agent ; rdfs:label "Person" .
+dbpi:Organization a owl:Class ; rdfs:subClassOf dbpi:Agent ; rdfs:label "Organization" .
+dbpi:Jurisdiction a owl:Class ; rdfs:label "Jurisdiction" .
+dbpi:PublicService a owl:Class ; rdfs:label "Public Service" .
+dbpi:Address a owl:Class ; rdfs:label "Address" .
+dbpi:Parcel a owl:Class ; rdfs:label "Parcel" .
+dbpi:Property a owl:Class ; rdfs:label "Property" .
+dbpi:Document a owl:Class ; rdfs:label "Document" .
+dbpi:Fee a owl:Class ; rdfs:label "Fee" .
+dbpi:Payment a owl:Class ; rdfs:label "Payment" .
+dbpi:CodeSection a owl:Class ; rdfs:label "Code Section" .
+dbpi:ContactPoint a owl:Class ; rdfs:label "Contact Point" .
+dbpi:Requirement a owl:Class ; rdfs:label "Requirement" .
+
+### Shared object properties
+dbpi:hasAddress a owl:ObjectProperty ;
+    rdfs:range dbpi:Address ;
+    rdfs:label "has address" .
+
+dbpi:hasContactPoint a owl:ObjectProperty ;
+    rdfs:domain dbpi:Agent ;
+    rdfs:range dbpi:ContactPoint ;
+    rdfs:label "has contact point" .
+
+dbpi:locatedInJurisdiction a owl:ObjectProperty ;
+    rdfs:range dbpi:Jurisdiction ;
+    rdfs:label "located in jurisdiction" .
+
+dbpi:hasParcel a owl:ObjectProperty ;
+    rdfs:domain dbpi:Property ;
+    rdfs:range dbpi:Parcel ;
+    rdfs:label "has parcel" .
+
+dbpi:hasOwner a owl:ObjectProperty ;
+    rdfs:domain dbpi:Property ;
+    rdfs:range dbpi:Agent ;
+    rdfs:label "has owner" .
+
+dbpi:forService a owl:ObjectProperty ;
+    rdfs:range dbpi:PublicService ;
+    rdfs:label "for service" .
+
+dbpi:submittedBy a owl:ObjectProperty ;
+    rdfs:range dbpi:Agent ;
+    rdfs:label "submitted by" .
+
+dbpi:concernsProperty a owl:ObjectProperty ;
+    rdfs:range dbpi:Property ;
+    rdfs:label "concerns property" .
+
+dbpi:hasSupportingDocument a owl:ObjectProperty ;
+    rdfs:range dbpi:Document ;
+    rdfs:label "has supporting document" .
+
+dbpi:hasRequirement a owl:ObjectProperty ;
+    rdfs:range dbpi:Requirement ;
+    rdfs:label "has requirement" .
+
+dbpi:hasFee a owl:ObjectProperty ;
+    rdfs:range dbpi:Fee ;
+    rdfs:label "has fee" .
+
+dbpi:hasPayment a owl:ObjectProperty ;
+    rdfs:range dbpi:Payment ;
+    rdfs:label "has payment" .
+
+dbpi:issuedBy a owl:ObjectProperty ;
+    rdfs:range dbpi:Organization ;
+    rdfs:label "issued by" .
+
+dbpi:assignedToUnit a owl:ObjectProperty ;
+    rdfs:label "assigned to unit" .
+
+dbpi:assignedToEmployee a owl:ObjectProperty ;
+    rdfs:label "assigned to employee" .
+
+dbpi:citesCodeSection a owl:ObjectProperty ;
+    rdfs:range dbpi:CodeSection ;
+    rdfs:label "cites code section" .
+
+dbpi:hasStatus a owl:ObjectProperty ;
+    rdfs:range skos:Concept ;
+    rdfs:label "has status" .
+
+### Shared datatype properties
+dbpi:identifier a owl:DatatypeProperty ; rdfs:range xsd:string ; rdfs:label "identifier" .
+dbpi:displayName a owl:DatatypeProperty ; rdfs:range xsd:string ; rdfs:label "display name" .
+dbpi:legalName a owl:DatatypeProperty ; rdfs:range xsd:string ; rdfs:label "legal name" .
+dbpi:description a owl:DatatypeProperty ; rdfs:range xsd:string ; rdfs:label "description" .
+dbpi:note a owl:DatatypeProperty ; rdfs:range xsd:string ; rdfs:label "note" .
+dbpi:createdAt a owl:DatatypeProperty ; rdfs:range xsd:dateTime ; rdfs:label "created at" .
+dbpi:updatedAt a owl:DatatypeProperty ; rdfs:range xsd:dateTime ; rdfs:label "updated at" .
+dbpi:startDate a owl:DatatypeProperty ; rdfs:range xsd:date ; rdfs:label "start date" .
+dbpi:endDate a owl:DatatypeProperty ; rdfs:range xsd:date ; rdfs:label "end date" .
+dbpi:email a owl:DatatypeProperty ; rdfs:range xsd:string ; rdfs:label "email" .
+dbpi:telephone a owl:DatatypeProperty ; rdfs:range xsd:string ; rdfs:label "telephone" .
+dbpi:url a owl:DatatypeProperty ; rdfs:range xsd:anyURI ; rdfs:label "URL" .
+dbpi:line1 a owl:DatatypeProperty ; rdfs:range xsd:string ; rdfs:label "address line 1" .
+dbpi:line2 a owl:DatatypeProperty ; rdfs:range xsd:string ; rdfs:label "address line 2" .
+dbpi:city a owl:DatatypeProperty ; rdfs:range xsd:string ; rdfs:label "city" .
+dbpi:regionCode a owl:DatatypeProperty ; rdfs:range xsd:string ; rdfs:label "region code" .
+dbpi:postalCode a owl:DatatypeProperty ; rdfs:range xsd:string ; rdfs:label "postal code" .
+dbpi:countryCode a owl:DatatypeProperty ; rdfs:range xsd:string ; rdfs:label "country code" .
+dbpi:parcelNumber a owl:DatatypeProperty ; rdfs:range xsd:string ; rdfs:label "parcel number" .
+dbpi:documentNumber a owl:DatatypeProperty ; rdfs:range xsd:string ; rdfs:label "document number" .
+dbpi:documentDate a owl:DatatypeProperty ; rdfs:range xsd:date ; rdfs:label "document date" .
+dbpi:amount a owl:DatatypeProperty ; rdfs:range xsd:decimal ; rdfs:label "amount" .
+dbpi:currencyCode a owl:DatatypeProperty ; rdfs:range xsd:string ; rdfs:label "currency code" .
+dbpi:paidDate a owl:DatatypeProperty ; rdfs:range xsd:date ; rdfs:label "paid date" .
+dbpi:externalReference a owl:DatatypeProperty ; rdfs:range xsd:string ; rdfs:label "external reference" .

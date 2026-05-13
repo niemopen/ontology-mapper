@@ -1,0 +1,179 @@
+@prefix dbpi: <https://data.redvale.gov/ontology/dbpi/> .
+@prefix dcp: <https://data.redvale.gov/ontology/dbpi/codelists#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://data.redvale.gov/ontology/dbpi/workflows> a owl:Ontology ;
+    owl:imports <https://data.redvale.gov/ontology/dbpi/core>,
+                <https://data.redvale.gov/ontology/dbpi/permitting>,
+                <https://data.redvale.gov/ontology/dbpi/inspections>,
+                <https://data.redvale.gov/ontology/dbpi/enforcement>,
+                <https://data.redvale.gov/ontology/dbpi/codelists> ;
+    rdfs:label "DBPI Workflow Ontology" ;
+    rdfs:comment "Canonical lifecycle models and state transitions for core DBPI operational records." .
+
+dbpi:WorkflowModel a owl:Class ; rdfs:label "Workflow Model" .
+dbpi:WorkflowState a owl:Class ; rdfs:label "Workflow State" .
+dbpi:WorkflowTransition a owl:Class ; rdfs:label "Workflow Transition" .
+
+dbpi:appliesToClass a owl:ObjectProperty ;
+    rdfs:domain dbpi:WorkflowModel ;
+    rdfs:range owl:Class ;
+    rdfs:label "applies to class" .
+
+dbpi:hasWorkflowState a owl:ObjectProperty ;
+    rdfs:domain dbpi:WorkflowModel ;
+    rdfs:range dbpi:WorkflowState ;
+    rdfs:label "has workflow state" .
+
+dbpi:hasWorkflowTransition a owl:ObjectProperty ;
+    rdfs:domain dbpi:WorkflowModel ;
+    rdfs:range dbpi:WorkflowTransition ;
+    rdfs:label "has workflow transition" .
+
+dbpi:fromState a owl:ObjectProperty ;
+    rdfs:domain dbpi:WorkflowTransition ;
+    rdfs:range dbpi:WorkflowState ;
+    rdfs:label "from state" .
+
+dbpi:toState a owl:ObjectProperty ;
+    rdfs:domain dbpi:WorkflowTransition ;
+    rdfs:range dbpi:WorkflowState ;
+    rdfs:label "to state" .
+
+dbpi:mapsToConcept a owl:ObjectProperty ;
+    rdfs:domain dbpi:WorkflowState ;
+    rdfs:range skos:Concept ;
+    rdfs:label "maps to concept" .
+
+dbpi:transitionTrigger a owl:DatatypeProperty ;
+    rdfs:domain dbpi:WorkflowTransition ;
+    rdfs:range xsd:string ;
+    rdfs:label "transition trigger" .
+
+dbpi:appliesAuthorityId a owl:DatatypeProperty ;
+    rdfs:domain dbpi:WorkflowModel ;
+    rdfs:range xsd:string ;
+    rdfs:label "applies authority id" .
+
+dbpi:PermitApplicationLifecycle a dbpi:WorkflowModel ;
+    dbpi:displayName "Permit Application Lifecycle" ;
+    dbpi:appliesToClass dbpi:PermitApplication ;
+    dbpi:appliesAuthorityId "AUTH-DBPI-002" ;
+    dbpi:appliesAuthorityId "AUTH-DBPI-012" .
+
+dbpi:WFS_App_Received a dbpi:WorkflowState ; dbpi:displayName "Received" ; dbpi:mapsToConcept dcp:StatusReceived .
+dbpi:WFS_App_UnderReview a dbpi:WorkflowState ; dbpi:displayName "Under Review" ; dbpi:mapsToConcept dcp:StatusUnderReview .
+dbpi:WFS_App_Approved a dbpi:WorkflowState ; dbpi:displayName "Approved" ; dbpi:mapsToConcept dcp:StatusApproved .
+dbpi:WFS_App_Denied a dbpi:WorkflowState ; dbpi:displayName "Denied" ; dbpi:mapsToConcept dcp:StatusDenied .
+dbpi:WFS_App_Withdrawn a dbpi:WorkflowState ; dbpi:displayName "Withdrawn" ; dbpi:mapsToConcept dcp:StatusWithdrawn .
+
+dbpi:PermitApplicationLifecycle dbpi:hasWorkflowState dbpi:WFS_App_Received, dbpi:WFS_App_UnderReview, dbpi:WFS_App_Approved, dbpi:WFS_App_Denied, dbpi:WFS_App_Withdrawn .
+
+dbpi:WFT_App_1 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_App_Received ; dbpi:toState dbpi:WFS_App_UnderReview ; dbpi:transitionTrigger "Intake completeness confirmed and routing initiated." .
+dbpi:WFT_App_2 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_App_UnderReview ; dbpi:toState dbpi:WFS_App_Approved ; dbpi:transitionTrigger "All required reviews approved and issuance prerequisites satisfied." .
+dbpi:WFT_App_3 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_App_UnderReview ; dbpi:toState dbpi:WFS_App_Denied ; dbpi:transitionTrigger "Substantive noncompliance results in denial." .
+dbpi:WFT_App_4 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_App_UnderReview ; dbpi:toState dbpi:WFS_App_Withdrawn ; dbpi:transitionTrigger "Applicant withdraws the application during review." .
+dbpi:WFT_App_5 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_App_Received ; dbpi:toState dbpi:WFS_App_Withdrawn ; dbpi:transitionTrigger "Applicant withdraws before review begins." .
+dbpi:PermitApplicationLifecycle dbpi:hasWorkflowTransition dbpi:WFT_App_1, dbpi:WFT_App_2, dbpi:WFT_App_3, dbpi:WFT_App_4, dbpi:WFT_App_5 .
+
+dbpi:PermitLifecycle a dbpi:WorkflowModel ;
+    dbpi:displayName "Permit Lifecycle" ;
+    dbpi:appliesToClass dbpi:Permit ;
+    dbpi:appliesAuthorityId "AUTH-DBPI-002" ;
+    dbpi:appliesAuthorityId "AUTH-DBPI-004" .
+
+dbpi:WFS_Permit_Active a dbpi:WorkflowState ; dbpi:displayName "Active" ; dbpi:mapsToConcept dcp:PermitActive .
+dbpi:WFS_Permit_Suspended a dbpi:WorkflowState ; dbpi:displayName "Suspended" ; dbpi:mapsToConcept dcp:PermitSuspended .
+dbpi:WFS_Permit_Revoked a dbpi:WorkflowState ; dbpi:displayName "Revoked" ; dbpi:mapsToConcept dcp:PermitRevoked .
+dbpi:WFS_Permit_Expired a dbpi:WorkflowState ; dbpi:displayName "Expired" ; dbpi:mapsToConcept dcp:PermitExpired .
+dbpi:WFS_Permit_Finaled a dbpi:WorkflowState ; dbpi:displayName "Finaled" ; dbpi:mapsToConcept dcp:PermitFinaled .
+
+dbpi:PermitLifecycle dbpi:hasWorkflowState dbpi:WFS_Permit_Active, dbpi:WFS_Permit_Suspended, dbpi:WFS_Permit_Revoked, dbpi:WFS_Permit_Expired, dbpi:WFS_Permit_Finaled .
+
+dbpi:WFT_Permit_1 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_Permit_Active ; dbpi:toState dbpi:WFS_Permit_Suspended ; dbpi:transitionTrigger "Active work is placed on hold pending correction or administrative action." .
+dbpi:WFT_Permit_2 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_Permit_Suspended ; dbpi:toState dbpi:WFS_Permit_Active ; dbpi:transitionTrigger "Suspension basis cured and permit reinstated." .
+dbpi:WFT_Permit_3 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_Permit_Active ; dbpi:toState dbpi:WFS_Permit_Expired ; dbpi:transitionTrigger "Permit lapses by time or inactivity." .
+dbpi:WFT_Permit_4 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_Permit_Active ; dbpi:toState dbpi:WFS_Permit_Finaled ; dbpi:transitionTrigger "All required final approvals completed." .
+dbpi:WFT_Permit_5 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_Permit_Active ; dbpi:toState dbpi:WFS_Permit_Revoked ; dbpi:transitionTrigger "Permit is revoked for authorized cause." .
+dbpi:WFT_Permit_6 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_Permit_Suspended ; dbpi:toState dbpi:WFS_Permit_Revoked ; dbpi:transitionTrigger "Suspended permit proceeds to revocation." .
+dbpi:WFT_Permit_7 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_Permit_Suspended ; dbpi:toState dbpi:WFS_Permit_Expired ; dbpi:transitionTrigger "Suspended permit lapses before reinstatement." .
+dbpi:PermitLifecycle dbpi:hasWorkflowTransition dbpi:WFT_Permit_1, dbpi:WFT_Permit_2, dbpi:WFT_Permit_3, dbpi:WFT_Permit_4, dbpi:WFT_Permit_5, dbpi:WFT_Permit_6, dbpi:WFT_Permit_7 .
+
+dbpi:InspectionRequestLifecycle a dbpi:WorkflowModel ;
+    dbpi:displayName "Inspection Request Lifecycle" ;
+    dbpi:appliesToClass dbpi:InspectionRequest ;
+    dbpi:appliesAuthorityId "AUTH-DBPI-003" ;
+    dbpi:appliesAuthorityId "AUTH-DBPI-014" .
+
+dbpi:WFS_InspReq_Requested a dbpi:WorkflowState ; dbpi:displayName "Requested" ; dbpi:mapsToConcept dcp:InspectionRequested .
+dbpi:WFS_InspReq_Scheduled a dbpi:WorkflowState ; dbpi:displayName "Scheduled" ; dbpi:mapsToConcept dcp:InspectionScheduled .
+dbpi:WFS_InspReq_Canceled a dbpi:WorkflowState ; dbpi:displayName "Canceled" ; dbpi:mapsToConcept dcp:InspectionCanceled .
+dbpi:WFS_InspReq_Completed a dbpi:WorkflowState ; dbpi:displayName "Completed" ; dbpi:mapsToConcept dcp:InspectionCompleted .
+
+dbpi:InspectionRequestLifecycle dbpi:hasWorkflowState dbpi:WFS_InspReq_Requested, dbpi:WFS_InspReq_Scheduled, dbpi:WFS_InspReq_Canceled, dbpi:WFS_InspReq_Completed .
+dbpi:WFT_InspReq_1 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_InspReq_Requested ; dbpi:toState dbpi:WFS_InspReq_Scheduled ; dbpi:transitionTrigger "Appointment slot assigned." .
+dbpi:WFT_InspReq_2 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_InspReq_Requested ; dbpi:toState dbpi:WFS_InspReq_Canceled ; dbpi:transitionTrigger "Request canceled before scheduling." .
+dbpi:WFT_InspReq_3 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_InspReq_Scheduled ; dbpi:toState dbpi:WFS_InspReq_Completed ; dbpi:transitionTrigger "Inspection performed and request fulfilled." .
+dbpi:WFT_InspReq_4 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_InspReq_Scheduled ; dbpi:toState dbpi:WFS_InspReq_Canceled ; dbpi:transitionTrigger "Appointment canceled." .
+dbpi:InspectionRequestLifecycle dbpi:hasWorkflowTransition dbpi:WFT_InspReq_1, dbpi:WFT_InspReq_2, dbpi:WFT_InspReq_3, dbpi:WFT_InspReq_4 .
+
+dbpi:ViolationCaseLifecycle a dbpi:WorkflowModel ;
+    dbpi:displayName "Violation Case Lifecycle" ;
+    dbpi:appliesToClass dbpi:ViolationCase ;
+    dbpi:appliesAuthorityId "AUTH-DBPI-004" ;
+    dbpi:appliesAuthorityId "AUTH-DBPI-015" .
+
+dbpi:WFS_Case_Open a dbpi:WorkflowState ; dbpi:displayName "Open" ; dbpi:mapsToConcept dcp:CaseOpen .
+dbpi:WFS_Case_PendingCompliance a dbpi:WorkflowState ; dbpi:displayName "Pending Compliance" ; dbpi:mapsToConcept dcp:CasePendingCompliance .
+dbpi:WFS_Case_Referred a dbpi:WorkflowState ; dbpi:displayName "Referred" ; dbpi:mapsToConcept dcp:CaseReferred .
+dbpi:WFS_Case_Closed a dbpi:WorkflowState ; dbpi:displayName "Closed" ; dbpi:mapsToConcept dcp:CaseClosed .
+
+dbpi:ViolationCaseLifecycle dbpi:hasWorkflowState dbpi:WFS_Case_Open, dbpi:WFS_Case_PendingCompliance, dbpi:WFS_Case_Referred, dbpi:WFS_Case_Closed .
+dbpi:WFT_Case_1 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_Case_Open ; dbpi:toState dbpi:WFS_Case_PendingCompliance ; dbpi:transitionTrigger "Violation confirmed and corrective action issued." .
+dbpi:WFT_Case_2 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_Case_Open ; dbpi:toState dbpi:WFS_Case_Closed ; dbpi:transitionTrigger "Complaint unsubstantiated or outside jurisdiction." .
+dbpi:WFT_Case_3 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_Case_PendingCompliance ; dbpi:toState dbpi:WFS_Case_Closed ; dbpi:transitionTrigger "Compliance verified." .
+dbpi:WFT_Case_4 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_Case_PendingCompliance ; dbpi:toState dbpi:WFS_Case_Referred ; dbpi:transitionTrigger "Noncompliance persists and matter is escalated." .
+dbpi:WFT_Case_5 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_Case_Referred ; dbpi:toState dbpi:WFS_Case_Closed ; dbpi:transitionTrigger "Referred matter reaches final disposition." .
+dbpi:ViolationCaseLifecycle dbpi:hasWorkflowTransition dbpi:WFT_Case_1, dbpi:WFT_Case_2, dbpi:WFT_Case_3, dbpi:WFT_Case_4, dbpi:WFT_Case_5 .
+
+dbpi:AppealLifecycle a dbpi:WorkflowModel ;
+    dbpi:displayName "Appeal Lifecycle" ;
+    dbpi:appliesToClass dbpi:Appeal ;
+    dbpi:appliesAuthorityId "AUTH-DBPI-005" ;
+    dbpi:appliesAuthorityId "AUTH-DBPI-009" .
+
+dbpi:WFS_Appeal_Pending a dbpi:WorkflowState ; dbpi:displayName "Pending" ; dbpi:mapsToConcept dcp:AppealPending .
+dbpi:WFS_Appeal_Granted a dbpi:WorkflowState ; dbpi:displayName "Granted" ; dbpi:mapsToConcept dcp:AppealGranted .
+dbpi:WFS_Appeal_Denied a dbpi:WorkflowState ; dbpi:displayName "Denied" ; dbpi:mapsToConcept dcp:AppealDenied .
+
+dbpi:AppealLifecycle dbpi:hasWorkflowState dbpi:WFS_Appeal_Pending, dbpi:WFS_Appeal_Granted, dbpi:WFS_Appeal_Denied .
+dbpi:WFT_Appeal_1 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_Appeal_Pending ; dbpi:toState dbpi:WFS_Appeal_Granted ; dbpi:transitionTrigger "Hearing or review results in modified or reversed action." .
+dbpi:WFT_Appeal_2 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_Appeal_Pending ; dbpi:toState dbpi:WFS_Appeal_Denied ; dbpi:transitionTrigger "Original action sustained after review." .
+dbpi:AppealLifecycle dbpi:hasWorkflowTransition dbpi:WFT_Appeal_1, dbpi:WFT_Appeal_2 .
+
+dbpi:RecordsRequestLifecycle a dbpi:WorkflowModel ;
+    dbpi:displayName "Records Request Lifecycle" ;
+    dbpi:appliesToClass dbpi:Document ;
+    dbpi:appliesAuthorityId "AUTH-DBPI-010" ;
+    dbpi:appliesAuthorityId "AUTH-DBPI-016" .
+
+dbpi:WFS_RecReq_Received a dbpi:WorkflowState ; dbpi:displayName "Received" ; dbpi:mapsToConcept dcp:RecordsReceived .
+dbpi:WFS_RecReq_InReview a dbpi:WorkflowState ; dbpi:displayName "In Review" ; dbpi:mapsToConcept dcp:RecordsInReview .
+dbpi:WFS_RecReq_Fulfilled a dbpi:WorkflowState ; dbpi:displayName "Fulfilled" ; dbpi:mapsToConcept dcp:RecordsFulfilled .
+dbpi:WFS_RecReq_PartiallyFulfilled a dbpi:WorkflowState ; dbpi:displayName "Partially Fulfilled" ; dbpi:mapsToConcept dcp:RecordsPartiallyFulfilled .
+dbpi:WFS_RecReq_Denied a dbpi:WorkflowState ; dbpi:displayName "Denied" ; dbpi:mapsToConcept dcp:RecordsDenied .
+dbpi:WFS_RecReq_Closed a dbpi:WorkflowState ; dbpi:displayName "Closed" ; dbpi:mapsToConcept dcp:RecordsClosed .
+
+dbpi:RecordsRequestLifecycle dbpi:hasWorkflowState dbpi:WFS_RecReq_Received, dbpi:WFS_RecReq_InReview, dbpi:WFS_RecReq_Fulfilled, dbpi:WFS_RecReq_PartiallyFulfilled, dbpi:WFS_RecReq_Denied, dbpi:WFS_RecReq_Closed .
+dbpi:WFT_RecReq_1 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_RecReq_Received ; dbpi:toState dbpi:WFS_RecReq_InReview ; dbpi:transitionTrigger "Request sufficiently specific and accepted for processing." .
+dbpi:WFT_RecReq_2 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_RecReq_InReview ; dbpi:toState dbpi:WFS_RecReq_Fulfilled ; dbpi:transitionTrigger "Records located and released in full." .
+dbpi:WFT_RecReq_3 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_RecReq_InReview ; dbpi:toState dbpi:WFS_RecReq_PartiallyFulfilled ; dbpi:transitionTrigger "Records released with lawful redactions or partial withholding." .
+dbpi:WFT_RecReq_4 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_RecReq_InReview ; dbpi:toState dbpi:WFS_RecReq_Denied ; dbpi:transitionTrigger "Exemption applies or unable to locate responsive records." .
+dbpi:WFT_RecReq_5 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_RecReq_Fulfilled ; dbpi:toState dbpi:WFS_RecReq_Closed ; dbpi:transitionTrigger "Administrative completion." .
+dbpi:WFT_RecReq_6 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_RecReq_PartiallyFulfilled ; dbpi:toState dbpi:WFS_RecReq_Closed ; dbpi:transitionTrigger "Administrative completion." .
+dbpi:WFT_RecReq_7 a dbpi:WorkflowTransition ; dbpi:fromState dbpi:WFS_RecReq_Denied ; dbpi:toState dbpi:WFS_RecReq_Closed ; dbpi:transitionTrigger "Administrative completion." .
+dbpi:RecordsRequestLifecycle dbpi:hasWorkflowTransition dbpi:WFT_RecReq_1, dbpi:WFT_RecReq_2, dbpi:WFT_RecReq_3, dbpi:WFT_RecReq_4, dbpi:WFT_RecReq_5, dbpi:WFT_RecReq_6, dbpi:WFT_RecReq_7 .

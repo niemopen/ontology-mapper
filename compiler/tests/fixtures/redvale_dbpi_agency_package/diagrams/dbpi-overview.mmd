@@ -1,0 +1,29 @@
+flowchart TD
+    A[Department] --> B[Permit Services Division]
+    A --> E[Plan Review Division]
+    A --> C[Field Inspections Division]
+    A --> D[Code Enforcement Division]
+    A --> RU[Records and Disclosure Unit]
+
+    P[Property] --> PAR[Parcel]
+    P --> ADR[Address]
+
+    APP[Permit Application] -->|concerns| P
+    APP -->|submitted by| APPL[Applicant]
+    APP -->|for service| SVC[Public Service]
+    APP -->|results in| PMT[Permit]
+    APP --> PR[Plan Review]
+
+    PMT -->|assigned to| C
+    IR[Inspection Request] -->|for permit| PMT
+    INSP[Inspection] -->|fulfills| IR
+    INSP -->|inspected property| P
+    INSP -->|performed by| INSPECTOR[Inspector]
+
+    CASE[Violation Case] -->|related inspection| INSP
+    CASE -->|related permit| PMT
+    CASE -->|related property| P
+    CASE --> NOV[Notice of Violation]
+    CASE --> CA[Corrective Action]
+    CASE --> APPEAL[Appeal]
+    APPEAL --> HEARING[Hearing]

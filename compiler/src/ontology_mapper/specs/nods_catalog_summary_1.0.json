@@ -1,0 +1,1238 @@
+{
+  "version": "1.0",
+  "generatedAt": "2026-04-04T20:33:39.731412+00:00",
+  "stats": {
+    "namespaces": 8,
+    "totalTypes": 112,
+    "typesWithProperties": 96,
+    "totalPropertyMemberships": 379,
+    "totalProperties": 461,
+    "typesWithBaseType": 66,
+    "typesWithInheritanceChain": 66,
+    "augmentedTypes": 0,
+    "totalAugmentedProperties": 0,
+    "codelistsEnriched": 0,
+    "patternCounts": {
+      "association": 3,
+      "object": 109
+    }
+  },
+  "namespaces": {
+    "hs": {
+      "label": "hs",
+      "types": [
+        {
+          "qname": "hs:JuvenilePlacementType",
+          "definition": "A data type for information about where a juvenile is directed to reside during the pendency of a delinquency proceeding.",
+          "baseType": "hs:PlacementType",
+          "properties": [],
+          "propertyCount": 0
+        },
+        {
+          "qname": "hs:PlacementType",
+          "definition": "A data type for the placement history of a child or youth.",
+          "baseType": "nc:ActivityType",
+          "properties": [
+            "PlacementCategoryAbstract"
+          ],
+          "propertyCount": 1
+        }
+      ]
+    },
+    "j": {
+      "label": "j",
+      "types": [
+        {
+          "qname": "j:ArrestType",
+          "definition": "A data type for the apprehension of a subject by a peace official.",
+          "baseType": "nc:ActivityType",
+          "properties": [
+            "ArrestAgency",
+            "ArrestAgencyRecordIdentification",
+            "ArrestCharge",
+            "ArrestOfficial",
+            "ArrestSequenceID",
+            "ArrestSubject"
+          ],
+          "propertyCount": 6
+        },
+        {
+          "qname": "j:BailBondType",
+          "definition": "A data type for an agreement between a bondsman and a subject in which a bondsman pays the subject's bail or portion of the bail in exchange for certain conditions.",
+          "baseType": "nc:ActivityType",
+          "properties": [
+            "BailBondAmount"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "j:CaseOfficialType",
+          "definition": "A data type for an official's involvement in a case.",
+          "baseType": "j:JudicialOfficialType",
+          "properties": [
+            "CaseOfficialEndDate",
+            "CaseOfficialRoleText",
+            "CaseOfficialStartDate"
+          ],
+          "propertyCount": 3
+        },
+        {
+          "qname": "j:ChargeDispositionType",
+          "definition": "A data type for the results or processing of a charge.",
+          "baseType": "nc:DispositionType",
+          "properties": [],
+          "propertyCount": 0
+        },
+        {
+          "qname": "j:ChargeType",
+          "definition": "A data type for a formal allegation that a specific person has committed a specific offense.",
+          "baseType": null,
+          "properties": [
+            "ChargeDegreeText",
+            "ChargeDescriptionText",
+            "ChargeDisposition",
+            "ChargeOriginatorEntity",
+            "ChargeFilingDate",
+            "ChargeSequenceID",
+            "ChargeSeverityText",
+            "ChargeSpecialAllegationText",
+            "ChargeStatute",
+            "ChargeSubject"
+          ],
+          "propertyCount": 11
+        },
+        {
+          "qname": "j:CommercialVehicleType",
+          "definition": "A data type for a class of vehicle that includes motor vehicles with a gross vehicle weight rating of 26,001 pounds or more.",
+          "baseType": "nc:VehicleType",
+          "properties": [
+            "CommercialVehicleMotorCarrier"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "j:ConditionalReleaseType",
+          "definition": "A data type for a release of a person or item from confinement, holding, or obligation, that is dependent upon certain conditions being met.",
+          "baseType": "nc:ReleaseType",
+          "properties": [
+            "ConditionalReleaseCondition",
+            "ConditionalReleaseRevokedReasonText"
+          ],
+          "propertyCount": 2
+        },
+        {
+          "qname": "j:CourtAppearanceType",
+          "definition": "A data type for an appearance required of a party in a court of law on a certain date.",
+          "baseType": null,
+          "properties": [
+            "CourtAppearanceEntity"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "j:CourtEventType",
+          "definition": "A data type for a court occurrence.",
+          "baseType": "nc:ActivityType",
+          "properties": [
+            "CourtEventAppearance",
+            "CourtEventJudge"
+          ],
+          "propertyCount": 2
+        },
+        {
+          "qname": "j:CourtOrderType",
+          "definition": "A data type for a direction of a judge not including a judgment, which determines some point or directs some steps in proceedings.",
+          "baseType": "nc:ActivityType",
+          "properties": [
+            "CourtOrderDesignatedSubject",
+            "CourtOrderIssuingDate",
+            "CourtOrderIssuingJudicialOfficial",
+            "CourtOrderRecallDate",
+            "CourtOrderRecallReasonText",
+            "CourtOrderRequestReasonText"
+          ],
+          "propertyCount": 6
+        },
+        {
+          "qname": "j:CourtType",
+          "definition": "A data type for a court or a unit of a court responsible for trying justice proceedings.",
+          "baseType": "nc:OrganizationType",
+          "properties": [
+            "CourtName"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "j:DriverLicenseType",
+          "definition": "A data type for a license issued to a person granting driving privileges.",
+          "baseType": "nc:LicenseType",
+          "properties": [
+            "DriverLicenseCommercialClassAbstract",
+            "DriverLicenseCardIdentification"
+          ],
+          "propertyCount": 2
+        },
+        {
+          "qname": "j:DriverLicenseWithdrawalType",
+          "definition": "A data type for a driver license withdrawal.",
+          "baseType": "nc:ActivityType",
+          "properties": [
+            "DriverLicenseWithdrawalEffectiveDate",
+            "DriverLicenseWithdrawalReinstatementDate"
+          ],
+          "propertyCount": 2
+        },
+        {
+          "qname": "j:DrivingIncidentType",
+          "definition": "A data type for details of an incident involving a vehicle.",
+          "baseType": "nc:IncidentType",
+          "properties": [
+            "DrivingIncidentCMVAbstract",
+            "DrivingIncidentRecordedSpeedRateMeasure",
+            "DrivingIncidentHazMatAbstract",
+            "DrivingIncidentLegalSpeedRateMeasure"
+          ],
+          "propertyCount": 4
+        },
+        {
+          "qname": "j:EnforcementOfficialType",
+          "definition": "A data type for a person involved in the enforcement of law.",
+          "baseType": "nc:PersonType",
+          "properties": [
+            "EnforcementOfficialBadgeIdentification"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "j:FinancialCompilationType",
+          "definition": "A data type for a set of financial details for a person.",
+          "baseType": null,
+          "properties": [
+            "FinancialCompilationDate",
+            "FinancialAccount"
+          ],
+          "propertyCount": 2
+        },
+        {
+          "qname": "j:HearingType",
+          "definition": "A data type for a proceeding before an administrative agency or authority to decide how to deal with failure to comply with rules, to determine an issue of fact, or to reach an administrative decision based on evidence.",
+          "baseType": "nc:ActivityType",
+          "properties": [
+            "HearingContinuationReasonText"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "j:IntakeType",
+          "definition": "A data type for a process of receiving persons into an institution.",
+          "baseType": "nc:ActivityType",
+          "properties": [
+            "IntakeScreening"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "j:JudicialOfficialType",
+          "definition": "A data type for a person involved in a judicial area of government.",
+          "baseType": "nc:PersonType",
+          "properties": [
+            "JudicialOfficialFirm",
+            "JudicialOfficialRegistrationIdentification"
+          ],
+          "propertyCount": 2
+        },
+        {
+          "qname": "j:MotorCarrierType",
+          "definition": "A data type for an organization providing commercial motor vehicle transportation for compensation.",
+          "baseType": "nc:OrganizationType",
+          "properties": [
+            "MotorCarrierDOTIdentification"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "j:OffenseType",
+          "definition": "A data type for an alleged violation of a statute, ordinance, or rule.",
+          "baseType": "nc:ActivityType",
+          "properties": [
+            "OffenseViolatedStatute"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "j:PleaType",
+          "definition": "A data type for an answer which a defendant in an action at law makes to charges.",
+          "baseType": "nc:ActivityType",
+          "properties": [
+            "PleaDescriptionText"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "j:ProgramViolationType",
+          "definition": "A data type for a set of details describing activities and infractions of a subject in a program.",
+          "baseType": "j:OffenseType",
+          "properties": [
+            "ProgramViolationCategoryAbstract",
+            "ProgramViolationOutcomeAbstract"
+          ],
+          "propertyCount": 2
+        },
+        {
+          "qname": "j:SanctionType",
+          "definition": "A data type for a sanction or penalty ordered for a subject as a result of a disposition of a charge.",
+          "baseType": "nc:ActivityType",
+          "properties": [
+            "SanctionSetObligation",
+            "SanctionCategoryText"
+          ],
+          "propertyCount": 2
+        },
+        {
+          "qname": "j:SentenceType",
+          "definition": "A data type for a punishment resulting from conviction of charges in a court case.",
+          "baseType": "nc:ActivityType",
+          "properties": [
+            "SentenceCondition",
+            "SentenceConfinementCreditDayQuantity",
+            "SentenceDescriptionText",
+            "SentenceSuspendedIndicator",
+            "SentenceTerm"
+          ],
+          "propertyCount": 5
+        },
+        {
+          "qname": "j:StatuteType",
+          "definition": "A data type for a law, rule, or ordinance within a jurisdiction.",
+          "baseType": null,
+          "properties": [
+            "StatuteCodeIdentification",
+            "StatuteEnactmentDate",
+            "StatuteOffenseIdentification"
+          ],
+          "propertyCount": 3
+        },
+        {
+          "qname": "j:SubjectType",
+          "definition": "A data type for a person or organization that is involved or suspected of being involved in a violation of a criminal statute, ordinance or rule.",
+          "baseType": "nc:EntityType",
+          "properties": [],
+          "propertyCount": 0
+        },
+        {
+          "qname": "j:TermType",
+          "definition": "A data type for a duration length either in specific terms or as a range.",
+          "baseType": "nc:ActivityType",
+          "properties": [
+            "TermDuration",
+            "TermLifeIndicator"
+          ],
+          "propertyCount": 2
+        },
+        {
+          "qname": "j:WarrantType",
+          "definition": "A data type for an authorization for an enforcement official to perform a specified action.",
+          "baseType": "j:CourtOrderType",
+          "properties": [],
+          "propertyCount": 0
+        }
+      ]
+    },
+    "nc": {
+      "label": "nc",
+      "types": [
+        {
+          "qname": "nc:ActivityType",
+          "definition": "A data type for a single or set of related actions, events, or process steps.",
+          "baseType": null,
+          "properties": [
+            "ActivityIdentification",
+            "ActivityApprovedIndicator",
+            "ActivityAssignedDate",
+            "ActivityCategoryAbstract",
+            "ActivityCompletedIndicator",
+            "ActivityDate",
+            "ActivityDisposition",
+            "ActivityLocation",
+            "ActivityName",
+            "ActivityPrescribedDuration"
+          ],
+          "propertyCount": 14
+        },
+        {
+          "qname": "nc:AddressType",
+          "definition": "A data type for a geophysical location described by postal information.",
+          "baseType": null,
+          "properties": [
+            "AddressFullText",
+            "AddressState",
+            "AddressPostalCode"
+          ],
+          "propertyCount": 3
+        },
+        {
+          "qname": "nc:AmountType",
+          "definition": "A data type for an amount of money.",
+          "baseType": null,
+          "properties": [],
+          "propertyCount": 0
+        },
+        {
+          "qname": "nc:AssessmentType",
+          "definition": "A data type for an evaluation, appraisal, or assessment of something or someone.",
+          "baseType": "nc:ActivityType",
+          "properties": [
+            "AssessmentPerson",
+            "AssessmentScoreAbstract",
+            "AssessmentToolName"
+          ],
+          "propertyCount": 3
+        },
+        {
+          "qname": "nc:AssociationType",
+          "definition": "A data type for an association, connection, relationship, or involvement somehow linking people, things, and/or activities together.",
+          "baseType": null,
+          "properties": [],
+          "propertyCount": 0
+        },
+        {
+          "qname": "nc:CaseDispositionDecisionType",
+          "definition": "A data type for the disposition of a case occurring as a result of some decision.",
+          "baseType": null,
+          "properties": [
+            "CaseDispositionDecisionCategoryAbstract"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "nc:CaseDispositionType",
+          "definition": "A data type for an outcome or processing of a case.",
+          "baseType": "nc:DispositionType",
+          "properties": [
+            "CaseDispositionFinalDate",
+            "CaseDispositionDecision"
+          ],
+          "propertyCount": 2
+        },
+        {
+          "qname": "nc:CaseType",
+          "definition": "A data type for an aggregation of information about a set of related activities and events.",
+          "baseType": "nc:ActivityType",
+          "properties": [
+            "CaseCategoryAbstract",
+            "CaseTrackingID"
+          ],
+          "propertyCount": 2
+        },
+        {
+          "qname": "nc:ConditionType",
+          "definition": "A data type for a requirement or stipulation.",
+          "baseType": "nc:ActivityType",
+          "properties": [
+            "ConditionGroupID"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "nc:ContactInformationType",
+          "definition": "A data type for how to contact a person or an organization.",
+          "baseType": null,
+          "properties": [
+            "ContactMeansAbstract"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "nc:ConveyanceType",
+          "definition": "A data type for a means of transport from place to place.",
+          "baseType": "nc:ItemType",
+          "properties": [],
+          "propertyCount": 0
+        },
+        {
+          "qname": "nc:CountryType",
+          "definition": "A data type for a country, territory, dependency, or other such geopolitical subdivision of a location.",
+          "baseType": null,
+          "properties": [
+            "CountryRepresentation"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "nc:DateRangeType",
+          "definition": "A data type for a range of dates.",
+          "baseType": null,
+          "properties": [
+            "StartDate",
+            "EndDate"
+          ],
+          "propertyCount": 2
+        },
+        {
+          "qname": "nc:DateType",
+          "definition": "A data type for a calendar date.",
+          "baseType": null,
+          "properties": [
+            "DateRepresentation"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "nc:DispositionType",
+          "definition": "A data type for a result or outcome that is the product of handling, processing, or finalizing something.",
+          "baseType": null,
+          "properties": [
+            "DispositionCategoryAbstract",
+            "DispositionDate",
+            "DispositionText"
+          ],
+          "propertyCount": 3
+        },
+        {
+          "qname": "nc:DocumentType",
+          "definition": "A data type for a paper or electronic document.",
+          "baseType": null,
+          "properties": [
+            "DocumentCategoryAbstract",
+            "DocumentFiledDate",
+            "DocumentSource",
+            "DocumentSourceText",
+            "DocumentSubmitter",
+            "DocumentTitleText"
+          ],
+          "propertyCount": 6
+        },
+        {
+          "qname": "nc:EntityType",
+          "definition": "A data type for a person, organization, or item.",
+          "baseType": null,
+          "properties": [
+            "EntityRepresentation"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "nc:FinancialAccountType",
+          "definition": "A data type for a financial account maintained by a financial institution.",
+          "baseType": null,
+          "properties": [
+            "FinancialAccountPresentBalanceAmount"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "nc:FullTelephoneNumberType",
+          "definition": "A data type for a full telephone number.",
+          "baseType": null,
+          "properties": [
+            "TelephoneNumberFullID"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "nc:IdentificationType",
+          "definition": "A data type for a representation of an identity.",
+          "baseType": null,
+          "properties": [
+            "IdentificationID",
+            "IdentificationJurisdiction",
+            "IdentificationCategoryAbstract",
+            "IdentificationIssuerCountry"
+          ],
+          "propertyCount": 4
+        },
+        {
+          "qname": "nc:IncidentType",
+          "definition": "A data type for an occurrence or an event that may require a response.",
+          "baseType": "nc:ActivityType",
+          "properties": [],
+          "propertyCount": 0
+        },
+        {
+          "qname": "nc:ItemType",
+          "definition": "A data type for an article or thing.",
+          "baseType": null,
+          "properties": [
+            "ItemValue"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "nc:ItemValueType",
+          "definition": "A data type for an evaluation of the monetary worth of an item.",
+          "baseType": null,
+          "properties": [
+            "ItemValueAmount"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "nc:JurisdictionType",
+          "definition": "A data type for a geopolitical area in which an organization, person, or object has a specific range of authority.",
+          "baseType": null,
+          "properties": [
+            "JurisdictionAbstract"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "nc:LanguageType",
+          "definition": "A data type for a language.",
+          "baseType": null,
+          "properties": [
+            "LanguageRepresentation"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "nc:LicenseEndorsementType",
+          "definition": "A data type for an endorsement on a license or license permit which authorizes specific privileges.",
+          "baseType": null,
+          "properties": [
+            "LicenseEndorsementAbstract"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "nc:LicenseRestrictionType",
+          "definition": "A data type for a restriction applicable to a permit or license.",
+          "baseType": null,
+          "properties": [
+            "LicenseRestrictionAbstract"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "nc:LicenseType",
+          "definition": "A data type for an authorization issued to a person granting certain privileges.",
+          "baseType": "nc:IdentificationType",
+          "properties": [
+            "LicenseRestriction",
+            "LicenseEndorsement"
+          ],
+          "propertyCount": 2
+        },
+        {
+          "qname": "nc:LocationType",
+          "definition": "A data type for geospatial location.",
+          "baseType": null,
+          "properties": [],
+          "propertyCount": 0
+        },
+        {
+          "qname": "nc:MeasureType",
+          "definition": "A data type for a measurement.",
+          "baseType": null,
+          "properties": [],
+          "propertyCount": 0
+        },
+        {
+          "qname": "nc:ObligationType",
+          "definition": "A data type for something that is owed to an entity.",
+          "baseType": null,
+          "properties": [
+            "ObligationTotalAbstract",
+            "ObligationDueAbstract",
+            "ObligationRequirementDescriptionText",
+            "ObligationCategoryAbstract",
+            "ObligationRecipient"
+          ],
+          "propertyCount": 5
+        },
+        {
+          "qname": "nc:OrganizationType",
+          "definition": "A data type for a body of people organized for a particular purpose.",
+          "baseType": null,
+          "properties": [
+            "OrganizationIdentification",
+            "OrganizationName",
+            "OrganizationOtherIdentification",
+            "OrganizationPrimaryContactInformation"
+          ],
+          "propertyCount": 4
+        },
+        {
+          "qname": "nc:PersonCitizenshipType",
+          "definition": "A data type for a person's position or status with a country that assigns rights, duties, and privileges because of the birth or naturalization of the person in that country.",
+          "baseType": null,
+          "properties": [
+            "PersonCitizenshipCountry"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "nc:PersonLanguageType",
+          "definition": "A data type for a language capability of a person.",
+          "baseType": null,
+          "properties": [
+            "Language"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "nc:PersonNameType",
+          "definition": "A data type for a combination of names and/or titles by which a person is known.",
+          "baseType": null,
+          "properties": [
+            "personNameCommentText",
+            "PersonFullName",
+            "PersonNameCategoryAbstract"
+          ],
+          "propertyCount": 3
+        },
+        {
+          "qname": "nc:PersonType",
+          "definition": "A data type for a human being.",
+          "baseType": null,
+          "properties": [
+            "PersonBirthDate",
+            "PersonCitizenship",
+            "PersonDeathDate",
+            "PersonName",
+            "PersonOtherIdentification",
+            "PersonPhysicalDisabilityText",
+            "PersonPrimaryLanguage",
+            "PersonRaceAbstract",
+            "PersonResidentAbstract",
+            "PersonSexAbstract"
+          ],
+          "propertyCount": 12
+        },
+        {
+          "qname": "nc:PlanType",
+          "definition": "A data type for a detailed proposal for doing or achieving something.",
+          "baseType": null,
+          "properties": [
+            "PlanCreatedDate",
+            "PlanDateRange"
+          ],
+          "propertyCount": 2
+        },
+        {
+          "qname": "nc:ProgramType",
+          "definition": "A data type for a set of projects, activities, or services intended to meet a need.",
+          "baseType": "nc:ActivityType",
+          "properties": [
+            "ProgramPerson",
+            "ProgramPurposeText"
+          ],
+          "propertyCount": 2
+        },
+        {
+          "qname": "nc:RealEstateType",
+          "definition": "A data type for a piece of land and any permanent structures and natural resources on it.",
+          "baseType": "nc:ItemType",
+          "properties": [],
+          "propertyCount": 0
+        },
+        {
+          "qname": "nc:ReleaseType",
+          "definition": "A data type for a freeing or discharging of someone or something from an activity, supervision, or obligation.",
+          "baseType": "nc:ActivityType",
+          "properties": [],
+          "propertyCount": 0
+        },
+        {
+          "qname": "nc:SpeedMeasureType",
+          "definition": "A data type for a measure of a speed or rate of motion.",
+          "baseType": "nc:MeasureType",
+          "properties": [],
+          "propertyCount": 0
+        },
+        {
+          "qname": "nc:StateType",
+          "definition": "A data type for a state, commonwealth, province, or other such geopolitical subdivision of a country.",
+          "baseType": null,
+          "properties": [],
+          "propertyCount": 0
+        },
+        {
+          "qname": "nc:StatusType",
+          "definition": "A data type for a state of something or someone.",
+          "baseType": null,
+          "properties": [
+            "StatusAbstract",
+            "StatusDate"
+          ],
+          "propertyCount": 2
+        },
+        {
+          "qname": "nc:SupervisionType",
+          "definition": "A data type for an act of officially overseeing, supervising, or keeping track in some capacity of a person.",
+          "baseType": "nc:ActivityType",
+          "properties": [],
+          "propertyCount": 0
+        },
+        {
+          "qname": "nc:TelephoneNumberType",
+          "definition": "A data type for a telephone number for a telecommunication device.",
+          "baseType": null,
+          "properties": [
+            "TelephoneNumberAbstract"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "nc:VehicleType",
+          "definition": "A data type for a conveyance designed to carry an operator, passengers and/or cargo, over land.",
+          "baseType": "nc:ConveyanceType",
+          "properties": [],
+          "propertyCount": 0
+        }
+      ]
+    },
+    "nods": {
+      "label": "nods",
+      "types": [
+        {
+          "qname": "nods:AccountingType",
+          "definition": "Date Accounting due to Court\nElement# 15-9\nUser Story:",
+          "baseType": "j:FinancialCompilationType",
+          "properties": [
+            "RealEstate",
+            "AccountingCategoryCode",
+            "AccountingDueDate",
+            "FinancialAssets",
+            "PersonalProperty",
+            "TotalAssets"
+          ],
+          "propertyCount": 6
+        },
+        {
+          "qname": "nods:AlternativeDisputeResolutionType",
+          "definition": "Was ADR court-ordered?\nElement# 17-3\nUser Story:",
+          "baseType": "nc:ActivityType",
+          "properties": [
+            "ActivityDisputeResolutionCategoryCode",
+            "AlternativeDisputeResolutionCourtOrderedIndicator",
+            "AlternativeDisputeResolutionHearing",
+            "AlternativeDisputeResolutionOutcomeCode",
+            "AlternativeDisputeResolutionParticipant",
+            "AlternativeDisputeResolutionParties"
+          ],
+          "propertyCount": 6
+        },
+        {
+          "qname": "nods:AttorneyAdvocateCaseRoleType",
+          "definition": "Is attorney admitted to practice in this jurisdiction only for this case?\nElement# 3-7\nUser Story:",
+          "baseType": "j:CaseOfficialType",
+          "properties": [
+            "AttorneyAdvocateCategoryCode",
+            "AttorneyAdvocateLimitedScopeIndicator",
+            "AttorneyAdvocateProHacViceIndicator",
+            "AttorneyAdvocateRepresentedParticipant",
+            "AttorneyAdvocateRepresentedParticipantText"
+          ],
+          "propertyCount": 5
+        },
+        {
+          "qname": "nods:BondType",
+          "definition": "Element# 10-7\nUser Story:",
+          "baseType": "j:BailBondType",
+          "properties": [
+            "BondCategoryCode",
+            "BondHearingCategoryCode",
+            "DefendantStatusBondCode"
+          ],
+          "propertyCount": 3
+        },
+        {
+          "qname": "nods:CaseCourtEventType",
+          "definition": "Way that the hearing was held\nElement# 7-6\nUser Story:",
+          "baseType": null,
+          "properties": [
+            "HearingModalityCode"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "nods:CaseFilingType",
+          "definition": "Is this an amended pleading?\nElement# 5-15\nUser Story:",
+          "baseType": "nc:DocumentType",
+          "properties": [
+            "CaseFilingAmendedIndicator",
+            "CaseFilingCategoryCode",
+            "CaseFilingInOppositionIndicator",
+            "CaseFilingOpposedIndicator",
+            "CaseFilingStipulatedIndicator",
+            "MotionOutcomeCode",
+            "PetitionDenialReasonCode"
+          ],
+          "propertyCount": 7
+        },
+        {
+          "qname": "nods:CaseParticipantAssociationType",
+          "definition": "Participant's role/standing in the case.\nElement# 2-18\nUser Story:",
+          "baseType": "nc:AssociationType",
+          "properties": [
+            "RelationshipToActionCode",
+            "RelationshipToCivilActionCode",
+            "RelationshipToPersonCode"
+          ],
+          "propertyCount": 3
+        },
+        {
+          "qname": "nods:CaseParticipantType",
+          "definition": "Has Party opted in to text message notifications?\nElement# 2-2\nUser Story: I am a clerk and I want to know how to contact the party about court dates.",
+          "baseType": "nc:EntityType",
+          "properties": [
+            "CaseParticipantAssociation",
+            "GuardianConservatorRegistrationDate",
+            "GuardianConservatorRepresentativePayeeIndicator",
+            "GuardianConservatorVAFiduciaryIndicator",
+            "ICWAChildDeterminationDate",
+            "ParticipantCategoryCode",
+            "ParticipantElectronicServiceCategoryCode",
+            "ParticipantOptInToTextNotificationsIndicator",
+            "ParticipantRepresentedIndicator"
+          ],
+          "propertyCount": 9
+        },
+        {
+          "qname": "nods:CaseStatusType",
+          "definition": "Reason for change to inactive status\nElement# 4-3\nUser Story:",
+          "baseType": "nc:StatusType",
+          "properties": [
+            "CaseStatusInactiveReasonCode"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "nods:ChargeType",
+          "definition": "Date when the offense occurred.\nElement# 9-1\nUser Story:",
+          "baseType": "j:ChargeType",
+          "properties": [
+            "Arrest",
+            "CommercialVehicle",
+            "DrivingIncident",
+            "IntoxicationLevelText",
+            "Offense",
+            "ProgramViolation",
+            "ChargeAdjudicatedDelinquentCode",
+            "IntoxicationTestRefusedIndicator",
+            "VehicleStyleCode"
+          ],
+          "propertyCount": 9
+        },
+        {
+          "qname": "nods:CivilJudgmentType",
+          "definition": "Which party prevailed?\nElement# 12-2\nUser Story:",
+          "baseType": "nc:ActivityType",
+          "properties": [
+            "ChildCaseParticipant",
+            "JudgementAgainstParticipant",
+            "JudgementAgainstParticipantCode",
+            "JudgmentAgainstParticipant",
+            "JudgmentMontetaryDamagesAmount",
+            "JudgmentNonMonetaryDamagesIndicator",
+            "JudgmentTotalAmount",
+            "PrevailingParticipant",
+            "PrevailingParticipantCode"
+          ],
+          "propertyCount": 9
+        },
+        {
+          "qname": "nods:CourtCaseCode",
+          "definition": "Additional legal issues in a family case, beyond case type.\nElement# 1-12\nUser Story: I am a judge and I need to easily identify the associated legal issues in family cases since these cases often have multiple issues",
+          "baseType": null,
+          "properties": [
+            "CaseAssociatedLegalIssueCode"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "nods:CourtCaseType",
+          "definition": "Primary case category based on the complaint or petition\nElement# 1-5\nUser Story: I am a court administrator and I want to know how many cases were filed in each case category for reports.",
+          "baseType": "nc:CaseType",
+          "properties": [
+            "Arrest",
+            "ChargeDisposition",
+            "DiversionProgram",
+            "ProgramViolation",
+            "CaseDisposition",
+            "AlternativeDisputeResolution",
+            "AttorneyAdvocateCaseRole",
+            "CaseAppealedIndicator",
+            "CaseCalendarAssignment",
+            "CaseConfidentialIndicator"
+          ],
+          "propertyCount": 47
+        },
+        {
+          "qname": "nods:CourtOrderType",
+          "definition": "Title of order\nElement# 8-2\nUser Story:",
+          "baseType": "j:CourtOrderType",
+          "properties": [
+            "DiversionProgram",
+            "HearingContinuationReasonText",
+            "Warrant",
+            "Assessment",
+            "Obligation",
+            "CivilOrderCategoryCode",
+            "CourtOrderContemptReasonCode",
+            "CourtOrderDismissedWithPrejudiceIndicator",
+            "CourtOrderFindingCode",
+            "CourtOrderTitleText"
+          ],
+          "propertyCount": 12
+        },
+        {
+          "qname": "nods:DependencyPermanancyPlanType",
+          "definition": "The type of permanency plan selected.\nElement# 14-2\nUser Story:",
+          "baseType": "nc:PlanType",
+          "properties": [
+            "ChildCaseClosureReasonCode",
+            "DependencyPermanencyCategoryCode",
+            "PlanImplementationCategoryCode"
+          ],
+          "propertyCount": 3
+        },
+        {
+          "qname": "nods:FinancialCompilationType",
+          "definition": "Date the inventory of assets is due\nElement# 15-1\nUser Story:",
+          "baseType": "j:FinancialCompilationType",
+          "properties": [
+            "FinancialCompilationDueDate",
+            "PersonalPropertyPresentBalanceAmount",
+            "RealPropertyPresentBalanceAmount",
+            "TotalAssetsPresentBalanceAmount"
+          ],
+          "propertyCount": 4
+        },
+        {
+          "qname": "nods:HearingType",
+          "definition": "Outcome of hearing or event\nElement# 7-5\nUser Story:",
+          "baseType": "j:CourtEventType",
+          "properties": [
+            "Attorney",
+            "CaseOfficialEndDate",
+            "HearingEvidencePresentedIndicator",
+            "ActivityActualDuration",
+            "ActivityEstimatedDuration",
+            "CivilHearingCategoryCode",
+            "CourtEventOutcomeCode",
+            "CriminalTrafficHearingCategoryCode",
+            "DependencyHearingCategoryCode",
+            "EvidenceIntroducedDate"
+          ],
+          "propertyCount": 27
+        },
+        {
+          "qname": "nods:JuryType",
+          "definition": "Date on which jury selection began\nElement# 7-25\nUser Story:",
+          "baseType": "nc:ActivityType",
+          "properties": [
+            "JuryAlternateJurorsQuantity",
+            "JuryJurorsQuantity",
+            "JurySelectionDate",
+            "JurySwornDate"
+          ],
+          "propertyCount": 4
+        },
+        {
+          "qname": "nods:JuvenileDetentionType",
+          "definition": "Flag to indicate the youth was placed in detention prior to adjudication\nElement# 10-22\nUser Story:",
+          "baseType": "nc:SupervisionType",
+          "properties": [
+            "JuvenileDetentionCategoryCode",
+            "PreAdjudicationDetentionIndicator",
+            "PreAdjudicationDetentionReasonCode"
+          ],
+          "propertyCount": 3
+        },
+        {
+          "qname": "nods:NODSMessageType",
+          "definition": "The base message for all NODS exchanges.",
+          "baseType": null,
+          "properties": [
+            "CourtCase"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "nods:OnlineDisputeResolutionType",
+          "definition": "Type of on-line dispute resolution facilitation\nElement# 17-5\nUser Story:",
+          "baseType": null,
+          "properties": [
+            "OnlineDisputeResolutionCategoryCode"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "nods:PersonIndigentType",
+          "definition": "Indicator of whether individual was determined to be indigent at any point during the case.\nElement# 2-25\nUser Story:",
+          "baseType": null,
+          "properties": [
+            "PersonIndigentIndicator",
+            "PersonIndigentMethodCode"
+          ],
+          "propertyCount": 2
+        },
+        {
+          "qname": "nods:PleadingType",
+          "definition": "Number of counts in pleading\nElement# 5-14\nUser Story:",
+          "baseType": "nods:CaseFilingType",
+          "properties": [
+            "Summons",
+            "InControversyAmount",
+            "InControversyInExcessOfAmountIndicator",
+            "InControversyUpToAmountIndicator",
+            "InitialProbatePleadingReasonText",
+            "PleadingCountsQuantity",
+            "FeeWaiverFiledDate",
+            "PleadingRequestCode",
+            "SubsequentProbatePleadingReasonText"
+          ],
+          "propertyCount": 9
+        },
+        {
+          "qname": "nods:PretrialIntakeType",
+          "definition": "The decision made by the court for the defendant's pretrial custody status.\nElement# 10-3\nUser Story:",
+          "baseType": "j:IntakeType",
+          "properties": [
+            "JuvenilePlacement",
+            "ConditionalRelease",
+            "JuvenileAsAdultIndicator",
+            "ReleaseReviewDecision",
+            "Subject",
+            "Summons",
+            "SupervisionAssessment",
+            "Bond",
+            "CaseDeferredDate",
+            "CaseDiversionEligibleIndicator"
+          ],
+          "propertyCount": 15
+        },
+        {
+          "qname": "nods:ProbateBondType",
+          "definition": "Bond was ordered\nElement# 15-18\nUser Story:",
+          "baseType": null,
+          "properties": [
+            "ProbateBondAmount",
+            "ProbateBondCategoryCode",
+            "ProbateBondFiledDate",
+            "ProbateBondOrderedIndicator"
+          ],
+          "propertyCount": 4
+        },
+        {
+          "qname": "nods:ProbateComplaintType",
+          "definition": "Court has been alerted there is a potential cause for concern.\nElement# 15-25\nUser Story:",
+          "baseType": "nc:DocumentType",
+          "properties": [
+            "ProbateComplaintActivity"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "nods:ProbateReminderType",
+          "definition": "Reminder of upcoming report or filing due to court\nElement# 15-23\nUser Story:",
+          "baseType": "nc:ActivityType",
+          "properties": [
+            "ProbateReminderCategoryCode"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "nods:ProbateReviewType",
+          "definition": "",
+          "baseType": "nc:ActivityType",
+          "properties": [
+            "Accounting",
+            "CaseParticipant",
+            "FinancialCompilation",
+            "ProbateBond",
+            "ProbateComplaint",
+            "ProbateReminder",
+            "ProbateWaiver",
+            "WellbeingReport"
+          ],
+          "propertyCount": 8
+        },
+        {
+          "qname": "nods:ProbateWaiverType",
+          "definition": "Judicial Officer waived reporting requirement\nElement# 15-3\nUser Story:",
+          "baseType": "nc:ActivityType",
+          "properties": [
+            "ProbateWaiverOrderedIndicator",
+            "ProbateWaiverReasonCode"
+          ],
+          "propertyCount": 2
+        },
+        {
+          "qname": "nods:ReferralType",
+          "definition": "The type of agency or person that referred the incident.\nElement# 10-14\nUser Story:",
+          "baseType": "nc:DocumentType",
+          "properties": [
+            "ReferralSourceText"
+          ],
+          "propertyCount": 1
+        },
+        {
+          "qname": "nods:RemoteParticipantType",
+          "definition": "Manner of remote witness appearance\nElement# 7-21\nUser Story:",
+          "baseType": null,
+          "properties": [
+            "RemoteParticipantMannerCode",
+            "RemoteWitnessMannerCode"
+          ],
+          "propertyCount": 2
+        },
+        {
+          "qname": "nods:SanctionType",
+          "definition": "Was there a sanction or alternative to fine, such as community service\nElement# 13-12\nUser Story:",
+          "baseType": "j:SanctionType",
+          "properties": [
+            "DriverLicenseWithdrawal",
+            "Restitution",
+            "Sentence",
+            "MonetaryPenalty",
+            "SanctionAlternativeFineIndicator",
+            "SanctionBlendedDispositionIndicator",
+            "SanctionedCaseParticipant",
+            "SanctionPaymentPlanIndicator"
+          ],
+          "propertyCount": 8
+        },
+        {
+          "qname": "nods:WellbeingReportType",
+          "definition": "Date Well-being Report due to Court\nElement# 15-16\nUser Story:",
+          "baseType": "nc:DocumentType",
+          "properties": [
+            "ReportDueDate"
+          ],
+          "propertyCount": 1
+        }
+      ]
+    },
+    "structures": {
+      "label": "structures",
+      "types": [
+        {
+          "qname": "structures:AssociationType",
+          "definition": "A data type for a relationship between two or more objects, including any properties of that relationship.",
+          "baseType": null,
+          "properties": [
+            "appliesToParent",
+            "id",
+            "ref",
+            "uri"
+          ],
+          "propertyCount": 4
+        },
+        {
+          "qname": "structures:ObjectType",
+          "definition": "A data type for a thing with its own lifespan that has some existence.",
+          "baseType": null,
+          "properties": [
+            "appliesToParent",
+            "id",
+            "ref",
+            "uri"
+          ],
+          "propertyCount": 4
+        }
+      ]
+    }
+  }
+}

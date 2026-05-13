@@ -1,0 +1,71 @@
+{
+  "generatedAt": "2026-03-22T04:16:32.534321+00:00",
+  "packageName": "redvale_dbpi_agency_package",
+  "packagePath": "sources/redvale_dbpi_agency_package",
+  "namespaces": {
+    "primary": {
+      "prefix": "dbpi",
+      "uri": "https://data.redvale.gov/ontology/dbpi/",
+      "classCount": 78
+    },
+    "augmenting": [
+      {
+        "prefix": "gis",
+        "uri": "https://data.redvale.gov/ontology/gis/",
+        "classCount": 0,
+        "propertyCount": 4
+      },
+      {
+        "prefix": "fin",
+        "uri": "https://data.redvale.gov/ontology/finance/",
+        "classCount": 0,
+        "propertyCount": 3
+      }
+    ],
+    "prefixMap": {
+      "https://data.redvale.gov/ontology/dbpi/": "dbpi:",
+      "https://data.redvale.gov/ontology/gis/": "gis:",
+      "https://data.redvale.gov/ontology/finance/": "fin:"
+    }
+  },
+  "organization": "redvale",
+  "source": "dbpi",
+  "orgDomainConfidence": "high",
+  "files": {
+    "ontology": [
+      "ontology/dbpi-augmentations.ttl",
+      "ontology/dbpi-combined-expanded.ttl",
+      "ontology/dbpi-core.ttl",
+      "ontology/dbpi-enforcement.ttl",
+      "ontology/dbpi-inspections.ttl",
+      "ontology/dbpi-organization.ttl",
+      "ontology/dbpi-permitting.ttl",
+      "ontology/dbpi-workflows.ttl"
+    ],
+    "shapes": [
+      "shapes/dbpi-shapes.ttl"
+    ],
+    "vocab": [
+      "vocab/dbpi-codelists.ttl"
+    ],
+    "seedData": [
+      "seed-data/corpus/dbpi-seed-corpus.ttl",
+      "seed-data/dbpi-seed-data.ttl"
+    ],
+    "aggregate": [
+      "ontology/dbpi-all.ttl"
+    ],
+    "unknown": [],
+    "parseError": []
+  },
+  "stats": {
+    "totalFiles": 13,
+    "ontologyFiles": 8,
+    "shapeFiles": 1,
+    "vocabFiles": 1,
+    "seedDataFiles": 2,
+    "aggregateFiles": 1,
+    "classCount": 78,
+    "augmentingNamespaces": 2
+  }
+}

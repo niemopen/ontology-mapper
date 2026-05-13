@@ -1,0 +1,72 @@
+@prefix dbpi: <https://data.redvale.gov/ontology/dbpi/> .
+@prefix dcp: <https://data.redvale.gov/ontology/dbpi/codelists#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+<https://data.redvale.gov/ontology/dbpi/codelists> a owl:Ontology ;
+    rdfs:label "DBPI Controlled Vocabularies" ;
+    rdfs:comment "SKOS concept schemes for statuses and classifications used by DBPI." .
+
+dcp:ApplicationStatusScheme a skos:ConceptScheme ; skos:prefLabel "Application Status Scheme" .
+dcp:StatusReceived a skos:Concept ; skos:inScheme dcp:ApplicationStatusScheme ; skos:prefLabel "Received" .
+dcp:StatusUnderReview a skos:Concept ; skos:inScheme dcp:ApplicationStatusScheme ; skos:prefLabel "Under Review" .
+dcp:StatusApproved a skos:Concept ; skos:inScheme dcp:ApplicationStatusScheme ; skos:prefLabel "Approved" .
+dcp:StatusDenied a skos:Concept ; skos:inScheme dcp:ApplicationStatusScheme ; skos:prefLabel "Denied" .
+dcp:StatusWithdrawn a skos:Concept ; skos:inScheme dcp:ApplicationStatusScheme ; skos:prefLabel "Withdrawn" .
+
+dcp:PermitStatusScheme a skos:ConceptScheme ; skos:prefLabel "Permit Status Scheme" .
+dcp:PermitActive a skos:Concept ; skos:inScheme dcp:PermitStatusScheme ; skos:prefLabel "Active" .
+dcp:PermitExpired a skos:Concept ; skos:inScheme dcp:PermitStatusScheme ; skos:prefLabel "Expired" .
+dcp:PermitSuspended a skos:Concept ; skos:inScheme dcp:PermitStatusScheme ; skos:prefLabel "Suspended" .
+dcp:PermitRevoked a skos:Concept ; skos:inScheme dcp:PermitStatusScheme ; skos:prefLabel "Revoked" .
+dcp:PermitFinaled a skos:Concept ; skos:inScheme dcp:PermitStatusScheme ; skos:prefLabel "Finaled" .
+
+dcp:PermitTypeScheme a skos:ConceptScheme ; skos:prefLabel "Permit Type Scheme" .
+dcp:PermitTypeResidentialRemodel a skos:Concept ; skos:inScheme dcp:PermitTypeScheme ; skos:prefLabel "Residential Remodel" .
+dcp:PermitTypeElectrical a skos:Concept ; skos:inScheme dcp:PermitTypeScheme ; skos:prefLabel "Electrical" .
+dcp:PermitTypeMechanical a skos:Concept ; skos:inScheme dcp:PermitTypeScheme ; skos:prefLabel "Mechanical" .
+dcp:PermitTypeDemolition a skos:Concept ; skos:inScheme dcp:PermitTypeScheme ; skos:prefLabel "Demolition" .
+
+dcp:WorkTypeScheme a skos:ConceptScheme ; skos:prefLabel "Work Type Scheme" .
+dcp:WorkInteriorRenovation a skos:Concept ; skos:inScheme dcp:WorkTypeScheme ; skos:prefLabel "Interior Renovation" .
+dcp:WorkKitchenRemodel a skos:Concept ; skos:inScheme dcp:WorkTypeScheme ; skos:prefLabel "Kitchen Remodel" .
+dcp:WorkBathroomRemodel a skos:Concept ; skos:inScheme dcp:WorkTypeScheme ; skos:prefLabel "Bathroom Remodel" .
+dcp:WorkPanelUpgrade a skos:Concept ; skos:inScheme dcp:WorkTypeScheme ; skos:prefLabel "Panel Upgrade" .
+
+dcp:InspectionTypeScheme a skos:ConceptScheme ; skos:prefLabel "Inspection Type Scheme" .
+dcp:InspectionFraming a skos:Concept ; skos:inScheme dcp:InspectionTypeScheme ; skos:prefLabel "Framing Inspection" .
+dcp:InspectionElectricalRough a skos:Concept ; skos:inScheme dcp:InspectionTypeScheme ; skos:prefLabel "Electrical Rough Inspection" .
+dcp:InspectionFinal a skos:Concept ; skos:inScheme dcp:InspectionTypeScheme ; skos:prefLabel "Final Inspection" .
+
+dcp:InspectionStatusScheme a skos:ConceptScheme ; skos:prefLabel "Inspection Status Scheme" .
+dcp:InspectionRequested a skos:Concept ; skos:inScheme dcp:InspectionStatusScheme ; skos:prefLabel "Requested" .
+dcp:InspectionScheduled a skos:Concept ; skos:inScheme dcp:InspectionStatusScheme ; skos:prefLabel "Scheduled" .
+dcp:InspectionCompleted a skos:Concept ; skos:inScheme dcp:InspectionStatusScheme ; skos:prefLabel "Completed" .
+dcp:InspectionCanceled a skos:Concept ; skos:inScheme dcp:InspectionStatusScheme ; skos:prefLabel "Canceled" .
+
+dcp:InspectionResultScheme a skos:ConceptScheme ; skos:prefLabel "Inspection Result Scheme" .
+dcp:InspectionPass a skos:Concept ; skos:inScheme dcp:InspectionResultScheme ; skos:prefLabel "Pass" .
+dcp:InspectionFail a skos:Concept ; skos:inScheme dcp:InspectionResultScheme ; skos:prefLabel "Fail" .
+dcp:InspectionPartialPass a skos:Concept ; skos:inScheme dcp:InspectionResultScheme ; skos:prefLabel "Partial Pass" .
+dcp:InspectionNoAccess a skos:Concept ; skos:inScheme dcp:InspectionResultScheme ; skos:prefLabel "No Access" .
+
+dcp:CaseStatusScheme a skos:ConceptScheme ; skos:prefLabel "Case Status Scheme" .
+dcp:CaseOpen a skos:Concept ; skos:inScheme dcp:CaseStatusScheme ; skos:prefLabel "Open" .
+dcp:CasePendingCompliance a skos:Concept ; skos:inScheme dcp:CaseStatusScheme ; skos:prefLabel "Pending Compliance" .
+dcp:CaseClosed a skos:Concept ; skos:inScheme dcp:CaseStatusScheme ; skos:prefLabel "Closed" .
+dcp:CaseReferred a skos:Concept ; skos:inScheme dcp:CaseStatusScheme ; skos:prefLabel "Referred" .
+
+dcp:RecordsRequestStatusScheme a skos:ConceptScheme ; skos:prefLabel "Records Request Status Scheme" .
+dcp:RecordsReceived a skos:Concept ; skos:inScheme dcp:RecordsRequestStatusScheme ; skos:prefLabel "Received" .
+dcp:RecordsInReview a skos:Concept ; skos:inScheme dcp:RecordsRequestStatusScheme ; skos:prefLabel "In Review" .
+dcp:RecordsFulfilled a skos:Concept ; skos:inScheme dcp:RecordsRequestStatusScheme ; skos:prefLabel "Fulfilled" .
+dcp:RecordsPartiallyFulfilled a skos:Concept ; skos:inScheme dcp:RecordsRequestStatusScheme ; skos:prefLabel "Partially Fulfilled" .
+dcp:RecordsDenied a skos:Concept ; skos:inScheme dcp:RecordsRequestStatusScheme ; skos:prefLabel "Denied" .
+dcp:RecordsClosed a skos:Concept ; skos:inScheme dcp:RecordsRequestStatusScheme ; skos:prefLabel "Closed" .
+
+dcp:AppealStatusScheme a skos:ConceptScheme ; skos:prefLabel "Appeal Status Scheme" .
+dcp:AppealPending a skos:Concept ; skos:inScheme dcp:AppealStatusScheme ; skos:prefLabel "Pending" .
+dcp:AppealGranted a skos:Concept ; skos:inScheme dcp:AppealStatusScheme ; skos:prefLabel "Granted" .
+dcp:AppealDenied a skos:Concept ; skos:inScheme dcp:AppealStatusScheme ; skos:prefLabel "Denied" .
