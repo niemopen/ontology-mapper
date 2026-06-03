@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ontology-mapper-runner"
+version = "0.1.0"
+description = "Pipeline runner for OntologyMapper — drives semantic alignment runs end-to-end"
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "License :: OSI Approved :: Apache Software License",
+]
+dependencies = [
+    "ontology-mapper",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=9.0.2"]
+
+[project.scripts]
+om-orchestrate-eval = "orchestrator_service.runner:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["runner_tools*", "orchestrator_service*"]
+
+[tool.pytest.ini_options]
+testpaths = ["runner_tools", "orchestrator_service"]
+python_files = ["test_*.py"]

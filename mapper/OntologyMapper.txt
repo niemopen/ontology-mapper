@@ -1,0 +1,285 @@
+OntologyMapper
+---------------------
+
+Introduction
+	NIEMOpen is signaling that its future is canonical semantics plus tooling, not just schema publication.
+	As such, it is now much closer to being a semantic backbone for agentic systems: 
+		you can model canonical entities and relationships once
+		keep them in CMF
+		generate or transform downstream artifacts for:
+			message validation
+			APIs
+			JSON payloads
+			knowledge-graph materialization
+		OASIS approved two NIEMOpen standards in December 2025:
+			CMF
+			API 2.0
+			knowledge-graph support 
+		make data “AI-ready” while preserving semantic consistency and interoperability.
+		
+	NIEMOpen can now be treated as a governed canonical ontology layer for interoperable systems, especially where multiple organizations, jurisdictions, business units, or vendors must share meaning consistently over time.
+	
+	The below recommendation is an architectural inference from analyzing NIEMOpen’s model/CMF/API direction:
+
+		Uses NIEMOpen as:
+			the canonical semantic contract at the system boundary
+			the seed vocabulary for this ontology
+			the source of truth for exchange semantics
+		Then let the internal agent runtime use thinner projections optimized for:
+			retrieval
+			planning
+			execution
+			memory
+		as long as those projections map deterministically back to NIEM qnames and your own extension namespace where NIEM has gaps. 
+
+		Use it whenever your agentic system has to:
+			interoperate across teams
+			organizations
+			vendors
+			agencies
+			business domains
+			long-lived data contracts. 
+		
+		NIEM exists to: 
+			harmonize shared vocabulary 
+			reduce repeated bilateral schema negotiation
+		This is especially valuable when agents are exchanging or validating:
+			operational facts
+			case artifacts
+			person/location/event data
+			documents
+			other governed entities. 
+		
+		It is less useful as the first modeling move for purely internal, fast-changing, product-specific ephemeral state.
+
+		Work by Code Gen Tool:
+			Claude Code:
+				Semantic analysis and controlled architecture work: e.g.,
+					+ “find the right NIEM components” 
+					+ “review our extension namespace” 
+					+ “compare these internal terms to NIEM” 
+					+ “inspect graph shape” 
+					+ “explain why this mapping is wrong” 
+			Codex:
+				Productionization and throughput: 
+					+ “build the NIEM MCP server”
+					+ “generate the mapping validator”
+					+ “write tests for transform and validation flows”
+					+ “open a PR that wires this into CI”
+					+ “run parallel refactors in separate worktrees.” 
+			
+			This split matches the product strengths documented by Anthropic and OpenAI.
+			
+		Artifacts of OntologyMapper
+			1. NIEM MCP Tool: wrap NIEM API operations
+			2. Mapping repository:
+				Keep ontology/niem/, ontology/extensions/, ontology/mappings/, cmf/, schemas/, kg/, and tests/ as separate top-level areas. 
+				The important rule is that CMF becomes your canonical source artifact.
+			3. Reusable agent guidance:
+				For Claude Code, that means CLAUDE.md plus subagents:
+					NIEM-mapper subagent 
+					KG-reviewer subagent
+				For Codex, that means AGENTS.md plus a NIEM skill. 
+					The Codex skill should encapsulate the repeatable workflow: 
+						search NIEM first, 
+						propose mappings with confidence level, 
+						flag gaps, 
+						update extension namespace only with justification, 
+						regenerate derived artifacts, 
+						run validation, 
+						summarize exactly what changed. 
+		
+		Strategic rules for this platform: 
+			Use NIEMOpen at the semantic boundary.
+			Keep CMF as the canonical model artifact.
+			Expose NIEM operations as MCP tools.
+			Claude Code and Codex operates against that tool layer rather than against ad hoc prose instructions. 
+		
+		Advantages of above strategy:
+			Much better repeatability.
+			Less ontology drift.
+			Cleaner version migration.
+			Far more robust path from:
+				standards-based ontology => operational knowledge graph => agent behavior.
+
+Specification
+
+	The NIEMOpen workflow can be translated into six concrete steps:
+		1. Identify the domain slice  needed. 
+		2. Search NIEM for canonical concepts and map your internal vocabulary to NIEM Core and domain namespaces. 
+		3. Define only the minimum extension namespace needed for genuine gaps. 
+		4. Store the canonical result as CMF under version control. 
+		5. Generate derived artifacts from CMF for XML, JSON, validation, and RDF/OWL-style graph use. 
+		6. Make both Claude Code and Codex consume those artifacts and tools rather than free-form prose. 
+	This is the most faithful way to operationalize what the webinar is signaling about CMF, API 2.0, and AI/KG support.
+	
+	This OntologyMapper then builds on the above steps to provide an end-to-end workflow, from client specs through to knowledge graph scripts.
+	
+	1. Tool definition
+
+		The tool is a NIEM-aware ontology alignment pipeline for Microsoft Agent Framework systems.
+
+		Its job is to take a target business/organization domain and produce a NIEM-aligned edge ontology plus the downstream artifacts needed to build and operate that domain’s knowledge graph layer.
+
+		Conceptually:
+
+			Domain materials → semantic analysis → NIEM alignment → extension modeling → graph artifacts → agentic system integration
+
+		It is not just a search tool. It is a semantic transformation and generation toolchain.
+
+	2. Inputs
+
+		The inputs fall into four groups: 
+			+ domain evidence
+			+ platform constraints
+			+ modeling policy
+			+ generation targets
+
+	3. Outputs
+
+		The outputs should be thought of in layers.
+
+		A. Analytical outputs
+			1. Domain concept inventory
+			2. Semantic candidate report
+			3. Gap analysis
+
+		B. Semantic model outputs
+			These define the domain’s semantic layer.
+
+			4. NIEM mapping matrix
+			5. Edge ontology
+			6. Canonical semantic model
+
+		C. Graph outputs
+			These are the implementation-ready graph artifacts.
+
+			7. Knowledge graph schema
+			8. Graph instantiation artifacts
+			
+		D. Validation outputs
+			These ensure quality and conformance.
+
+			9. Validation rules
+			10. Test fixtures
+			
+		E. Integration outputs
+			These connect the semantic model to the agentic system.
+
+			11. Agent-facing semantic contracts
+			12. Code/config scaffolding
+			
+		F. Governance outputs
+			These support long-term maintenance.
+
+			13. Lineage and provenance manifest
+			14. Semantic decision log
+			
+	4. Decision rules
+
+		These are the core rules that make OntologyMapper more than a lookup utility.
+
+		A. Scope admission rules
+		
+		B. Reuse vs extension rules
+			Rule 1: Reuse before extend
+			Rule 2: Extend only for semantic gaps
+			Rule 3: Do not extend for cosmetic reasons
+		
+		C. Mapping confidence rules
+		
+		D. Concept normalization rules
+		
+		E. Relationship modeling rules
+		
+		F. Identity rules
+		
+		G. Event rules
+		
+		H. Document rules
+		
+		I. Graph usefulness rules
+		
+		J. Human review rules
+		
+	5. Artifact types
+
+		OntologyMapper should emit artifacts in several formal categories.
+
+		A. Discovery artifacts
+		
+		B. Alignment artifacts
+		
+		C. Ontology artifacts
+		
+		D. Knowledge graph artifacts
+		
+		E. Validation artifacts
+		
+		F. Agent integration artifacts
+		
+		G. Governance artifacts
+		
+	6. Recommended pipeline stages
+
+		This is the most useful end-to-end flow.
+
+		Stage 1: Ingest
+
+			Read source materials and normalize them.
+
+		Stage 2: Extract
+
+			Identify domain concepts, relationships, events, documents, and constraints.
+
+		Stage 3: Align
+
+			Search NIEMOpen and rank candidate matches.
+
+		Stage 4: Decide
+
+			Apply reuse/extend rules and create the domain edge ontology.
+
+		Stage 5: Generate
+
+			Emit ontology, graph, validation, and integration artifacts.
+
+		Stage 6: Validate
+
+			Run semantic, structural, and graph-level checks.
+
+		Stage 7: Package
+
+			Produce a versioned semantic bundle for the target agentic system.
+
+	7. Minimal required input/output contract
+
+		If you want this tool to be practical, it should support a minimal contract like this.
+
+		Minimum input
+			+ domain description
+			+ source documents/schemas
+			+ target graph platform
+			+ NIEM reuse policy
+			+ required output artifact list
+
+		Minimum output
+			+ concept inventory
+			+ NIEM mapping matrix
+			+ extension recommendations
+			+ edge ontology
+			+ graph schema
+			+ validation set
+			+ generation report
+
+	8. One-sentence definition of success
+
+		The tool succeeds if it can take a new domain and produce a traceable, NIEM-aligned, extension-aware semantic bundle that is sufficient to build the knowledge graph layer of a Microsoft Agent Framework agentic system with minimal manual semantic rework.
+
+		The next logical step is to turn this into a formal product specification with modules, interfaces, and a first-pass system architecture.
+
+
+APPENDIX A: Sample Ontology Data
+
+See: mapper/tests/fixtures/redvale_dbpi_agency_package
+

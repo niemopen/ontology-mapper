@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+.coverage
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+
+# Pipeline state and run artifacts (generated at runtime)
+.mapper-runs/
+
+# Agent session temp files
+agent_sessions_tmp/
+
+# Vector store — BGE embedding model weights + FAISS indexes.
+# Heavy (~2.7 GB) and rebuildable. The model auto-downloads via
+# sentence-transformers on first use; the indexes are rebuilt by
+# scripts/build_indexes.py (one-time post-clone setup).
+src/ontology_mapper/specs/vector/
+
+# Reference catalogs, summaries, type directories, NDR specs, and the
+# cmf-xsd schemas under specs/ DO ship with the repo so a fresh clone
+# has the static reference data the pipeline needs.
+
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Claude Code local config
+.claude/

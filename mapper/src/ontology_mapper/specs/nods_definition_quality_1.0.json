@@ -1,0 +1,95 @@
+{
+  "ontology": "nods",
+  "types": {
+    "total": 112,
+    "withDefinitions": 111,
+    "coveragePercent": 99.1,
+    "avgDefinitionLength": 77,
+    "missingCount": 1,
+    "missingExamples": [
+      "nods:ProbateReviewType"
+    ]
+  },
+  "properties": {
+    "total": 461,
+    "withDefinitions": 428,
+    "coveragePercent": 92.8,
+    "avgDefinitionLength": 78,
+    "missingCount": 33,
+    "missingExamples": [
+      "nods:Accounting",
+      "nods:AlternativeDisputeResolution",
+      "nods:AlternativeDisputeResolutionParticipant",
+      "nods:AttorneyAdvocateCaseRole",
+      "nods:AttorneyAdvocateRepresentedParticipant",
+      "nods:Bond",
+      "nods:CaseFiling",
+      "nods:CaseParticipant",
+      "nods:CaseParticipantAssociation",
+      "nods:Charge",
+      "nods:ChildCaseParticipant",
+      "nods:CivilJudgment",
+      "nods:CourtOrder",
+      "nods:DependencyPermanancyPlan",
+      "nods:FinancialCompilation",
+      "nods:Hearing",
+      "nods:HearingParticipant",
+      "nods:JudgementAgainstParticipant",
+      "nods:Jury",
+      "nods:JuvenileDetention"
+    ]
+  },
+  "duplicates": {
+    "uniqueDuplicateDefinitions": 34,
+    "totalAffectedEntries": 68,
+    "examples": [
+      {
+        "definition": "Date Accounting due to Court\nElement# 15-9\nUser Story:",
+        "count": 2
+      },
+      {
+        "definition": "Was ADR court-ordered?\nElement# 17-3\nUser Story:",
+        "count": 2
+      },
+      {
+        "definition": "Is attorney admitted to practice in this jurisdiction only for this case?\nElement# 3-7\nUser Story:",
+        "count": 2
+      },
+      {
+        "definition": "Element# 10-7\nUser Story:",
+        "count": 2
+      },
+      {
+        "definition": "Way that the hearing was held\nElement# 7-6\nUser Story:",
+        "count": 2
+      }
+    ]
+  },
+  "shortestDefinitions": [
+    {
+      "id": "nc:Date",
+      "definition": "A full date.",
+      "length": 12
+    },
+    {
+      "id": "nc:EndDate",
+      "definition": "An end date.",
+      "length": 12
+    },
+    {
+      "id": "nods:CourtCase",
+      "definition": "A court case",
+      "length": 12
+    },
+    {
+      "id": "nc:IdentificationID",
+      "definition": "An identifier.",
+      "length": 14
+    },
+    {
+      "id": "nc:Person",
+      "definition": "A human being.",
+      "length": 14
+    }
+  ]
+}

@@ -1,0 +1,254 @@
+@prefix dbpi: <https://data.redvale.gov/ontology/dbpi/> .
+@prefix dcp: <https://data.redvale.gov/ontology/dbpi/codelists#> .
+@prefix gis: <https://data.redvale.gov/ontology/gis/> .
+@prefix fin: <https://data.redvale.gov/ontology/finance/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+### Jurisdiction and service
+dbpi:Jurisdiction_RedVale a dbpi:Jurisdiction ;
+    dbpi:identifier "JUR-RV-001" ;
+    dbpi:displayName "Red Vale" .
+
+dbpi:BuildingPermitService a dbpi:PublicService ;
+    dbpi:identifier "SVC-DBPI-001" ;
+    dbpi:displayName "Permit Intake and Case Creation" .
+
+### Organizational structure
+dbpi:DBPI_Department a dbpi:Department ;
+    dbpi:identifier "ORG-DBPI" ;
+    dbpi:legalName "City of Red Vale Department of Building Permits and Inspections" ;
+    dbpi:locatedInJurisdiction dbpi:Jurisdiction_RedVale ;
+    dbpi:hasSubUnit dbpi:PermitServicesDivision, dbpi:FieldInspectionsDivision, dbpi:PlanReviewDivision, dbpi:EnforcementDivision ;
+    dbpi:hasContactPoint dbpi:ContactPoint_DBPI ;
+    dbpi:url "https://permits.redvale.gov"^^xsd:anyURI .
+
+dbpi:ContactPoint_DBPI a dbpi:ContactPoint ;
+    dbpi:displayName "DBPI Main Office" ;
+    dbpi:telephone "+1-555-867-5309" ;
+    dbpi:email "permits@redvale.gov" ;
+    dbpi:url "https://permits.redvale.gov/contact"^^xsd:anyURI .
+
+dbpi:PermitServicesDivision a dbpi:Division ;
+    dbpi:identifier "ORG-PERMIT" ;
+    dbpi:displayName "Permit Services Division" ;
+    dbpi:reportsTo dbpi:DBPI_Department .
+
+dbpi:FieldInspectionsDivision a dbpi:Division ;
+    dbpi:identifier "ORG-INSP" ;
+    dbpi:displayName "Field Inspections Division" ;
+    dbpi:reportsTo dbpi:DBPI_Department .
+
+dbpi:PlanReviewDivision a dbpi:Division ;
+    dbpi:identifier "ORG-PLANREV" ;
+    dbpi:displayName "Plan Review Division" ;
+    dbpi:reportsTo dbpi:DBPI_Department .
+
+dbpi:EnforcementDivision a dbpi:Division ;
+    dbpi:identifier "ORG-ENF" ;
+    dbpi:displayName "Code Enforcement Division" ;
+    dbpi:reportsTo dbpi:DBPI_Department .
+
+dbpi:Role_Inspector a dbpi:Role ; dbpi:displayName "Inspector" .
+dbpi:Role_PlanReviewer a dbpi:Role ; dbpi:displayName "Plan Reviewer" .
+dbpi:Role_HearingOfficer a dbpi:Role ; dbpi:displayName "Hearing Officer" .
+
+dbpi:AliceNguyen a dbpi:Inspector ;
+    dbpi:employeeNumber "E1007" ;
+    dbpi:displayName "Alice Nguyen" ;
+    dbpi:hasRole dbpi:Role_Inspector ;
+    dbpi:memberOf dbpi:FieldInspectionsDivision ;
+    dbpi:managesUnit dbpi:FieldInspectionsDivision ;
+    dbpi:startDate "2019-06-15"^^xsd:date ;
+    dbpi:email "alice.nguyen@redvale.gov" .
+
+dbpi:BobPatel a dbpi:PlanReviewer ;
+    dbpi:employeeNumber "E1034" ;
+    dbpi:displayName "Bob Patel" ;
+    dbpi:hasRole dbpi:Role_PlanReviewer ;
+    dbpi:memberOf dbpi:PlanReviewDivision ;
+    dbpi:email "bob.patel@redvale.gov" .
+
+dbpi:RosaMartinez a dbpi:HearingOfficer ;
+    dbpi:employeeNumber "E1102" ;
+    dbpi:displayName "Rosa Martinez" ;
+    dbpi:hasRole dbpi:Role_HearingOfficer ;
+    dbpi:memberOf dbpi:EnforcementDivision ;
+    dbpi:email "rosa.martinez@redvale.gov" .
+
+### Applicant and property
+dbpi:JaneDevelopmentLLC a dbpi:Organization ;
+    dbpi:legalName "Jane Development LLC" ;
+    dbpi:identifier "APPL-9001" ;
+    dbpi:externalReference "CA-SOS-LLC-2018-04772" .
+
+dbpi:Address_500Market a dbpi:Address ;
+    dbpi:line1 "500 Market Street" ;
+    dbpi:line2 "Suite 200" ;
+    dbpi:city "Red Vale" ;
+    dbpi:regionCode "CA" ;
+    dbpi:postalCode "94105" ;
+    dbpi:countryCode "US" .
+
+dbpi:Parcel_014233019 a dbpi:Parcel ;
+    dbpi:parcelNumber "014-233-019" ;
+    dbpi:locatedInJurisdiction dbpi:Jurisdiction_RedVale .
+
+dbpi:Property_500Market a dbpi:Property ;
+    dbpi:identifier "PROP-500-MARKET" ;
+    dbpi:displayName "500 Market Street Property" ;
+    dbpi:hasAddress dbpi:Address_500Market ;
+    dbpi:hasParcel dbpi:Parcel_014233019 ;
+    dbpi:hasOwner dbpi:JaneDevelopmentLLC ;
+    dbpi:locatedInJurisdiction dbpi:Jurisdiction_RedVale ;
+    ### GIS Division augmentations (cross-namespace)
+    gis:latitude "37.7900"^^xsd:decimal ;
+    gis:longitude "-122.4005"^^xsd:decimal ;
+    gis:zoneDesignation "C-3-O" ;
+    gis:floodZoneCode "X" .
+
+### Supporting documents
+dbpi:PlanSet_1001 a dbpi:Document ;
+    dbpi:documentNumber "DOC-1001-PLANSET" ;
+    dbpi:displayName "Initial Plan Set" ;
+    dbpi:documentDate "2026-02-02"^^xsd:date .
+
+dbpi:Notice_7782 a dbpi:NoticeOfViolation ;
+    dbpi:documentNumber "NOV-7782" ;
+    dbpi:displayName "Notice of Violation NOV-7782" ;
+    dbpi:documentDate "2026-02-28"^^xsd:date .
+
+### Application and permit
+dbpi:Requirement_PlanSet a dbpi:Requirement ;
+    dbpi:identifier "REQ-PLANSET" ;
+    dbpi:displayName "Complete Plan Set Required" ;
+    dbpi:description "Applicant must submit a full plan set prepared by a licensed architect or engineer." .
+
+dbpi:Application_1001 a dbpi:PermitApplication ;
+    dbpi:applicationNumber "APP-2026-1001" ;
+    dbpi:submittedDate "2026-02-02"^^xsd:date ;
+    dbpi:createdAt "2026-02-02T08:14:22"^^xsd:dateTime ;
+    dbpi:updatedAt "2026-02-18T16:05:00"^^xsd:dateTime ;
+    dbpi:submittedBy dbpi:JaneDevelopmentLLC ;
+    dbpi:concernsProperty dbpi:Property_500Market ;
+    dbpi:forService dbpi:BuildingPermitService ;
+    dbpi:requestedPermitType dcp:PermitTypeResidentialRemodel ;
+    dbpi:requestedWorkType dcp:WorkKitchenRemodel ;
+    dbpi:hasApplicationStatus dcp:StatusApproved ;
+    dbpi:hasStatus dcp:StatusApproved ;
+    dbpi:hasRequirement dbpi:Requirement_PlanSet ;
+    dbpi:hasSupportingDocument dbpi:PlanSet_1001 ;
+    dbpi:assignedToUnit dbpi:PermitServicesDivision ;
+    dbpi:assignedToEmployee dbpi:BobPatel .
+
+dbpi:ReviewComment_1001_1 a dbpi:ReviewComment ;
+    dbpi:identifier "RC-1001-1" ;
+    dbpi:description "Verify load calculations for relocated panel. Applicant's engineer to confirm amperage." ;
+    dbpi:createdAt "2026-02-10T11:30:00"^^xsd:dateTime .
+
+dbpi:PlanReview_1001 a dbpi:PlanReview ;
+    dbpi:identifier "REVIEW-1001" ;
+    dbpi:reviewedBy dbpi:BobPatel ;
+    dbpi:decisionDate "2026-02-18"^^xsd:date ;
+    dbpi:description "Kitchen remodel plan review completed." ;
+    dbpi:hasReviewComment dbpi:ReviewComment_1001_1 .
+
+dbpi:Application_1001 dbpi:hasPlanReview dbpi:PlanReview_1001 .
+
+dbpi:Permit_0042 a dbpi:Permit ;
+    dbpi:permitNumber "PMT-2026-0042" ;
+    dbpi:issuedDate "2026-02-20"^^xsd:date ;
+    dbpi:expirationDate "2027-02-20"^^xsd:date ;
+    dbpi:startDate "2026-02-20"^^xsd:date ;
+    dbpi:endDate "2027-02-20"^^xsd:date ;
+    dbpi:basedOnApplication dbpi:Application_1001 ;
+    dbpi:authorizedPermitType dcp:PermitTypeResidentialRemodel ;
+    dbpi:authorizedWorkType dcp:WorkKitchenRemodel ;
+    dbpi:hasPermitStatus dcp:PermitActive ;
+    dbpi:issuedBy dbpi:DBPI_Department ;
+    dbpi:assignedToUnit dbpi:FieldInspectionsDivision ;
+    dbpi:assignedToEmployee dbpi:AliceNguyen ;
+    ### Finance Department augmentation (cross-namespace)
+    fin:revenueClassificationCode "REV-4210-BLDG" .
+
+dbpi:Application_1001 dbpi:resultedInPermit dbpi:Permit_0042 .
+
+### Fees and payments
+dbpi:Fee_1001 a dbpi:Fee ;
+    dbpi:identifier "FEE-1001" ;
+    dbpi:description "Plan review and permit issuance fee" ;
+    dbpi:amount "620.00"^^xsd:decimal ;
+    dbpi:currencyCode "USD" ;
+    ### Finance Department augmentations (cross-namespace)
+    fin:generalLedgerAccount "4210-001-0042" ;
+    fin:fiscalYearCode "FY2026" .
+
+dbpi:Payment_1001 a dbpi:Payment ;
+    dbpi:identifier "PAY-1001" ;
+    dbpi:amount "620.00"^^xsd:decimal ;
+    dbpi:currencyCode "USD" ;
+    dbpi:paidDate "2026-02-03"^^xsd:date .
+
+dbpi:Application_1001 dbpi:hasFee dbpi:Fee_1001 ; dbpi:hasPayment dbpi:Payment_1001 .
+
+### Inspection request and inspection
+dbpi:InspectionRequest_501 a dbpi:InspectionRequest ;
+    dbpi:identifier "INSPRQ-501" ;
+    dbpi:requestedDate "2026-02-25"^^xsd:date ;
+    dbpi:requestedBy dbpi:JaneDevelopmentLLC ;
+    dbpi:forPermit dbpi:Permit_0042 ;
+    dbpi:requestedInspectionType dcp:InspectionElectricalRough ;
+    dbpi:concernsProperty dbpi:Property_500Market .
+
+dbpi:CodeSection_110_3B a dbpi:CodeSection ;
+    dbpi:identifier "ELEC-110.3(B)" ;
+    dbpi:displayName "Electrical installations shall be used and installed in accordance with listing and labeling" .
+
+dbpi:Inspection_501 a dbpi:Inspection ;
+    dbpi:inspectionNumber "INSP-2026-0501" ;
+    dbpi:inspectionType dcp:InspectionElectricalRough ;
+    dbpi:hasInspectionStatus dcp:InspectionCompleted ;
+    dbpi:hasInspectionResult dcp:InspectionFail ;
+    dbpi:scheduledFor "2026-02-27T09:00:00"^^xsd:dateTime ;
+    dbpi:completedAt "2026-02-27T09:35:00"^^xsd:dateTime ;
+    dbpi:performedBy dbpi:AliceNguyen ;
+    dbpi:inspectedProperty dbpi:Property_500Market ;
+    dbpi:forPermit dbpi:Permit_0042 ;
+    dbpi:fulfillsRequest dbpi:InspectionRequest_501 ;
+    dbpi:citesCodeSection dbpi:CodeSection_110_3B ;
+    dbpi:note "Unlisted component installed in branch circuit panel." .
+
+### Enforcement case
+dbpi:CorrectiveAction_7782_1 a dbpi:CorrectiveAction ;
+    dbpi:identifier "CA-7782-1" ;
+    dbpi:description "Replace the unlisted component and request re-inspection." ;
+    dbpi:dueDate "2026-03-10"^^xsd:date .
+
+dbpi:ViolationCase_7782 a dbpi:ViolationCase ;
+    dbpi:violationCaseNumber "CASE-2026-7782" ;
+    dbpi:openedDate "2026-02-28"^^xsd:date ;
+    dbpi:closedDate "2026-04-15"^^xsd:date ;
+    dbpi:relatedProperty dbpi:Property_500Market ;
+    dbpi:relatedInspection dbpi:Inspection_501 ;
+    dbpi:relatedPermit dbpi:Permit_0042 ;
+    dbpi:hasCaseStatus dcp:CasePendingCompliance ;
+    dbpi:hasNotice dbpi:Notice_7782 ;
+    dbpi:hasCorrectiveAction dbpi:CorrectiveAction_7782_1 ;
+    dbpi:assignedToUnit dbpi:EnforcementDivision .
+
+### Appeal and hearing
+dbpi:Appeal_7782 a dbpi:Appeal ;
+    dbpi:identifier "APL-7782" ;
+    dbpi:forCase dbpi:ViolationCase_7782 ;
+    dbpi:submittedBy dbpi:JaneDevelopmentLLC ;
+    dbpi:hasAppealStatus dcp:AppealPending ;
+    dbpi:submittedDate "2026-03-02"^^xsd:date ;
+    dbpi:description "Applicant disputes interpretation of listed equipment requirement." .
+
+dbpi:Hearing_7782 a dbpi:Hearing ;
+    dbpi:identifier "HEAR-7782" ;
+    dbpi:forCase dbpi:ViolationCase_7782 ;
+    dbpi:heardBy dbpi:RosaMartinez ;
+    dbpi:hearingDate "2026-03-15T13:30:00"^^xsd:dateTime ;
+    dbpi:description "Administrative hearing on appeal APL-7782." .
+
+dbpi:ViolationCase_7782 dbpi:hasAppeal dbpi:Appeal_7782 .

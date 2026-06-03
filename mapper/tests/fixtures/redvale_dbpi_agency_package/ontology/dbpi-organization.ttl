@@ -1,0 +1,52 @@
+@prefix dbpi: <https://data.redvale.gov/ontology/dbpi/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://data.redvale.gov/ontology/dbpi/organization> a owl:Ontology ;
+    owl:imports <https://data.redvale.gov/ontology/dbpi/core> ;
+    rdfs:label "DBPI Organization Ontology" ;
+    rdfs:comment "Organizational model for the City of Red Vale Department of Building Permits and Inspections." .
+
+dbpi:Department a owl:Class ; rdfs:subClassOf dbpi:Organization ; rdfs:label "Department" .
+dbpi:Division a owl:Class ; rdfs:subClassOf dbpi:Organization ; rdfs:label "Division" .
+dbpi:WorkUnit a owl:Class ; rdfs:subClassOf dbpi:Organization ; rdfs:label "Work Unit" .
+dbpi:Role a owl:Class ; rdfs:label "Role" .
+dbpi:Employee a owl:Class ; rdfs:subClassOf dbpi:Person ; rdfs:label "Employee" .
+dbpi:Inspector a owl:Class ; rdfs:subClassOf dbpi:Employee ; rdfs:label "Inspector" .
+dbpi:PlanReviewer a owl:Class ; rdfs:subClassOf dbpi:Employee ; rdfs:label "Plan Reviewer" .
+dbpi:PermitTechnician a owl:Class ; rdfs:subClassOf dbpi:Employee ; rdfs:label "Permit Technician" .
+dbpi:HearingOfficer a owl:Class ; rdfs:subClassOf dbpi:Employee ; rdfs:label "Hearing Officer" .
+dbpi:CodeEnforcementOfficer a owl:Class ; rdfs:subClassOf dbpi:Employee ; rdfs:label "Code Enforcement Officer" .
+dbpi:RecordsOfficer a owl:Class ; rdfs:subClassOf dbpi:Employee ; rdfs:label "Records Officer" .
+
+dbpi:hasSubUnit a owl:ObjectProperty ;
+    rdfs:domain dbpi:Organization ;
+    rdfs:range dbpi:Organization ;
+    rdfs:label "has sub-unit" .
+
+dbpi:reportsTo a owl:ObjectProperty ;
+    rdfs:domain dbpi:Organization ;
+    rdfs:range dbpi:Organization ;
+    rdfs:label "reports to" .
+
+dbpi:hasRole a owl:ObjectProperty ;
+    rdfs:domain dbpi:Employee ;
+    rdfs:range dbpi:Role ;
+    rdfs:label "has role" .
+
+dbpi:memberOf a owl:ObjectProperty ;
+    rdfs:domain dbpi:Employee ;
+    rdfs:range dbpi:Organization ;
+    rdfs:label "member of" .
+
+dbpi:managesUnit a owl:ObjectProperty ;
+    rdfs:domain dbpi:Employee ;
+    rdfs:range dbpi:Organization ;
+    rdfs:label "manages unit" .
+
+dbpi:employeeNumber a owl:DatatypeProperty ;
+    rdfs:domain dbpi:Employee ;
+    rdfs:range xsd:string ;
+    rdfs:label "employee number" .

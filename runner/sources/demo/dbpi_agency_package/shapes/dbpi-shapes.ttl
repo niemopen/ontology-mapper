@@ -1,0 +1,202 @@
+@prefix dbpi: <https://data.redvale.gov/ontology/dbpi/> .
+@prefix dcp: <https://data.redvale.gov/ontology/dbpi/codelists#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://data.redvale.gov/ontology/dbpi/shapes> a owl:Ontology ;
+    rdfs:label "DBPI SHACL Shapes" .
+
+dbpi:PropertyShape a sh:NodeShape ;
+    sh:targetClass dbpi:Property ;
+    sh:property [
+        sh:path dbpi:hasParcel ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class dbpi:Parcel
+    ] ;
+    sh:property [
+        sh:path dbpi:locatedInJurisdiction ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class dbpi:Jurisdiction
+    ] ;
+    sh:property [
+        sh:path dbpi:hasAddress ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class dbpi:Address
+    ] .
+
+dbpi:PermitApplicationShape a sh:NodeShape ;
+    sh:targetClass dbpi:PermitApplication ;
+    sh:property [
+        sh:path dbpi:applicationNumber ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string
+    ] ;
+    sh:property [
+        sh:path dbpi:submittedDate ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:date
+    ] ;
+    sh:property [
+        sh:path dbpi:submittedBy ;
+        sh:minCount 1 ;
+        sh:class dbpi:Agent
+    ] ;
+    sh:property [
+        sh:path dbpi:concernsProperty ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class dbpi:Property
+    ] ;
+    sh:property [
+        sh:path dbpi:forService ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class dbpi:PublicService
+    ] ;
+    sh:property [
+        sh:path dbpi:requestedPermitType ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class skos:Concept
+    ] ;
+    sh:property [
+        sh:path dbpi:requestedWorkType ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class skos:Concept
+    ] ;
+    sh:property [
+        sh:path dbpi:hasApplicationStatus ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class skos:Concept
+    ] .
+
+dbpi:PermitShape a sh:NodeShape ;
+    sh:targetClass dbpi:Permit ;
+    sh:property [
+        sh:path dbpi:permitNumber ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string
+    ] ;
+    sh:property [
+        sh:path dbpi:issuedDate ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:date
+    ] ;
+    sh:property [
+        sh:path dbpi:expirationDate ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:date
+    ] ;
+    sh:property [
+        sh:path dbpi:basedOnApplication ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class dbpi:PermitApplication
+    ] ;
+    sh:property [
+        sh:path dbpi:authorizedPermitType ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class skos:Concept
+    ] ;
+    sh:property [
+        sh:path dbpi:authorizedWorkType ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class skos:Concept
+    ] ;
+    sh:property [
+        sh:path dbpi:hasPermitStatus ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class skos:Concept
+    ] ;
+    sh:property [
+        sh:path dbpi:issuedBy ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class dbpi:Organization
+    ] .
+
+dbpi:InspectionShape a sh:NodeShape ;
+    sh:targetClass dbpi:Inspection ;
+    sh:property [
+        sh:path dbpi:inspectionNumber ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string
+    ] ;
+    sh:property [
+        sh:path dbpi:inspectionType ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class skos:Concept
+    ] ;
+    sh:property [
+        sh:path dbpi:hasInspectionResult ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class skos:Concept
+    ] ;
+    sh:property [
+        sh:path dbpi:inspectedProperty ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class dbpi:Property
+    ] ;
+    sh:property [
+        sh:path dbpi:performedBy ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class dbpi:Inspector
+    ] ;
+    sh:property [
+        sh:path dbpi:forPermit ;
+        sh:maxCount 1 ;
+        sh:class dbpi:Permit
+    ] .
+
+dbpi:ViolationCaseShape a sh:NodeShape ;
+    sh:targetClass dbpi:ViolationCase ;
+    sh:property [
+        sh:path dbpi:violationCaseNumber ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string
+    ] ;
+    sh:property [
+        sh:path dbpi:openedDate ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:date
+    ] ;
+    sh:property [
+        sh:path dbpi:relatedProperty ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class dbpi:Property
+    ] ;
+    sh:property [
+        sh:path dbpi:hasCaseStatus ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class skos:Concept
+    ] ;
+    sh:or (
+        [ sh:property [ sh:path dbpi:relatedInspection ; sh:minCount 1 ; sh:class dbpi:Inspection ] ]
+        [ sh:property [ sh:path dbpi:relatedPermit ; sh:minCount 1 ; sh:class dbpi:Permit ] ]
+    ) .

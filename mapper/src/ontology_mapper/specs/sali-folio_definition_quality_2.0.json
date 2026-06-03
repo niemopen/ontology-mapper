@@ -1,0 +1,114 @@
+{
+  "ontology": "sali-folio",
+  "types": {
+    "total": 18323,
+    "withDefinitions": 15258,
+    "coveragePercent": 83.3,
+    "avgDefinitionLength": 196,
+    "missingCount": 3065,
+    "missingExamples": [
+      "A4X7EIZ4R-e0nccAIuIgPg",
+      "ABRVtk2DQFqOsDUoTSOxQQ",
+      "AsDGUP8kTO2Y6Vb94LiQdQ",
+      "BOCMoh3VRdqwHoUwVmm2fQ",
+      "BUU0Ap-qSa2xyhxy7QQJuQ",
+      "Ciy3D12lT0mU5NZ6dzC1TA",
+      "D7tLCZbyRfaSK8s3EKh_Vg",
+      "DOF5eLGtSpaHRGsWG7QXJw",
+      "D_3RuIS2Q2-YTiQ2Mhwlcw",
+      "DioF0kyWTZ2_Xr1NjzaaCg",
+      "DuCvUdjyTU69OwoJbpNO1A",
+      "E0B9RlL3T7-bLtHdug1isg",
+      "E6PeyVdgSMWgsCChvqo0rA",
+      "F9VFVZcqSxO7sutJ7Fjfyg",
+      "Ffvitj4GS7KCnvlsGsMJwQ",
+      "FjD9HX-gRfmNdbxEGl3etg",
+      "GlEIq1JJSwqYPT3JUXUZgg",
+      "H1TJVf5kSv6QoZLqmEX0AA",
+      "HMnExFCnT46fBihOFOGe4w",
+      "HURLh5PmTK2m1hc66Dx_7Q"
+    ]
+  },
+  "properties": {
+    "total": 177,
+    "withDefinitions": 129,
+    "coveragePercent": 72.9,
+    "avgDefinitionLength": 282,
+    "missingCount": 48,
+    "missingExamples": [
+      "R0q5hTo2yTMlnIAbmFnwCH",
+      "R72kzuH5FWGcpdiLIHetuNM",
+      "R76GQpUlQwvyklNYZI3Yd9S",
+      "R7ZAbXHy3i3DUFYGKRC9Ti2",
+      "R7a6AnAyIMbylU9ZMRLwNuZ",
+      "R7ikWnJN2d8R9S3CpCT30E",
+      "R7iub53FOISwehZAVPcISSl",
+      "R7rZ5m2FfgTWxirgewTUJDM",
+      "R85ahaTQmVqquzNuoK6Fcr",
+      "R8N2AJIJYBB3hzZL7OeB0CB",
+      "R8fwHitS5ouUpOrAwTcMmIE",
+      "R8zGunm4wCZOVAk8uYZIgMJ",
+      "R9KtZ0zcbQ4oaEL82eUjqtH",
+      "R9SvQIEfVhvy8uN5GY3fB2B",
+      "R9Urv8oRJAFxynf241PTpBB",
+      "R9Y6ik9lMExYK3Xj2pJuD4V",
+      "R9f0gJuj3yGziHe5HBA6CQY",
+      "R9lFQGc7YqHeXhBi38Rnwj4",
+      "RB3D5LuBl4dwJ8i28pdIa3A",
+      "RB96nfBIyMVmeVgxZ79G9X7"
+    ]
+  },
+  "duplicates": {
+    "uniqueDuplicateDefinitions": 118,
+    "totalAffectedEntries": 275,
+    "examples": [
+      {
+        "definition": "Locations used: Mexico",
+        "count": 6
+      },
+      {
+        "definition": "Locations used: Uruguay",
+        "count": 6
+      },
+      {
+        "definition": "From U.S. Bankruptcy Court PACER",
+        "count": 5
+      },
+      {
+        "definition": "Activities and actions related to ensuring that the process and practices used to perform analysis m",
+        "count": 5
+      },
+      {
+        "definition": "A court located in Suffolk County, New York that is part of the larger New York District Court syste",
+        "count": 4
+      }
+    ]
+  },
+  "shortestDefinitions": [
+    {
+      "id": "R1AB86270A70bF69ccfE3c51",
+      "definition": "Tex.",
+      "length": 4
+    },
+    {
+      "id": "R23Bb17D0Ed8e67244dA9552",
+      "definition": "Ill.",
+      "length": 4
+    },
+    {
+      "id": "R27321e086c74173cca1C8b3",
+      "definition": "Ohio",
+      "length": 4
+    },
+    {
+      "id": "R3168c58D034cA1Eb1b9C128",
+      "definition": "Tex.",
+      "length": 4
+    },
+    {
+      "id": "R3D937d9D82b6E248fe82ca1",
+      "definition": "Ark.",
+      "length": 4
+    }
+  ]
+}

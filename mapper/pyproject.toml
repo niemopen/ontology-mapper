@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ontology-mapper"
+version = "0.1.0"
+description = "NIEM-aligned semantic compilation pipeline tools"
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "License :: OSI Approved :: Apache Software License",
+]
+dependencies = [
+    "rdflib>=7.6.0",
+    "lxml>=6.0.2",
+]
+
+[project.optional-dependencies]
+validation = ["pyshacl>=0.31.0"]
+vector = ["faiss-cpu>=1.13.2", "sentence-transformers>=5.3.0"]
+dev = ["pytest>=9.0.2"]
+integration = ["testcontainers[neo4j]>=4.14.2", "neo4j>=6.1.0"]
+
+[project.scripts]
+om-pipeline = "ontology_mapper.pipeline:main"
+om-ingest-csv = "ontology_mapper.ingest_csv:main"
+om-extract = "ontology_mapper.extract_concepts:main"
+om-build-strategy = "ontology_mapper.build_strategy_reports:main"
+om-build-matrix = "ontology_mapper.build_mapping_matrix:main"
+om-generation-audit = "ontology_mapper.generation_audit:main"
+om-generate-ontology = "ontology_mapper.generate_edge_ontology:main"
+om-package-artifacts = "ontology_mapper.package_edge_artifacts:main"
+om-generate-kg = "ontology_mapper.generate_kg_artifacts:main"
+om-validate = "ontology_mapper.validate_edge_package:main"
+om-finalize = "ontology_mapper.finalize_package:main"
+om-generate-catalog = "ontology_mapper.generate_niem_catalog:main"
+om-validate-input = "ontology_mapper.validate_input_package:main"
+om-build-manifest = "ontology_mapper.build_package_manifest:main"
+om-edge-overlap = "ontology_mapper.compute_edge_overlap:main"
+om-generate-owl-catalog = "ontology_mapper.generate_owl_catalog:main"
+om-build-vector-index = "ontology_mapper.build_vector_index:main"
+om-vector-search = "ontology_mapper.vector_search:main"
+om-batch-search = "ontology_mapper.batch_search:main"
+om-collect-alignments = "ontology_mapper.collect_alignments:main"
+om-entropy = "ontology_mapper.compute_entropy:main"
+om-residual-entropy = "ontology_mapper.compute_entropy:main_residual"
+om-detect-staleness = "ontology_mapper.detect_staleness:main"
+om-catalog-search = "ontology_mapper.catalog_search:main"
+om-generate-cmf-catalog = "ontology_mapper.generate_cmf_catalog:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+ontology_mapper = ["specs/**/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: end-to-end tests for generated artifacts (SPARQL, Cypher)",
+    "docker: tests requiring Docker (testcontainers Neo4j)",
+]

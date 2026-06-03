@@ -1,0 +1,2265 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rdf:RDF
+   xmlns:dbpi="https://data.redvale.gov/ontology/dbpi/"
+   xmlns:owl="http://www.w3.org/2002/07/owl#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+   xmlns:sh="http://www.w3.org/ns/shacl#"
+   xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/memberOf">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/Employee"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/Organization"/>
+    <rdfs:label>member of</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/hasRole">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/Employee"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/Role"/>
+    <rdfs:label>has role</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/shapes">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Ontology"/>
+    <rdfs:label>DBPI SHACL Shapes</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/legalName">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <rdfs:label>legal name</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b21">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/inspectionType"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:maxCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:maxCount>
+    <sh:class rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/HarborElectricCo">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Organization"/>
+    <dbpi:legalName>Harbor Electric Co.</dbpi:legalName>
+    <dbpi:identifier>LIC-EC-2891</dbpi:identifier>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/assignedToUnit">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>assigned to unit</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/ContactPoint_DBPI">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/ContactPoint"/>
+    <dbpi:displayName>DBPI Main Office</dbpi:displayName>
+    <dbpi:telephone>+1-555-867-5309</dbpi:telephone>
+    <dbpi:email>permits@redvale.gov</dbpi:email>
+    <dbpi:url rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://permits.redvale.gov/contact</dbpi:url>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b6">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/submittedBy"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:class rdf:resource="https://data.redvale.gov/ontology/dbpi/Agent"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/reviewedBy">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/PlanReview"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/Employee"/>
+    <rdfs:label>reviewed by</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/createdAt">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#dateTime"/>
+    <rdfs:label>created at</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/updatedAt">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#dateTime"/>
+    <rdfs:label>updated at</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#PermitTypeElectrical">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#PermitTypeScheme"/>
+    <skos:prefLabel>Electrical</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#RecordsRequestStatusScheme">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#ConceptScheme"/>
+    <skos:prefLabel>Records Request Status Scheme</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/concernsProperty">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/Property"/>
+    <rdfs:label>concerns property</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Inspection_612">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Inspection"/>
+    <dbpi:inspectionNumber>INSP-2026-0612</dbpi:inspectionNumber>
+    <dbpi:inspectionType rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#InspectionFinal"/>
+    <dbpi:hasInspectionStatus rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#InspectionCompleted"/>
+    <dbpi:hasInspectionResult rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#InspectionPass"/>
+    <dbpi:scheduledFor rdf:datatype="http://www.w3.org/2001/XMLSchema#dateTime">2026-03-12T10:00:00</dbpi:scheduledFor>
+    <dbpi:completedAt rdf:datatype="http://www.w3.org/2001/XMLSchema#dateTime">2026-03-12T10:18:00</dbpi:completedAt>
+    <dbpi:performedBy rdf:resource="https://data.redvale.gov/ontology/dbpi/AliceNguyen"/>
+    <dbpi:inspectedProperty rdf:resource="https://data.redvale.gov/ontology/dbpi/Property_18Harbor"/>
+    <dbpi:forPermit rdf:resource="https://data.redvale.gov/ontology/dbpi/Permit_0064"/>
+    <dbpi:fulfillsRequest rdf:resource="https://data.redvale.gov/ontology/dbpi/InspectionRequest_612"/>
+    <dbpi:note>Service panel upgrade completed in conformity with approved plans.</dbpi:note>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/InspectionShape">
+    <rdf:type rdf:resource="http://www.w3.org/ns/shacl#NodeShape"/>
+    <sh:targetClass rdf:resource="https://data.redvale.gov/ontology/dbpi/Inspection"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b20"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b21"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b22"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b23"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b24"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b25"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_RecReq_1">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_RecReq_Received"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_RecReq_InReview"/>
+    <dbpi:transitionTrigger>Request sufficiently specific and accepted for processing.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#StatusDenied">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#ApplicationStatusScheme"/>
+    <skos:prefLabel>Denied</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFS_Appeal_Denied">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <dbpi:displayName>Denied</dbpi:displayName>
+    <dbpi:mapsToConcept rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#AppealDenied"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/PermitServicesDivision">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Division"/>
+    <dbpi:identifier>ORG-PERMIT</dbpi:identifier>
+    <dbpi:displayName>Permit Services Division</dbpi:displayName>
+    <dbpi:reportsTo rdf:resource="https://data.redvale.gov/ontology/dbpi/DBPI_Department"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#PermitActive">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#PermitStatusScheme"/>
+    <skos:prefLabel>Active</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b33">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/relatedPermit"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:class rdf:resource="https://data.redvale.gov/ontology/dbpi/Permit"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/requestedBy">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/InspectionRequest"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/Agent"/>
+    <rdfs:label>requested by</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Address_500Market">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Address"/>
+    <dbpi:line1>500 Market Street</dbpi:line1>
+    <dbpi:line2>Suite 200</dbpi:line2>
+    <dbpi:city>Red Vale</dbpi:city>
+    <dbpi:regionCode>CA</dbpi:regionCode>
+    <dbpi:postalCode>94105</dbpi:postalCode>
+    <dbpi:countryCode>US</dbpi:countryCode>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFS_InspReq_Canceled">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <dbpi:displayName>Canceled</dbpi:displayName>
+    <dbpi:mapsToConcept rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#InspectionCanceled"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/managesUnit">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/Employee"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/Organization"/>
+    <rdfs:label>manages unit</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Property">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Property</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/telephone">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <rdfs:label>telephone</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Payment_1001">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Payment"/>
+    <dbpi:identifier>PAY-1001</dbpi:identifier>
+    <dbpi:amount rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">620.00</dbpi:amount>
+    <dbpi:currencyCode>USD</dbpi:currencyCode>
+    <dbpi:paidDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2026-02-03</dbpi:paidDate>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/inspectedProperty">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/Inspection"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/Property"/>
+    <rdfs:label>inspected property</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Address_77Juniper">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Address"/>
+    <dbpi:line1>77 Juniper Lane</dbpi:line1>
+    <dbpi:city>Red Vale</dbpi:city>
+    <dbpi:regionCode>CA</dbpi:regionCode>
+    <dbpi:postalCode>94107</dbpi:postalCode>
+    <dbpi:countryCode>US</dbpi:countryCode>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/completedAt">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/Inspection"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#dateTime"/>
+    <rdfs:label>completed at</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/PlanReview_1001">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/PlanReview"/>
+    <dbpi:identifier>REVIEW-1001</dbpi:identifier>
+    <dbpi:reviewedBy rdf:resource="https://data.redvale.gov/ontology/dbpi/BobPatel"/>
+    <dbpi:decisionDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2026-02-18</dbpi:decisionDate>
+    <dbpi:description>Kitchen remodel plan review completed.</dbpi:description>
+    <dbpi:hasReviewComment rdf:resource="https://data.redvale.gov/ontology/dbpi/ReviewComment_1001_1"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Hearing_7819">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Hearing"/>
+    <dbpi:identifier>HRG-2026-7819</dbpi:identifier>
+    <dbpi:forCase rdf:resource="https://data.redvale.gov/ontology/dbpi/ViolationCase_7819"/>
+    <dbpi:heardBy rdf:resource="https://data.redvale.gov/ontology/dbpi/RosaMartinez"/>
+    <dbpi:hearingDate rdf:datatype="http://www.w3.org/2001/XMLSchema#dateTime">2026-04-11T09:00:00</dbpi:hearingDate>
+    <dbpi:description>Administrative hearing on unpermitted occupancy and habitability deficiencies.</dbpi:description>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFS_RecReq_Fulfilled">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <dbpi:displayName>Fulfilled</dbpi:displayName>
+    <dbpi:mapsToConcept rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#RecordsFulfilled"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Permit_0064">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Permit"/>
+    <dbpi:permitNumber>PMT-2026-0064</dbpi:permitNumber>
+    <dbpi:issuedDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2026-03-07</dbpi:issuedDate>
+    <dbpi:expirationDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2027-03-07</dbpi:expirationDate>
+    <dbpi:basedOnApplication rdf:resource="https://data.redvale.gov/ontology/dbpi/Application_1017"/>
+    <dbpi:authorizedPermitType rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#PermitTypeElectrical"/>
+    <dbpi:authorizedWorkType rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#WorkPanelUpgrade"/>
+    <dbpi:hasPermitStatus rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#PermitFinaled"/>
+    <dbpi:issuedBy rdf:resource="https://data.redvale.gov/ontology/dbpi/DBPI_Department"/>
+    <dbpi:assignedToUnit rdf:resource="https://data.redvale.gov/ontology/dbpi/FieldInspectionsDivision"/>
+    <dbpi:assignedToEmployee rdf:resource="https://data.redvale.gov/ontology/dbpi/AliceNguyen"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b35">
+    <rdf:first rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b32"/>
+    <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/line1">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <rdfs:label>address line 1</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/all">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Ontology"/>
+    <owl:imports rdf:resource="https://data.redvale.gov/ontology/dbpi/core"/>
+    <owl:imports rdf:resource="https://data.redvale.gov/ontology/dbpi/organization"/>
+    <owl:imports rdf:resource="https://data.redvale.gov/ontology/dbpi/permitting"/>
+    <owl:imports rdf:resource="https://data.redvale.gov/ontology/dbpi/inspections"/>
+    <owl:imports rdf:resource="https://data.redvale.gov/ontology/dbpi/enforcement"/>
+    <owl:imports rdf:resource="https://data.redvale.gov/ontology/dbpi/workflows"/>
+    <rdfs:label>DBPI Combined Ontology</rdfs:label>
+    <rdfs:comment>Import ontology that gathers the DBPI modules.</rdfs:comment>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/InspectionRequest_501">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/InspectionRequest"/>
+    <dbpi:identifier>INSPRQ-501</dbpi:identifier>
+    <dbpi:requestedDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2026-02-25</dbpi:requestedDate>
+    <dbpi:requestedBy rdf:resource="https://data.redvale.gov/ontology/dbpi/JaneDevelopmentLLC"/>
+    <dbpi:forPermit rdf:resource="https://data.redvale.gov/ontology/dbpi/Permit_0042"/>
+    <dbpi:requestedInspectionType rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#InspectionElectricalRough"/>
+    <dbpi:concernsProperty rdf:resource="https://data.redvale.gov/ontology/dbpi/Property_500Market"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/PermitShape">
+    <rdf:type rdf:resource="http://www.w3.org/ns/shacl#NodeShape"/>
+    <sh:targetClass rdf:resource="https://data.redvale.gov/ontology/dbpi/Permit"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b12"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b13"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b14"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b15"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b16"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b17"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b18"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b19"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Department">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="https://data.redvale.gov/ontology/dbpi/Organization"/>
+    <rdfs:label>Department</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Inspection_501">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Inspection"/>
+    <dbpi:inspectionNumber>INSP-2026-0501</dbpi:inspectionNumber>
+    <dbpi:inspectionType rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#InspectionElectricalRough"/>
+    <dbpi:hasInspectionStatus rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#InspectionCompleted"/>
+    <dbpi:hasInspectionResult rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#InspectionFail"/>
+    <dbpi:scheduledFor rdf:datatype="http://www.w3.org/2001/XMLSchema#dateTime">2026-02-27T09:00:00</dbpi:scheduledFor>
+    <dbpi:completedAt rdf:datatype="http://www.w3.org/2001/XMLSchema#dateTime">2026-02-27T09:35:00</dbpi:completedAt>
+    <dbpi:performedBy rdf:resource="https://data.redvale.gov/ontology/dbpi/AliceNguyen"/>
+    <dbpi:inspectedProperty rdf:resource="https://data.redvale.gov/ontology/dbpi/Property_500Market"/>
+    <dbpi:forPermit rdf:resource="https://data.redvale.gov/ontology/dbpi/Permit_0042"/>
+    <dbpi:fulfillsRequest rdf:resource="https://data.redvale.gov/ontology/dbpi/InspectionRequest_501"/>
+    <dbpi:citesCodeSection rdf:resource="https://data.redvale.gov/ontology/dbpi/CodeSection_110_3B"/>
+    <dbpi:note>Unlisted component installed in branch circuit panel.</dbpi:note>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#InspectionFinal">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#InspectionTypeScheme"/>
+    <skos:prefLabel>Final Inspection</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/SamuelReed">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/RecordsOfficer"/>
+    <dbpi:employeeNumber>E1118</dbpi:employeeNumber>
+    <dbpi:displayName>Samuel Reed</dbpi:displayName>
+    <dbpi:hasRole rdf:resource="https://data.redvale.gov/ontology/dbpi/Role_RecordsOfficer"/>
+    <dbpi:memberOf rdf:resource="https://data.redvale.gov/ontology/dbpi/RecordsUnit"/>
+    <dbpi:email>samuel.reed@redvale.gov</dbpi:email>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Parcel_014233019">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Parcel"/>
+    <dbpi:parcelNumber>014-233-019</dbpi:parcelNumber>
+    <dbpi:locatedInJurisdiction rdf:resource="https://data.redvale.gov/ontology/dbpi/Jurisdiction_RedVale"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Permit_0042">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Permit"/>
+    <dbpi:permitNumber>PMT-2026-0042</dbpi:permitNumber>
+    <dbpi:issuedDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2026-02-20</dbpi:issuedDate>
+    <dbpi:expirationDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2027-02-20</dbpi:expirationDate>
+    <dbpi:startDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2026-02-20</dbpi:startDate>
+    <dbpi:endDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2027-02-20</dbpi:endDate>
+    <dbpi:basedOnApplication rdf:resource="https://data.redvale.gov/ontology/dbpi/Application_1001"/>
+    <dbpi:authorizedPermitType rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#PermitTypeResidentialRemodel"/>
+    <dbpi:authorizedWorkType rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#WorkKitchenRemodel"/>
+    <dbpi:hasPermitStatus rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#PermitActive"/>
+    <dbpi:issuedBy rdf:resource="https://data.redvale.gov/ontology/dbpi/DBPI_Department"/>
+    <dbpi:assignedToUnit rdf:resource="https://data.redvale.gov/ontology/dbpi/FieldInspectionsDivision"/>
+    <dbpi:assignedToEmployee rdf:resource="https://data.redvale.gov/ontology/dbpi/AliceNguyen"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b27">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/openedDate"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:maxCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:maxCount>
+    <sh:datatype rdf:resource="http://www.w3.org/2001/XMLSchema#date"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/hasAddress">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/Address"/>
+    <rdfs:label>has address</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFS_RecReq_Received">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <dbpi:displayName>Received</dbpi:displayName>
+    <dbpi:mapsToConcept rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#RecordsReceived"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#AppealPending">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#AppealStatusScheme"/>
+    <skos:prefLabel>Pending</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b23">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/inspectedProperty"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:maxCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:maxCount>
+    <sh:class rdf:resource="https://data.redvale.gov/ontology/dbpi/Property"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/InspectionRequestLifecycle">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowModel"/>
+    <dbpi:displayName>Inspection Request Lifecycle</dbpi:displayName>
+    <dbpi:appliesToClass rdf:resource="https://data.redvale.gov/ontology/dbpi/InspectionRequest"/>
+    <dbpi:appliesAuthorityId>AUTH-DBPI-003</dbpi:appliesAuthorityId>
+    <dbpi:appliesAuthorityId>AUTH-DBPI-014</dbpi:appliesAuthorityId>
+    <dbpi:hasWorkflowState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_InspReq_Requested"/>
+    <dbpi:hasWorkflowState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_InspReq_Scheduled"/>
+    <dbpi:hasWorkflowState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_InspReq_Canceled"/>
+    <dbpi:hasWorkflowState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_InspReq_Completed"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_InspReq_1"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_InspReq_2"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_InspReq_3"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_InspReq_4"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/FieldInspectionsDivision">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Division"/>
+    <dbpi:identifier>ORG-INSP</dbpi:identifier>
+    <dbpi:displayName>Field Inspections Division</dbpi:displayName>
+    <dbpi:reportsTo rdf:resource="https://data.redvale.gov/ontology/dbpi/DBPI_Department"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Address_18Harbor">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Address"/>
+    <dbpi:line1>18 Harbor Avenue</dbpi:line1>
+    <dbpi:city>Red Vale</dbpi:city>
+    <dbpi:regionCode>CA</dbpi:regionCode>
+    <dbpi:postalCode>94106</dbpi:postalCode>
+    <dbpi:countryCode>US</dbpi:countryCode>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/closedDate">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/ViolationCase"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#date"/>
+    <rdfs:label>closed date</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_App_2">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_App_UnderReview"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_App_Approved"/>
+    <dbpi:transitionTrigger>All required reviews approved and issuance prerequisites satisfied.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/inspections">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Ontology"/>
+    <owl:imports rdf:resource="https://data.redvale.gov/ontology/dbpi/core"/>
+    <owl:imports rdf:resource="https://data.redvale.gov/ontology/dbpi/organization"/>
+    <owl:imports rdf:resource="https://data.redvale.gov/ontology/dbpi/permitting"/>
+    <rdfs:label>DBPI Inspections Ontology</rdfs:label>
+    <rdfs:comment>Inspection scheduling and outcome model for DBPI.</rdfs:comment>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/AppealLifecycle">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowModel"/>
+    <dbpi:displayName>Appeal Lifecycle</dbpi:displayName>
+    <dbpi:appliesToClass rdf:resource="https://data.redvale.gov/ontology/dbpi/Appeal"/>
+    <dbpi:appliesAuthorityId>AUTH-DBPI-005</dbpi:appliesAuthorityId>
+    <dbpi:appliesAuthorityId>AUTH-DBPI-009</dbpi:appliesAuthorityId>
+    <dbpi:hasWorkflowState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Appeal_Pending"/>
+    <dbpi:hasWorkflowState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Appeal_Granted"/>
+    <dbpi:hasWorkflowState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Appeal_Denied"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_Appeal_1"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_Appeal_2"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/inspectionType">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/Inspection"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <rdfs:label>inspection type</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#CaseClosed">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#CaseStatusScheme"/>
+    <skos:prefLabel>Closed</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Hearing_7782">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Hearing"/>
+    <dbpi:identifier>HEAR-7782</dbpi:identifier>
+    <dbpi:forCase rdf:resource="https://data.redvale.gov/ontology/dbpi/ViolationCase_7782"/>
+    <dbpi:heardBy rdf:resource="https://data.redvale.gov/ontology/dbpi/RosaMartinez"/>
+    <dbpi:hearingDate rdf:datatype="http://www.w3.org/2001/XMLSchema#dateTime">2026-03-15T13:30:00</dbpi:hearingDate>
+    <dbpi:description>Administrative hearing on appeal APL-7782.</dbpi:description>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b32">
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b33"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_InspReq_3">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_InspReq_Scheduled"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_InspReq_Completed"/>
+    <dbpi:transitionTrigger>Inspection performed and request fulfilled.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/basedOnApplication">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/Permit"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/PermitApplication"/>
+    <rdfs:label>based on application</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/issuedBy">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/Organization"/>
+    <rdfs:label>issued by</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/CorrectiveAction_7819_1">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/CorrectiveAction"/>
+    <dbpi:identifier>CA-7819-1</dbpi:identifier>
+    <dbpi:description>Cease occupancy of the converted space and submit legalization or restoration plan.</dbpi:description>
+    <dbpi:dueDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2026-04-02</dbpi:dueDate>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/citesCodeSection">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/CodeSection"/>
+    <rdfs:label>cites code section</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/RecordsOfficer">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="https://data.redvale.gov/ontology/dbpi/Employee"/>
+    <rdfs:label>Records Officer</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b20">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/inspectionNumber"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:maxCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:maxCount>
+    <sh:datatype rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/forCase">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/ViolationCase"/>
+    <rdfs:label>for case</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/hearingDate">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/Hearing"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#dateTime"/>
+    <rdfs:label>hearing date</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Notice_7782">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/NoticeOfViolation"/>
+    <dbpi:documentNumber>NOV-7782</dbpi:documentNumber>
+    <dbpi:displayName>Notice of Violation NOV-7782</dbpi:displayName>
+    <dbpi:documentDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2026-02-28</dbpi:documentDate>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/ReviewComment_1001_1">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/ReviewComment"/>
+    <dbpi:identifier>RC-1001-1</dbpi:identifier>
+    <dbpi:description>Verify load calculations for relocated panel. Applicant's engineer to confirm amperage.</dbpi:description>
+    <dbpi:createdAt rdf:datatype="http://www.w3.org/2001/XMLSchema#dateTime">2026-02-10T11:30:00</dbpi:createdAt>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/CorrectiveAction_7782_1">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/CorrectiveAction"/>
+    <dbpi:identifier>CA-7782-1</dbpi:identifier>
+    <dbpi:description>Replace the unlisted component and request re-inspection.</dbpi:description>
+    <dbpi:dueDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2026-03-10</dbpi:dueDate>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_Permit_1">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Permit_Active"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Permit_Suspended"/>
+    <dbpi:transitionTrigger>Active work is placed on hold pending correction or administrative action.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/appliesAuthorityId">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowModel"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <rdfs:label>applies authority id</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_RecReq_4">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_RecReq_InReview"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_RecReq_Denied"/>
+    <dbpi:transitionTrigger>Exemption applies or unable to locate responsive records.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/DBPI_Department">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Department"/>
+    <dbpi:identifier>ORG-DBPI</dbpi:identifier>
+    <dbpi:legalName>City of Red Vale Department of Building Permits and Inspections</dbpi:legalName>
+    <dbpi:locatedInJurisdiction rdf:resource="https://data.redvale.gov/ontology/dbpi/Jurisdiction_RedVale"/>
+    <dbpi:hasSubUnit rdf:resource="https://data.redvale.gov/ontology/dbpi/PermitServicesDivision"/>
+    <dbpi:hasSubUnit rdf:resource="https://data.redvale.gov/ontology/dbpi/FieldInspectionsDivision"/>
+    <dbpi:hasSubUnit rdf:resource="https://data.redvale.gov/ontology/dbpi/PlanReviewDivision"/>
+    <dbpi:hasSubUnit rdf:resource="https://data.redvale.gov/ontology/dbpi/EnforcementDivision"/>
+    <dbpi:hasContactPoint rdf:resource="https://data.redvale.gov/ontology/dbpi/ContactPoint_DBPI"/>
+    <dbpi:url rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://permits.redvale.gov</dbpi:url>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#StatusApproved">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#ApplicationStatusScheme"/>
+    <skos:prefLabel>Approved</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b4">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/applicationNumber"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:maxCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:maxCount>
+    <sh:datatype rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/AliceNguyen">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Inspector"/>
+    <dbpi:employeeNumber>E1007</dbpi:employeeNumber>
+    <dbpi:displayName>Alice Nguyen</dbpi:displayName>
+    <dbpi:hasRole rdf:resource="https://data.redvale.gov/ontology/dbpi/Role_Inspector"/>
+    <dbpi:memberOf rdf:resource="https://data.redvale.gov/ontology/dbpi/FieldInspectionsDivision"/>
+    <dbpi:managesUnit rdf:resource="https://data.redvale.gov/ontology/dbpi/FieldInspectionsDivision"/>
+    <dbpi:startDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2019-06-15</dbpi:startDate>
+    <dbpi:email>alice.nguyen@redvale.gov</dbpi:email>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/HelenaCho">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/CodeEnforcementOfficer"/>
+    <dbpi:employeeNumber>E1044</dbpi:employeeNumber>
+    <dbpi:displayName>Helena Cho</dbpi:displayName>
+    <dbpi:hasRole rdf:resource="https://data.redvale.gov/ontology/dbpi/Role_CodeEnforcementOfficer"/>
+    <dbpi:memberOf rdf:resource="https://data.redvale.gov/ontology/dbpi/EnforcementDivision"/>
+    <dbpi:email>helena.cho@redvale.gov</dbpi:email>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/RecordsRequestLifecycle">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowModel"/>
+    <dbpi:displayName>Records Request Lifecycle</dbpi:displayName>
+    <dbpi:appliesToClass rdf:resource="https://data.redvale.gov/ontology/dbpi/Document"/>
+    <dbpi:appliesAuthorityId>AUTH-DBPI-010</dbpi:appliesAuthorityId>
+    <dbpi:appliesAuthorityId>AUTH-DBPI-016</dbpi:appliesAuthorityId>
+    <dbpi:hasWorkflowState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_RecReq_Received"/>
+    <dbpi:hasWorkflowState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_RecReq_InReview"/>
+    <dbpi:hasWorkflowState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_RecReq_Fulfilled"/>
+    <dbpi:hasWorkflowState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_RecReq_PartiallyFulfilled"/>
+    <dbpi:hasWorkflowState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_RecReq_Denied"/>
+    <dbpi:hasWorkflowState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_RecReq_Closed"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_RecReq_1"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_RecReq_2"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_RecReq_3"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_RecReq_4"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_RecReq_5"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_RecReq_6"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_RecReq_7"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_Permit_5">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Permit_Active"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Permit_Revoked"/>
+    <dbpi:transitionTrigger>Permit is revoked for authorized cause.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/HearingOfficer">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="https://data.redvale.gov/ontology/dbpi/Employee"/>
+    <rdfs:label>Hearing Officer</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_RecReq_3">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_RecReq_InReview"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_RecReq_PartiallyFulfilled"/>
+    <dbpi:transitionTrigger>Records released with lawful redactions or partial withholding.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/PermitApplicationLifecycle">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowModel"/>
+    <dbpi:displayName>Permit Application Lifecycle</dbpi:displayName>
+    <dbpi:appliesToClass rdf:resource="https://data.redvale.gov/ontology/dbpi/PermitApplication"/>
+    <dbpi:appliesAuthorityId>AUTH-DBPI-002</dbpi:appliesAuthorityId>
+    <dbpi:appliesAuthorityId>AUTH-DBPI-012</dbpi:appliesAuthorityId>
+    <dbpi:hasWorkflowState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_App_Received"/>
+    <dbpi:hasWorkflowState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_App_UnderReview"/>
+    <dbpi:hasWorkflowState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_App_Approved"/>
+    <dbpi:hasWorkflowState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_App_Denied"/>
+    <dbpi:hasWorkflowState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_App_Withdrawn"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_App_1"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_App_2"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_App_3"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_App_4"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_App_5"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#InspectionResultScheme">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#ConceptScheme"/>
+    <skos:prefLabel>Inspection Result Scheme</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/hasFee">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/Fee"/>
+    <rdfs:label>has fee</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/parcelNumber">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <rdfs:label>parcel number</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/organization">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Ontology"/>
+    <owl:imports rdf:resource="https://data.redvale.gov/ontology/dbpi/core"/>
+    <rdfs:label>DBPI Organization Ontology</rdfs:label>
+    <rdfs:comment>Organizational model for the City of Red Vale Department of Building Permits and Inspections.</rdfs:comment>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/hasCorrectiveAction">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/ViolationCase"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/CorrectiveAction"/>
+    <rdfs:label>has corrective action</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b14">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/expirationDate"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:maxCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:maxCount>
+    <sh:datatype rdf:resource="http://www.w3.org/2001/XMLSchema#date"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_App_4">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_App_UnderReview"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_App_Withdrawn"/>
+    <dbpi:transitionTrigger>Applicant withdraws the application during review.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/hasAppeal">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/ViolationCase"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/Appeal"/>
+    <rdfs:label>has appeal</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/requestedPermitType">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/PermitApplication"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <rdfs:label>requested permit type</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#CaseStatusScheme">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#ConceptScheme"/>
+    <skos:prefLabel>Case Status Scheme</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Application_1001">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/PermitApplication"/>
+    <dbpi:applicationNumber>APP-2026-1001</dbpi:applicationNumber>
+    <dbpi:submittedDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2026-02-02</dbpi:submittedDate>
+    <dbpi:createdAt rdf:datatype="http://www.w3.org/2001/XMLSchema#dateTime">2026-02-02T08:14:22</dbpi:createdAt>
+    <dbpi:updatedAt rdf:datatype="http://www.w3.org/2001/XMLSchema#dateTime">2026-02-18T16:05:00</dbpi:updatedAt>
+    <dbpi:submittedBy rdf:resource="https://data.redvale.gov/ontology/dbpi/JaneDevelopmentLLC"/>
+    <dbpi:concernsProperty rdf:resource="https://data.redvale.gov/ontology/dbpi/Property_500Market"/>
+    <dbpi:forService rdf:resource="https://data.redvale.gov/ontology/dbpi/BuildingPermitService"/>
+    <dbpi:requestedPermitType rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#PermitTypeResidentialRemodel"/>
+    <dbpi:requestedWorkType rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#WorkKitchenRemodel"/>
+    <dbpi:hasApplicationStatus rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#StatusApproved"/>
+    <dbpi:hasStatus rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#StatusApproved"/>
+    <dbpi:hasRequirement rdf:resource="https://data.redvale.gov/ontology/dbpi/Requirement_PlanSet"/>
+    <dbpi:hasSupportingDocument rdf:resource="https://data.redvale.gov/ontology/dbpi/PlanSet_1001"/>
+    <dbpi:assignedToUnit rdf:resource="https://data.redvale.gov/ontology/dbpi/PermitServicesDivision"/>
+    <dbpi:assignedToEmployee rdf:resource="https://data.redvale.gov/ontology/dbpi/BobPatel"/>
+    <dbpi:hasPlanReview rdf:resource="https://data.redvale.gov/ontology/dbpi/PlanReview_1001"/>
+    <dbpi:resultedInPermit rdf:resource="https://data.redvale.gov/ontology/dbpi/Permit_0042"/>
+    <dbpi:hasFee rdf:resource="https://data.redvale.gov/ontology/dbpi/Fee_1001"/>
+    <dbpi:hasPayment rdf:resource="https://data.redvale.gov/ontology/dbpi/Payment_1001"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/line2">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <rdfs:label>address line 2</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#PermitFinaled">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#PermitStatusScheme"/>
+    <skos:prefLabel>Finaled</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFS_App_Denied">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <dbpi:displayName>Denied</dbpi:displayName>
+    <dbpi:mapsToConcept rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#StatusDenied"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/RecordsResponseDocument_0091">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Document"/>
+    <dbpi:documentNumber>PRR-2026-0091-RESP</dbpi:documentNumber>
+    <dbpi:displayName>Responsive records package for PRR-2026-0091</dbpi:displayName>
+    <dbpi:documentDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2026-03-13</dbpi:documentDate>
+    <dbpi:forService rdf:resource="https://data.redvale.gov/ontology/dbpi/PublicRecordsService"/>
+    <dbpi:description>Released permit history, final inspection records, and notice log with one personal-contact redaction.</dbpi:description>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFS_App_UnderReview">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <dbpi:displayName>Under Review</dbpi:displayName>
+    <dbpi:mapsToConcept rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#StatusUnderReview"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFS_Permit_Expired">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <dbpi:displayName>Expired</dbpi:displayName>
+    <dbpi:mapsToConcept rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#PermitExpired"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Address">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Address</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#PermitRevoked">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#PermitStatusScheme"/>
+    <skos:prefLabel>Revoked</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/NorthHarborHoldings">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Organization"/>
+    <dbpi:legalName>North Harbor Holdings, Inc.</dbpi:legalName>
+    <dbpi:identifier>ORG-EXT-4401</dbpi:identifier>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/description">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <rdfs:label>description</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/ViolationCaseLifecycle">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowModel"/>
+    <dbpi:displayName>Violation Case Lifecycle</dbpi:displayName>
+    <dbpi:appliesToClass rdf:resource="https://data.redvale.gov/ontology/dbpi/ViolationCase"/>
+    <dbpi:appliesAuthorityId>AUTH-DBPI-004</dbpi:appliesAuthorityId>
+    <dbpi:appliesAuthorityId>AUTH-DBPI-015</dbpi:appliesAuthorityId>
+    <dbpi:hasWorkflowState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Case_Open"/>
+    <dbpi:hasWorkflowState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Case_PendingCompliance"/>
+    <dbpi:hasWorkflowState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Case_Referred"/>
+    <dbpi:hasWorkflowState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Case_Closed"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_Case_1"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_Case_2"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_Case_3"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_Case_4"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_Case_5"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#InspectionScheduled">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#InspectionStatusScheme"/>
+    <skos:prefLabel>Scheduled</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/RecordsUnit">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkUnit"/>
+    <dbpi:identifier>ORG-RECORDS</dbpi:identifier>
+    <dbpi:displayName>Records and Disclosure Unit</dbpi:displayName>
+    <dbpi:reportsTo rdf:resource="https://data.redvale.gov/ontology/dbpi/DBPI_Department"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/hasContactPoint">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/Agent"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/ContactPoint"/>
+    <rdfs:label>has contact point</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFS_App_Withdrawn">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <dbpi:displayName>Withdrawn</dbpi:displayName>
+    <dbpi:mapsToConcept rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#StatusWithdrawn"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/scheduledFor">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#dateTime"/>
+    <rdfs:label>scheduled for</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b28">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/relatedProperty"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:maxCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:maxCount>
+    <sh:class rdf:resource="https://data.redvale.gov/ontology/dbpi/Property"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b29">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/hasCaseStatus"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:maxCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:maxCount>
+    <sh:class rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Jurisdiction_RedVale">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Jurisdiction"/>
+    <dbpi:identifier>JUR-RV-001</dbpi:identifier>
+    <dbpi:displayName>Red Vale</dbpi:displayName>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/hasPermitStatus">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/Permit"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <rdfs:label>has permit status</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/ViolationCaseShape">
+    <rdf:type rdf:resource="http://www.w3.org/ns/shacl#NodeShape"/>
+    <sh:targetClass rdf:resource="https://data.redvale.gov/ontology/dbpi/ViolationCase"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b26"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b27"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b28"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b29"/>
+    <sh:or rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b34"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/PropertyShape">
+    <rdf:type rdf:resource="http://www.w3.org/ns/shacl#NodeShape"/>
+    <sh:targetClass rdf:resource="https://data.redvale.gov/ontology/dbpi/Property"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b1"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b2"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b3"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/PlanReviewDivision">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Division"/>
+    <dbpi:identifier>ORG-PLANREV</dbpi:identifier>
+    <dbpi:displayName>Plan Review Division</dbpi:displayName>
+    <dbpi:reportsTo rdf:resource="https://data.redvale.gov/ontology/dbpi/DBPI_Department"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#InspectionStatusScheme">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#ConceptScheme"/>
+    <skos:prefLabel>Inspection Status Scheme</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Application_1017">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/PermitApplication"/>
+    <dbpi:applicationNumber>APP-2026-1017</dbpi:applicationNumber>
+    <dbpi:submittedDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2026-03-03</dbpi:submittedDate>
+    <dbpi:submittedBy rdf:resource="https://data.redvale.gov/ontology/dbpi/HarborElectricCo"/>
+    <dbpi:concernsProperty rdf:resource="https://data.redvale.gov/ontology/dbpi/Property_18Harbor"/>
+    <dbpi:forService rdf:resource="https://data.redvale.gov/ontology/dbpi/BuildingPermitService"/>
+    <dbpi:requestedPermitType rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#PermitTypeElectrical"/>
+    <dbpi:requestedWorkType rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#WorkPanelUpgrade"/>
+    <dbpi:hasApplicationStatus rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#StatusApproved"/>
+    <dbpi:hasSupportingDocument rdf:resource="https://data.redvale.gov/ontology/dbpi/PlanSet_1017"/>
+    <dbpi:assignedToUnit rdf:resource="https://data.redvale.gov/ontology/dbpi/PermitServicesDivision"/>
+    <dbpi:assignedToEmployee rdf:resource="https://data.redvale.gov/ontology/dbpi/BobPatel"/>
+    <dbpi:hasPlanReview rdf:resource="https://data.redvale.gov/ontology/dbpi/PlanReview_1017"/>
+    <dbpi:resultedInPermit rdf:resource="https://data.redvale.gov/ontology/dbpi/Permit_0064"/>
+    <dbpi:hasFee rdf:resource="https://data.redvale.gov/ontology/dbpi/Fee_1017"/>
+    <dbpi:hasPayment rdf:resource="https://data.redvale.gov/ontology/dbpi/Payment_1017"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#PermitTypeScheme">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#ConceptScheme"/>
+    <skos:prefLabel>Permit Type Scheme</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_Permit_3">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Permit_Active"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Permit_Expired"/>
+    <dbpi:transitionTrigger>Permit lapses by time or inactivity.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b22">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/hasInspectionResult"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:maxCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:maxCount>
+    <sh:class rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/identifier">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <rdfs:label>identifier</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/fromState">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <rdfs:label>from state</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_App_3">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_App_UnderReview"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_App_Denied"/>
+    <dbpi:transitionTrigger>Substantive noncompliance results in denial.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/hasRequirement">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/Requirement"/>
+    <rdfs:label>has requirement</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b18">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/hasPermitStatus"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:maxCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:maxCount>
+    <sh:class rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#RecordsPartiallyFulfilled">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#RecordsRequestStatusScheme"/>
+    <skos:prefLabel>Partially Fulfilled</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b1">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/hasParcel"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:maxCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:maxCount>
+    <sh:class rdf:resource="https://data.redvale.gov/ontology/dbpi/Parcel"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b31">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/relatedInspection"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:class rdf:resource="https://data.redvale.gov/ontology/dbpi/Inspection"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/openedDate">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/ViolationCase"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#date"/>
+    <rdfs:label>opened date</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Payment">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Payment</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/InspectionRequest_612">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/InspectionRequest"/>
+    <dbpi:identifier>INSPRQ-612</dbpi:identifier>
+    <dbpi:requestedDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2026-03-11</dbpi:requestedDate>
+    <dbpi:requestedBy rdf:resource="https://data.redvale.gov/ontology/dbpi/HarborElectricCo"/>
+    <dbpi:forPermit rdf:resource="https://data.redvale.gov/ontology/dbpi/Permit_0064"/>
+    <dbpi:requestedInspectionType rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#InspectionFinal"/>
+    <dbpi:concernsProperty rdf:resource="https://data.redvale.gov/ontology/dbpi/Property_18Harbor"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/requestedInspectionType">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/InspectionRequest"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <rdfs:label>requested inspection type</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Property_500Market">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Property"/>
+    <dbpi:identifier>PROP-500-MARKET</dbpi:identifier>
+    <dbpi:displayName>500 Market Street Property</dbpi:displayName>
+    <dbpi:hasAddress rdf:resource="https://data.redvale.gov/ontology/dbpi/Address_500Market"/>
+    <dbpi:hasParcel rdf:resource="https://data.redvale.gov/ontology/dbpi/Parcel_014233019"/>
+    <dbpi:hasOwner rdf:resource="https://data.redvale.gov/ontology/dbpi/JaneDevelopmentLLC"/>
+    <dbpi:locatedInJurisdiction rdf:resource="https://data.redvale.gov/ontology/dbpi/Jurisdiction_RedVale"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/PublicRecordsService">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/PublicService"/>
+    <dbpi:identifier>SVC-DBPI-012</dbpi:identifier>
+    <dbpi:displayName>Records and Certified Copies</dbpi:displayName>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFS_Case_Open">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <dbpi:displayName>Open</dbpi:displayName>
+    <dbpi:mapsToConcept rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#CaseOpen"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Requirement">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Requirement</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#InspectionCanceled">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#InspectionStatusScheme"/>
+    <skos:prefLabel>Canceled</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Role_Inspector">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Role"/>
+    <dbpi:displayName>Inspector</dbpi:displayName>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b8">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/forService"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:maxCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:maxCount>
+    <sh:class rdf:resource="https://data.redvale.gov/ontology/dbpi/PublicService"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/regionCode">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <rdfs:label>region code</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/PlanSet_1001">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Document"/>
+    <dbpi:documentNumber>DOC-1001-PLANSET</dbpi:documentNumber>
+    <dbpi:displayName>Initial Plan Set</dbpi:displayName>
+    <dbpi:documentDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2026-02-02</dbpi:documentDate>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Appeal_7819">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Appeal"/>
+    <dbpi:identifier>APL-2026-7819</dbpi:identifier>
+    <dbpi:forCase rdf:resource="https://data.redvale.gov/ontology/dbpi/ViolationCase_7819"/>
+    <dbpi:submittedBy rdf:resource="https://data.redvale.gov/ontology/dbpi/JuniperHomesLLC"/>
+    <dbpi:submittedDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2026-03-22</dbpi:submittedDate>
+    <dbpi:hasAppealStatus rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#AppealDenied"/>
+    <dbpi:description>Owner appealed notice on hardship grounds; original action sustained.</dbpi:description>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Person">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="https://data.redvale.gov/ontology/dbpi/Agent"/>
+    <rdfs:label>Person</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/PermitApplicationShape">
+    <rdf:type rdf:resource="http://www.w3.org/ns/shacl#NodeShape"/>
+    <sh:targetClass rdf:resource="https://data.redvale.gov/ontology/dbpi/PermitApplication"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b4"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b5"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b6"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b7"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b8"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b9"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b10"/>
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b11"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Inspection_7819">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Inspection"/>
+    <dbpi:inspectionNumber>INSP-2026-07819</dbpi:inspectionNumber>
+    <dbpi:inspectionType rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#InspectionFinal"/>
+    <dbpi:hasInspectionStatus rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#InspectionCompleted"/>
+    <dbpi:hasInspectionResult rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#InspectionFail"/>
+    <dbpi:scheduledFor rdf:datatype="http://www.w3.org/2001/XMLSchema#dateTime">2026-03-17T13:30:00</dbpi:scheduledFor>
+    <dbpi:completedAt rdf:datatype="http://www.w3.org/2001/XMLSchema#dateTime">2026-03-17T14:05:00</dbpi:completedAt>
+    <dbpi:performedBy rdf:resource="https://data.redvale.gov/ontology/dbpi/AliceNguyen"/>
+    <dbpi:inspectedProperty rdf:resource="https://data.redvale.gov/ontology/dbpi/Property_77Juniper"/>
+    <dbpi:note>Observed converted garage occupied without permit and without code-compliant egress.</dbpi:note>
+    <dbpi:citesCodeSection rdf:resource="https://data.redvale.gov/ontology/dbpi/CodeSection_HAB_12_4"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFS_Case_PendingCompliance">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <dbpi:displayName>Pending Compliance</dbpi:displayName>
+    <dbpi:mapsToConcept rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#CasePendingCompliance"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/hasOwner">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/Property"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/Agent"/>
+    <rdfs:label>has owner</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Agent">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Agent</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Property_18Harbor">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Property"/>
+    <dbpi:identifier>PROP-18-HARBOR</dbpi:identifier>
+    <dbpi:displayName>18 Harbor Avenue</dbpi:displayName>
+    <dbpi:hasAddress rdf:resource="https://data.redvale.gov/ontology/dbpi/Address_18Harbor"/>
+    <dbpi:hasParcel rdf:resource="https://data.redvale.gov/ontology/dbpi/Parcel_010889004"/>
+    <dbpi:hasOwner rdf:resource="https://data.redvale.gov/ontology/dbpi/NorthHarborHoldings"/>
+    <dbpi:locatedInJurisdiction rdf:resource="https://data.redvale.gov/ontology/dbpi/Jurisdiction_RedVale"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#RecordsDenied">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#RecordsRequestStatusScheme"/>
+    <skos:prefLabel>Denied</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/core">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Ontology"/>
+    <rdfs:label>DBPI Core Ontology</rdfs:label>
+    <rdfs:comment>Foundational entities and shared properties for the City of Red Vale Department of Building Permits and Inspections.</rdfs:comment>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/amount">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+    <rdfs:label>amount</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/PlanReview_1017">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/PlanReview"/>
+    <dbpi:identifier>REVIEW-1017</dbpi:identifier>
+    <dbpi:reviewedBy rdf:resource="https://data.redvale.gov/ontology/dbpi/BobPatel"/>
+    <dbpi:decisionDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2026-03-06</dbpi:decisionDate>
+    <dbpi:description>Approved panel upgrade and service grounding corrections incorporated.</dbpi:description>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Fee_1001">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Fee"/>
+    <dbpi:identifier>FEE-1001</dbpi:identifier>
+    <dbpi:description>Plan review and permit issuance fee</dbpi:description>
+    <dbpi:amount rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">620.00</dbpi:amount>
+    <dbpi:currencyCode>USD</dbpi:currencyCode>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#InspectionNoAccess">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#InspectionResultScheme"/>
+    <skos:prefLabel>No Access</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/JaneDevelopmentLLC">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Organization"/>
+    <dbpi:legalName>Jane Development LLC</dbpi:legalName>
+    <dbpi:identifier>APPL-9001</dbpi:identifier>
+    <dbpi:externalReference>CA-SOS-LLC-2018-04772</dbpi:externalReference>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_RecReq_2">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_RecReq_InReview"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_RecReq_Fulfilled"/>
+    <dbpi:transitionTrigger>Records located and released in full.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b12">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/permitNumber"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:maxCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:maxCount>
+    <sh:datatype rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#InspectionRequested">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#InspectionStatusScheme"/>
+    <skos:prefLabel>Requested</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/performedBy">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/Inspection"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/Inspector"/>
+    <rdfs:label>performed by</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/requestedDate">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/InspectionRequest"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#date"/>
+    <rdfs:label>requested date</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Role_HearingOfficer">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Role"/>
+    <dbpi:displayName>Hearing Officer</dbpi:displayName>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/workflows">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Ontology"/>
+    <owl:imports rdf:resource="https://data.redvale.gov/ontology/dbpi/core"/>
+    <owl:imports rdf:resource="https://data.redvale.gov/ontology/dbpi/permitting"/>
+    <owl:imports rdf:resource="https://data.redvale.gov/ontology/dbpi/inspections"/>
+    <owl:imports rdf:resource="https://data.redvale.gov/ontology/dbpi/enforcement"/>
+    <owl:imports rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists"/>
+    <rdfs:label>DBPI Workflow Ontology</rdfs:label>
+    <rdfs:comment>Canonical lifecycle models and state transitions for core DBPI operational records.</rdfs:comment>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_Appeal_2">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Appeal_Pending"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Appeal_Denied"/>
+    <dbpi:transitionTrigger>Original action sustained after review.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#CaseReferred">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#CaseStatusScheme"/>
+    <skos:prefLabel>Referred</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFS_InspReq_Requested">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <dbpi:displayName>Requested</dbpi:displayName>
+    <dbpi:mapsToConcept rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#InspectionRequested"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/documentDate">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#date"/>
+    <rdfs:label>document date</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/CodeSection">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Code Section</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#InspectionPass">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#InspectionResultScheme"/>
+    <skos:prefLabel>Pass</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#RecordsInReview">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#RecordsRequestStatusScheme"/>
+    <skos:prefLabel>In Review</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/url">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#anyURI"/>
+    <rdfs:label>URL</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/hasAppealStatus">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/Appeal"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <rdfs:label>has appeal status</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/relatedPermit">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/ViolationCase"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/Permit"/>
+    <rdfs:label>related permit</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_InspReq_2">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_InspReq_Requested"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_InspReq_Canceled"/>
+    <dbpi:transitionTrigger>Request canceled before scheduling.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFS_InspReq_Completed">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <dbpi:displayName>Completed</dbpi:displayName>
+    <dbpi:mapsToConcept rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#InspectionCompleted"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFS_App_Received">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <dbpi:displayName>Received</dbpi:displayName>
+    <dbpi:mapsToConcept rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#StatusReceived"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/hasInspectionResult">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/Inspection"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <rdfs:label>has inspection result</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_Case_3">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Case_PendingCompliance"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Case_Closed"/>
+    <dbpi:transitionTrigger>Compliance verified.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/hasWorkflowState">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowModel"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <rdfs:label>has workflow state</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/enforcement">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Ontology"/>
+    <owl:imports rdf:resource="https://data.redvale.gov/ontology/dbpi/core"/>
+    <owl:imports rdf:resource="https://data.redvale.gov/ontology/dbpi/organization"/>
+    <owl:imports rdf:resource="https://data.redvale.gov/ontology/dbpi/permitting"/>
+    <owl:imports rdf:resource="https://data.redvale.gov/ontology/dbpi/inspections"/>
+    <rdfs:label>DBPI Enforcement Ontology</rdfs:label>
+    <rdfs:comment>Enforcement, appeals, and hearing model for DBPI.</rdfs:comment>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/hasReviewComment">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/PlanReview"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/ReviewComment"/>
+    <rdfs:label>has review comment</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFS_Permit_Suspended">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <dbpi:displayName>Suspended</dbpi:displayName>
+    <dbpi:mapsToConcept rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#PermitSuspended"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#AppealStatusScheme">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#ConceptScheme"/>
+    <skos:prefLabel>Appeal Status Scheme</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/authorizedPermitType">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/Permit"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <rdfs:label>authorized permit type</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Citizen_MaryCole">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Person"/>
+    <dbpi:identifier>CIT-2004</dbpi:identifier>
+    <dbpi:displayName>Mary Cole</dbpi:displayName>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/email">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <rdfs:label>email</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/endDate">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#date"/>
+    <rdfs:label>end date</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/decisionDate">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#date"/>
+    <rdfs:label>decision date</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Inspector">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="https://data.redvale.gov/ontology/dbpi/Employee"/>
+    <rdfs:label>Inspector</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Notice_7819">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/NoticeOfViolation"/>
+    <dbpi:documentNumber>NOV-7819</dbpi:documentNumber>
+    <dbpi:displayName>Notice of Violation NOV-7819</dbpi:displayName>
+    <dbpi:documentDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2026-03-18</dbpi:documentDate>
+    <dbpi:citesCodeSection rdf:resource="https://data.redvale.gov/ontology/dbpi/CodeSection_HAB_12_4"/>
+    <dbpi:description>Occupancy and egress deficiencies identified in unpermitted garage conversion.</dbpi:description>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/CodeSection_HAB_12_4">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/CodeSection"/>
+    <dbpi:identifier>HAB-12.4</dbpi:identifier>
+    <dbpi:displayName>Habitable rooms and emergency egress requirements</dbpi:displayName>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b19">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/issuedBy"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:maxCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:maxCount>
+    <sh:class rdf:resource="https://data.redvale.gov/ontology/dbpi/Organization"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Appeal_7782">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Appeal"/>
+    <dbpi:identifier>APL-7782</dbpi:identifier>
+    <dbpi:forCase rdf:resource="https://data.redvale.gov/ontology/dbpi/ViolationCase_7782"/>
+    <dbpi:submittedBy rdf:resource="https://data.redvale.gov/ontology/dbpi/JaneDevelopmentLLC"/>
+    <dbpi:hasAppealStatus rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#AppealPending"/>
+    <dbpi:submittedDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2026-03-02</dbpi:submittedDate>
+    <dbpi:description>Applicant disputes interpretation of listed equipment requirement.</dbpi:description>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/appliesToClass">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowModel"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>applies to class</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_Permit_2">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Permit_Suspended"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Permit_Active"/>
+    <dbpi:transitionTrigger>Suspension basis cured and permit reinstated.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/ViolationCase_7782">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/ViolationCase"/>
+    <dbpi:violationCaseNumber>CASE-2026-7782</dbpi:violationCaseNumber>
+    <dbpi:openedDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2026-02-28</dbpi:openedDate>
+    <dbpi:closedDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2026-04-15</dbpi:closedDate>
+    <dbpi:relatedProperty rdf:resource="https://data.redvale.gov/ontology/dbpi/Property_500Market"/>
+    <dbpi:relatedInspection rdf:resource="https://data.redvale.gov/ontology/dbpi/Inspection_501"/>
+    <dbpi:relatedPermit rdf:resource="https://data.redvale.gov/ontology/dbpi/Permit_0042"/>
+    <dbpi:hasCaseStatus rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#CasePendingCompliance"/>
+    <dbpi:hasNotice rdf:resource="https://data.redvale.gov/ontology/dbpi/Notice_7782"/>
+    <dbpi:hasCorrectiveAction rdf:resource="https://data.redvale.gov/ontology/dbpi/CorrectiveAction_7782_1"/>
+    <dbpi:assignedToUnit rdf:resource="https://data.redvale.gov/ontology/dbpi/EnforcementDivision"/>
+    <dbpi:hasAppeal rdf:resource="https://data.redvale.gov/ontology/dbpi/Appeal_7782"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFS_RecReq_PartiallyFulfilled">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <dbpi:displayName>Partially Fulfilled</dbpi:displayName>
+    <dbpi:mapsToConcept rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#RecordsPartiallyFulfilled"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/toState">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <rdfs:label>to state</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/hasPlanReview">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/PermitApplication"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/PlanReview"/>
+    <rdfs:label>has plan review</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#AppealDenied">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#AppealStatusScheme"/>
+    <skos:prefLabel>Denied</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_Permit_7">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Permit_Suspended"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Permit_Expired"/>
+    <dbpi:transitionTrigger>Suspended permit lapses before reinstatement.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_Appeal_1">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Appeal_Pending"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Appeal_Granted"/>
+    <dbpi:transitionTrigger>Hearing or review results in modified or reversed action.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/relatedInspection">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/ViolationCase"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/Inspection"/>
+    <rdfs:label>related inspection</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/permitNumber">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/Permit"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <rdfs:label>permit number</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#StatusUnderReview">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#ApplicationStatusScheme"/>
+    <skos:prefLabel>Under Review</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_Case_2">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Case_Open"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Case_Closed"/>
+    <dbpi:transitionTrigger>Complaint unsubstantiated or outside jurisdiction.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/hasSupportingDocument">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/Document"/>
+    <rdfs:label>has supporting document</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Parcel_010889004">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Parcel"/>
+    <dbpi:parcelNumber>010-889-004</dbpi:parcelNumber>
+    <dbpi:locatedInJurisdiction rdf:resource="https://data.redvale.gov/ontology/dbpi/Jurisdiction_RedVale"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/RecordsRequestDocument_0091">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Document"/>
+    <dbpi:documentNumber>PRR-2026-0091</dbpi:documentNumber>
+    <dbpi:displayName>Public records request for permit history of 500 Market Street</dbpi:displayName>
+    <dbpi:documentDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2026-03-09</dbpi:documentDate>
+    <dbpi:submittedBy rdf:resource="https://data.redvale.gov/ontology/dbpi/Citizen_MaryCole"/>
+    <dbpi:concernsProperty rdf:resource="https://data.redvale.gov/ontology/dbpi/Property_500Market"/>
+    <dbpi:forService rdf:resource="https://data.redvale.gov/ontology/dbpi/PublicRecordsService"/>
+    <dbpi:assignedToUnit rdf:resource="https://data.redvale.gov/ontology/dbpi/RecordsUnit"/>
+    <dbpi:assignedToEmployee rdf:resource="https://data.redvale.gov/ontology/dbpi/SamuelReed"/>
+    <dbpi:description>Requester sought issued permits, inspection outcomes, and violation notices for the property.</dbpi:description>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/InspectionRequest">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Inspection Request</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/CodeEnforcementOfficer">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="https://data.redvale.gov/ontology/dbpi/Employee"/>
+    <rdfs:label>Code Enforcement Officer</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/violationCaseNumber">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/ViolationCase"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <rdfs:label>violation case number</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#RecordsClosed">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#RecordsRequestStatusScheme"/>
+    <skos:prefLabel>Closed</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/externalReference">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <rdfs:label>external reference</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFS_Appeal_Granted">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <dbpi:displayName>Granted</dbpi:displayName>
+    <dbpi:mapsToConcept rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#AppealGranted"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/forService">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/PublicService"/>
+    <rdfs:label>for service</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_InspReq_4">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_InspReq_Scheduled"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_InspReq_Canceled"/>
+    <dbpi:transitionTrigger>Appointment canceled.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/city">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <rdfs:label>city</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_Case_1">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Case_Open"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Case_PendingCompliance"/>
+    <dbpi:transitionTrigger>Violation confirmed and corrective action issued.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#PermitTypeDemolition">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#PermitTypeScheme"/>
+    <skos:prefLabel>Demolition</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/paidDate">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#date"/>
+    <rdfs:label>paid date</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#StatusReceived">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#ApplicationStatusScheme"/>
+    <skos:prefLabel>Received</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/mapsToConcept">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <rdfs:label>maps to concept</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#InspectionElectricalRough">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#InspectionTypeScheme"/>
+    <skos:prefLabel>Electrical Rough Inspection</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/CodeSection_110_3B">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/CodeSection"/>
+    <dbpi:identifier>ELEC-110.3(B)</dbpi:identifier>
+    <dbpi:displayName>Electrical installations shall be used and installed in accordance with listing and labeling</dbpi:displayName>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_Permit_4">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Permit_Active"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Permit_Finaled"/>
+    <dbpi:transitionTrigger>All required final approvals completed.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_RecReq_7">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_RecReq_Denied"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_RecReq_Closed"/>
+    <dbpi:transitionTrigger>Administrative completion.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b16">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/authorizedPermitType"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:maxCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:maxCount>
+    <sh:class rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFS_Case_Closed">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <dbpi:displayName>Closed</dbpi:displayName>
+    <dbpi:mapsToConcept rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#CaseClosed"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/PermitApplication">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Permit Application</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#WorkPanelUpgrade">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#WorkTypeScheme"/>
+    <skos:prefLabel>Panel Upgrade</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/employeeNumber">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/Employee"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <rdfs:label>employee number</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#InspectionTypeScheme">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#ConceptScheme"/>
+    <skos:prefLabel>Inspection Type Scheme</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Inspection">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Inspection</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/inspectionNumber">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/Inspection"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <rdfs:label>inspection number</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/BuildingPermitService">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/PublicService"/>
+    <dbpi:identifier>SVC-DBPI-001</dbpi:identifier>
+    <dbpi:displayName>Permit Intake and Case Creation</dbpi:displayName>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/heardBy">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/Hearing"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/HearingOfficer"/>
+    <rdfs:label>heard by</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WorkUnit">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="https://data.redvale.gov/ontology/dbpi/Organization"/>
+    <rdfs:label>Work Unit</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Permit">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Permit</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#RecordsReceived">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#RecordsRequestStatusScheme"/>
+    <skos:prefLabel>Received</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b11">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/hasApplicationStatus"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:maxCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:maxCount>
+    <sh:class rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/forPermit">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/Permit"/>
+    <rdfs:label>for permit</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/submittedBy">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/Agent"/>
+    <rdfs:label>submitted by</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/reportsTo">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/Organization"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/Organization"/>
+    <rdfs:label>reports to</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/currencyCode">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <rdfs:label>currency code</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/submittedDate">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#date"/>
+    <rdfs:label>submitted date</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/applicationNumber">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/PermitApplication"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <rdfs:label>application number</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFS_RecReq_Denied">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <dbpi:displayName>Denied</dbpi:displayName>
+    <dbpi:mapsToConcept rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#RecordsDenied"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Payment_1017">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Payment"/>
+    <dbpi:identifier>PAY-1017</dbpi:identifier>
+    <dbpi:amount rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">244.00</dbpi:amount>
+    <dbpi:currencyCode>USD</dbpi:currencyCode>
+    <dbpi:paidDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2026-03-03</dbpi:paidDate>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_App_5">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_App_Received"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_App_Withdrawn"/>
+    <dbpi:transitionTrigger>Applicant withdraws before review begins.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/ViolationCase_7819">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/ViolationCase"/>
+    <dbpi:violationCaseNumber>CASE-2026-7819</dbpi:violationCaseNumber>
+    <dbpi:openedDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2026-03-17</dbpi:openedDate>
+    <dbpi:relatedInspection rdf:resource="https://data.redvale.gov/ontology/dbpi/Inspection_7819"/>
+    <dbpi:relatedProperty rdf:resource="https://data.redvale.gov/ontology/dbpi/Property_77Juniper"/>
+    <dbpi:hasCaseStatus rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#CaseReferred"/>
+    <dbpi:hasNotice rdf:resource="https://data.redvale.gov/ontology/dbpi/Notice_7819"/>
+    <dbpi:hasCorrectiveAction rdf:resource="https://data.redvale.gov/ontology/dbpi/CorrectiveAction_7819_1"/>
+    <dbpi:assignedToUnit rdf:resource="https://data.redvale.gov/ontology/dbpi/EnforcementDivision"/>
+    <dbpi:assignedToEmployee rdf:resource="https://data.redvale.gov/ontology/dbpi/HelenaCho"/>
+    <dbpi:description>Garage conversion case escalated to administrative hearing after missed compliance deadline.</dbpi:description>
+    <dbpi:hasSupportingDocument rdf:resource="https://data.redvale.gov/ontology/dbpi/ComplaintDocument_204"/>
+    <dbpi:hasAppeal rdf:resource="https://data.redvale.gov/ontology/dbpi/Appeal_7819"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/PermitLifecycle">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowModel"/>
+    <dbpi:displayName>Permit Lifecycle</dbpi:displayName>
+    <dbpi:appliesToClass rdf:resource="https://data.redvale.gov/ontology/dbpi/Permit"/>
+    <dbpi:appliesAuthorityId>AUTH-DBPI-002</dbpi:appliesAuthorityId>
+    <dbpi:appliesAuthorityId>AUTH-DBPI-004</dbpi:appliesAuthorityId>
+    <dbpi:hasWorkflowState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Permit_Active"/>
+    <dbpi:hasWorkflowState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Permit_Suspended"/>
+    <dbpi:hasWorkflowState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Permit_Revoked"/>
+    <dbpi:hasWorkflowState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Permit_Expired"/>
+    <dbpi:hasWorkflowState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Permit_Finaled"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_Permit_1"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_Permit_2"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_Permit_3"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_Permit_4"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_Permit_5"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_Permit_6"/>
+    <dbpi:hasWorkflowTransition rdf:resource="https://data.redvale.gov/ontology/dbpi/WFT_Permit_7"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WorkflowTransition">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Workflow Transition</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b2">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/locatedInJurisdiction"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:maxCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:maxCount>
+    <sh:class rdf:resource="https://data.redvale.gov/ontology/dbpi/Jurisdiction"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#WorkKitchenRemodel">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#WorkTypeScheme"/>
+    <skos:prefLabel>Kitchen Remodel</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/PlanReviewer">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="https://data.redvale.gov/ontology/dbpi/Employee"/>
+    <rdfs:label>Plan Reviewer</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Hearing">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Hearing</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/resultedInPermit">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/PermitApplication"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/Permit"/>
+    <rdfs:label>resulted in permit</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_Case_4">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Case_PendingCompliance"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Case_Referred"/>
+    <dbpi:transitionTrigger>Noncompliance persists and matter is escalated.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/transitionTrigger">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <rdfs:label>transition trigger</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/hasApplicationStatus">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/PermitApplication"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <rdfs:label>has application status</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b13">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/issuedDate"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:maxCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:maxCount>
+    <sh:datatype rdf:resource="http://www.w3.org/2001/XMLSchema#date"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Requirement_PlanSet">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Requirement"/>
+    <dbpi:identifier>REQ-PLANSET</dbpi:identifier>
+    <dbpi:displayName>Complete Plan Set Required</dbpi:displayName>
+    <dbpi:description>Applicant must submit a full plan set prepared by a licensed architect or engineer.</dbpi:description>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/JuniperHomesLLC">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Organization"/>
+    <dbpi:legalName>Juniper Homes LLC</dbpi:legalName>
+    <dbpi:identifier>ORG-EXT-5520</dbpi:identifier>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/hasStatus">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <rdfs:label>has status</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/startDate">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#date"/>
+    <rdfs:label>start date</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/BobPatel">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/PlanReviewer"/>
+    <dbpi:employeeNumber>E1034</dbpi:employeeNumber>
+    <dbpi:displayName>Bob Patel</dbpi:displayName>
+    <dbpi:hasRole rdf:resource="https://data.redvale.gov/ontology/dbpi/Role_PlanReviewer"/>
+    <dbpi:memberOf rdf:resource="https://data.redvale.gov/ontology/dbpi/PlanReviewDivision"/>
+    <dbpi:email>bob.patel@redvale.gov</dbpi:email>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/hasNotice">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/ViolationCase"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/NoticeOfViolation"/>
+    <rdfs:label>has notice</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/dueDate">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/CorrectiveAction"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#date"/>
+    <rdfs:label>due date</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b9">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/requestedPermitType"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:maxCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:maxCount>
+    <sh:class rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/hasSubUnit">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/Organization"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/Organization"/>
+    <rdfs:label>has sub-unit</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Fee_1017">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Fee"/>
+    <dbpi:identifier>FEE-1017</dbpi:identifier>
+    <dbpi:description>Electrical permit and final inspection fee</dbpi:description>
+    <dbpi:amount rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">244.00</dbpi:amount>
+    <dbpi:currencyCode>USD</dbpi:currencyCode>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b10">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/requestedWorkType"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:maxCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:maxCount>
+    <sh:class rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#PermitExpired">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#PermitStatusScheme"/>
+    <skos:prefLabel>Expired</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Property_77Juniper">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Property"/>
+    <dbpi:identifier>PROP-77-JUNIPER</dbpi:identifier>
+    <dbpi:displayName>77 Juniper Lane</dbpi:displayName>
+    <dbpi:hasAddress rdf:resource="https://data.redvale.gov/ontology/dbpi/Address_77Juniper"/>
+    <dbpi:hasParcel rdf:resource="https://data.redvale.gov/ontology/dbpi/Parcel_011122008"/>
+    <dbpi:hasOwner rdf:resource="https://data.redvale.gov/ontology/dbpi/JuniperHomesLLC"/>
+    <dbpi:locatedInJurisdiction rdf:resource="https://data.redvale.gov/ontology/dbpi/Jurisdiction_RedVale"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Ontology"/>
+    <rdfs:label>DBPI Controlled Vocabularies</rdfs:label>
+    <rdfs:comment>SKOS concept schemes for statuses and classifications used by DBPI.</rdfs:comment>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/ContactPoint">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Contact Point</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/fulfillsRequest">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/Inspection"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/InspectionRequest"/>
+    <rdfs:label>fulfills request</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/authorizedWorkType">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/Permit"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <rdfs:label>authorized work type</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#PermitSuspended">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#PermitStatusScheme"/>
+    <skos:prefLabel>Suspended</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b25">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/forPermit"/>
+    <sh:maxCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:maxCount>
+    <sh:class rdf:resource="https://data.redvale.gov/ontology/dbpi/Permit"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFS_Permit_Active">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <dbpi:displayName>Active</dbpi:displayName>
+    <dbpi:mapsToConcept rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#PermitActive"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#InspectionFraming">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#InspectionTypeScheme"/>
+    <skos:prefLabel>Framing Inspection</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#InspectionFail">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#InspectionResultScheme"/>
+    <skos:prefLabel>Fail</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/EnforcementDivision">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Division"/>
+    <dbpi:identifier>ORG-ENF</dbpi:identifier>
+    <dbpi:displayName>Code Enforcement Division</dbpi:displayName>
+    <dbpi:reportsTo rdf:resource="https://data.redvale.gov/ontology/dbpi/DBPI_Department"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/ViolationCase">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Violation Case</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/hasParcel">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/Property"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/Parcel"/>
+    <rdfs:label>has parcel</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFS_Permit_Revoked">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <dbpi:displayName>Revoked</dbpi:displayName>
+    <dbpi:mapsToConcept rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#PermitRevoked"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/ReviewComment">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Review Comment</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFS_InspReq_Scheduled">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <dbpi:displayName>Scheduled</dbpi:displayName>
+    <dbpi:mapsToConcept rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#InspectionScheduled"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#AppealGranted">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#AppealStatusScheme"/>
+    <skos:prefLabel>Granted</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#PermitTypeMechanical">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#PermitTypeScheme"/>
+    <skos:prefLabel>Mechanical</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/hasPayment">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/Payment"/>
+    <rdfs:label>has payment</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/displayName">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <rdfs:label>display name</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Parcel_011122008">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Parcel"/>
+    <dbpi:parcelNumber>011-122-008</dbpi:parcelNumber>
+    <dbpi:locatedInJurisdiction rdf:resource="https://data.redvale.gov/ontology/dbpi/Jurisdiction_RedVale"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/hasCaseStatus">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/ViolationCase"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <rdfs:label>has case status</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/MarcoSilva">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/PermitTechnician"/>
+    <dbpi:employeeNumber>E1015</dbpi:employeeNumber>
+    <dbpi:displayName>Marco Silva</dbpi:displayName>
+    <dbpi:hasRole rdf:resource="https://data.redvale.gov/ontology/dbpi/Role_PermitTechnician"/>
+    <dbpi:memberOf rdf:resource="https://data.redvale.gov/ontology/dbpi/PermitServicesDivision"/>
+    <dbpi:email>marco.silva@redvale.gov</dbpi:email>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b15">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/basedOnApplication"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:maxCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:maxCount>
+    <sh:class rdf:resource="https://data.redvale.gov/ontology/dbpi/PermitApplication"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#StatusWithdrawn">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#ApplicationStatusScheme"/>
+    <skos:prefLabel>Withdrawn</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#PermitStatusScheme">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#ConceptScheme"/>
+    <skos:prefLabel>Permit Status Scheme</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#WorkBathroomRemodel">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#WorkTypeScheme"/>
+    <skos:prefLabel>Bathroom Remodel</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#CaseOpen">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#CaseStatusScheme"/>
+    <skos:prefLabel>Open</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/note">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <rdfs:label>note</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Role">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Role</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#PermitTypeResidentialRemodel">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#PermitTypeScheme"/>
+    <skos:prefLabel>Residential Remodel</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/countryCode">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <rdfs:label>country code</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_RecReq_6">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_RecReq_PartiallyFulfilled"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_RecReq_Closed"/>
+    <dbpi:transitionTrigger>Administrative completion.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/PlanSet_1017">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Document"/>
+    <dbpi:documentNumber>DOC-1017-PLANSET</dbpi:documentNumber>
+    <dbpi:displayName>Electrical Panel Upgrade Plans</dbpi:displayName>
+    <dbpi:documentDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2026-03-03</dbpi:documentDate>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Organization">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="https://data.redvale.gov/ontology/dbpi/Agent"/>
+    <rdfs:label>Organization</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b26">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/violationCaseNumber"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:maxCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:maxCount>
+    <sh:datatype rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/RosaMartinez">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/HearingOfficer"/>
+    <dbpi:employeeNumber>E1102</dbpi:employeeNumber>
+    <dbpi:displayName>Rosa Martinez</dbpi:displayName>
+    <dbpi:hasRole rdf:resource="https://data.redvale.gov/ontology/dbpi/Role_HearingOfficer"/>
+    <dbpi:memberOf rdf:resource="https://data.redvale.gov/ontology/dbpi/EnforcementDivision"/>
+    <dbpi:email>rosa.martinez@redvale.gov</dbpi:email>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/assignedToEmployee">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>assigned to employee</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFS_Case_Referred">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <dbpi:displayName>Referred</dbpi:displayName>
+    <dbpi:mapsToConcept rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#CaseReferred"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/issuedDate">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/Permit"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#date"/>
+    <rdfs:label>issued date</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/hasWorkflowTransition">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowModel"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <rdfs:label>has workflow transition</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_RecReq_5">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_RecReq_Fulfilled"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_RecReq_Closed"/>
+    <dbpi:transitionTrigger>Administrative completion.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b7">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/concernsProperty"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:maxCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:maxCount>
+    <sh:class rdf:resource="https://data.redvale.gov/ontology/dbpi/Property"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#InspectionPartialPass">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#InspectionResultScheme"/>
+    <skos:prefLabel>Partial Pass</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFS_RecReq_InReview">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <dbpi:displayName>In Review</dbpi:displayName>
+    <dbpi:mapsToConcept rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#RecordsInReview"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#WorkInteriorRenovation">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#WorkTypeScheme"/>
+    <skos:prefLabel>Interior Renovation</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/relatedProperty">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/ViolationCase"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/Property"/>
+    <rdfs:label>related property</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/permitting">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Ontology"/>
+    <owl:imports rdf:resource="https://data.redvale.gov/ontology/dbpi/core"/>
+    <owl:imports rdf:resource="https://data.redvale.gov/ontology/dbpi/organization"/>
+    <rdfs:label>DBPI Permitting Ontology</rdfs:label>
+    <rdfs:comment>Permitting lifecycle ontology for DBPI.</rdfs:comment>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b34">
+    <rdf:first rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b30"/>
+    <rdf:rest rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b35"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b17">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/authorizedWorkType"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:maxCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:maxCount>
+    <sh:class rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFS_Permit_Finaled">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <dbpi:displayName>Finaled</dbpi:displayName>
+    <dbpi:mapsToConcept rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#PermitFinaled"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b30">
+    <sh:property rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b31"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#InspectionCompleted">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#InspectionStatusScheme"/>
+    <skos:prefLabel>Completed</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/PermitTechnician">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="https://data.redvale.gov/ontology/dbpi/Employee"/>
+    <rdfs:label>Permit Technician</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_Permit_6">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Permit_Suspended"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Permit_Revoked"/>
+    <dbpi:transitionTrigger>Suspended permit proceeds to revocation.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#CasePendingCompliance">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#CaseStatusScheme"/>
+    <skos:prefLabel>Pending Compliance</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Role_RecordsOfficer">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Role"/>
+    <dbpi:displayName>Records Officer</dbpi:displayName>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Parcel">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Parcel</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b24">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/performedBy"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:maxCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:maxCount>
+    <sh:class rdf:resource="https://data.redvale.gov/ontology/dbpi/Inspector"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Role_PermitTechnician">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Role"/>
+    <dbpi:displayName>Permit Technician</dbpi:displayName>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_Case_5">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Case_Referred"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_Case_Closed"/>
+    <dbpi:transitionTrigger>Referred matter reaches final disposition.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Role_PlanReviewer">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Role"/>
+    <dbpi:displayName>Plan Reviewer</dbpi:displayName>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#RecordsFulfilled">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:inScheme rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#RecordsRequestStatusScheme"/>
+    <skos:prefLabel>Fulfilled</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Jurisdiction">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Jurisdiction</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Division">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="https://data.redvale.gov/ontology/dbpi/Organization"/>
+    <rdfs:label>Division</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/postalCode">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <rdfs:label>postal code</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/NoticeOfViolation">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="https://data.redvale.gov/ontology/dbpi/Document"/>
+    <rdfs:label>Notice of Violation</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b3">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/hasAddress"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:maxCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:maxCount>
+    <sh:class rdf:resource="https://data.redvale.gov/ontology/dbpi/Address"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#ApplicationStatusScheme">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#ConceptScheme"/>
+    <skos:prefLabel>Application Status Scheme</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WorkflowModel">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Workflow Model</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/PlanReview">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Plan Review</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Fee">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Fee</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_InspReq_1">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_InspReq_Requested"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_InspReq_Scheduled"/>
+    <dbpi:transitionTrigger>Appointment slot assigned.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/CorrectiveAction">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Corrective Action</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/ComplaintDocument_204">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Document"/>
+    <dbpi:documentNumber>CMP-2026-0204</dbpi:documentNumber>
+    <dbpi:displayName>Complaint regarding unpermitted garage conversion at 77 Juniper Lane</dbpi:displayName>
+    <dbpi:documentDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2026-03-14</dbpi:documentDate>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/requestedWorkType">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/PermitApplication"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <rdfs:label>requested work type</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFS_Appeal_Pending">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <dbpi:displayName>Pending</dbpi:displayName>
+    <dbpi:mapsToConcept rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#AppealPending"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/expirationDate">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/Permit"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#date"/>
+    <rdfs:label>expiration date</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFT_App_1">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowTransition"/>
+    <dbpi:fromState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_App_Received"/>
+    <dbpi:toState rdf:resource="https://data.redvale.gov/ontology/dbpi/WFS_App_UnderReview"/>
+    <dbpi:transitionTrigger>Intake completeness confirmed and routing initiated.</dbpi:transitionTrigger>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WorkflowState">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Workflow State</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/locatedInJurisdiction">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:range rdf:resource="https://data.redvale.gov/ontology/dbpi/Jurisdiction"/>
+    <rdfs:label>located in jurisdiction</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Employee">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="https://data.redvale.gov/ontology/dbpi/Person"/>
+    <rdfs:label>Employee</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="n6548e7e393cf4c23a04bb307aa0ecf58b5">
+    <sh:path rdf:resource="https://data.redvale.gov/ontology/dbpi/submittedDate"/>
+    <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
+    <sh:maxCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:maxCount>
+    <sh:datatype rdf:resource="http://www.w3.org/2001/XMLSchema#date"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Document">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Document</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFS_RecReq_Closed">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <dbpi:displayName>Closed</dbpi:displayName>
+    <dbpi:mapsToConcept rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#RecordsClosed"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/codelists#WorkTypeScheme">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#ConceptScheme"/>
+    <skos:prefLabel>Work Type Scheme</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/WFS_App_Approved">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/WorkflowState"/>
+    <dbpi:displayName>Approved</dbpi:displayName>
+    <dbpi:mapsToConcept rdf:resource="https://data.redvale.gov/ontology/dbpi/codelists#StatusApproved"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/hasInspectionStatus">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="https://data.redvale.gov/ontology/dbpi/Inspection"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <rdfs:label>has inspection status</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Role_CodeEnforcementOfficer">
+    <rdf:type rdf:resource="https://data.redvale.gov/ontology/dbpi/Role"/>
+    <dbpi:displayName>Code Enforcement Officer</dbpi:displayName>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/Appeal">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Appeal</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/documentNumber">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <rdfs:label>document number</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://data.redvale.gov/ontology/dbpi/PublicService">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Public Service</rdfs:label>
+  </rdf:Description>
+</rdf:RDF>

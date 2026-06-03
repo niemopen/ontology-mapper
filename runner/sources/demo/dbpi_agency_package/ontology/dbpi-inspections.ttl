@@ -1,0 +1,78 @@
+@prefix dbpi: <https://data.redvale.gov/ontology/dbpi/> .
+@prefix dcp: <https://data.redvale.gov/ontology/dbpi/codelists#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://data.redvale.gov/ontology/dbpi/inspections> a owl:Ontology ;
+    owl:imports <https://data.redvale.gov/ontology/dbpi/core>, <https://data.redvale.gov/ontology/dbpi/organization>, <https://data.redvale.gov/ontology/dbpi/permitting> ;
+    rdfs:label "DBPI Inspections Ontology" ;
+    rdfs:comment "Inspection scheduling and outcome model for DBPI." .
+
+dbpi:InspectionRequest a owl:Class ; rdfs:label "Inspection Request" .
+dbpi:Inspection a owl:Class ; rdfs:label "Inspection" .
+
+dbpi:forPermit a owl:ObjectProperty ;
+    rdfs:range dbpi:Permit ;
+    rdfs:label "for permit" .
+
+dbpi:requestedInspectionType a owl:ObjectProperty ;
+    rdfs:domain dbpi:InspectionRequest ;
+    rdfs:range skos:Concept ;
+    rdfs:label "requested inspection type" .
+
+dbpi:inspectionType a owl:ObjectProperty ;
+    rdfs:domain dbpi:Inspection ;
+    rdfs:range skos:Concept ;
+    rdfs:label "inspection type" .
+
+dbpi:hasInspectionStatus a owl:ObjectProperty ;
+    rdfs:domain dbpi:Inspection ;
+    rdfs:range skos:Concept ;
+    rdfs:label "has inspection status" .
+
+dbpi:hasInspectionResult a owl:ObjectProperty ;
+    rdfs:domain dbpi:Inspection ;
+    rdfs:range skos:Concept ;
+    rdfs:label "has inspection result" .
+
+dbpi:requestedBy a owl:ObjectProperty ;
+    rdfs:domain dbpi:InspectionRequest ;
+    rdfs:range dbpi:Agent ;
+    rdfs:label "requested by" .
+
+dbpi:fulfillsRequest a owl:ObjectProperty ;
+    rdfs:domain dbpi:Inspection ;
+    rdfs:range dbpi:InspectionRequest ;
+    rdfs:label "fulfills request" .
+
+dbpi:inspectedProperty a owl:ObjectProperty ;
+    rdfs:domain dbpi:Inspection ;
+    rdfs:range dbpi:Property ;
+    rdfs:label "inspected property" .
+
+dbpi:performedBy a owl:ObjectProperty ;
+    rdfs:domain dbpi:Inspection ;
+    rdfs:range dbpi:Inspector ;
+    rdfs:label "performed by" .
+
+dbpi:inspectionNumber a owl:DatatypeProperty ;
+    rdfs:domain dbpi:Inspection ;
+    rdfs:range xsd:string ;
+    rdfs:label "inspection number" .
+
+dbpi:requestedDate a owl:DatatypeProperty ;
+    rdfs:domain dbpi:InspectionRequest ;
+    rdfs:range xsd:date ;
+    rdfs:label "requested date" .
+
+dbpi:scheduledFor a owl:DatatypeProperty ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "scheduled for" .
+
+dbpi:completedAt a owl:DatatypeProperty ;
+    rdfs:domain dbpi:Inspection ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "completed at" .

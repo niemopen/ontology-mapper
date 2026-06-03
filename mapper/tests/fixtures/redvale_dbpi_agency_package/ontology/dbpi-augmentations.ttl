@@ -1,0 +1,75 @@
+@prefix dbpi: <https://data.redvale.gov/ontology/dbpi/> .
+@prefix gis: <https://data.redvale.gov/ontology/gis/> .
+@prefix fin: <https://data.redvale.gov/ontology/finance/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+### ---------------------------------------------------------------
+### GIS Division augmentations
+### The City GIS Division extends DBPI Property with geospatial data.
+### In CMF, these become AugmentationRecords in the gis namespace
+### referencing dbpi.PropertyType as the augmented class.
+### ---------------------------------------------------------------
+
+<https://data.redvale.gov/ontology/gis> a owl:Ontology ;
+    owl:imports <https://data.redvale.gov/ontology/dbpi/core> ;
+    rdfs:label "Red Vale GIS Extensions" ;
+    rdfs:comment "Geospatial augmentations for DBPI property records, provided by the City GIS Division." .
+
+gis:latitude a owl:DatatypeProperty ;
+    rdfs:domain dbpi:Property ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "latitude" ;
+    rdfs:comment "WGS84 latitude of the property centroid." .
+
+gis:longitude a owl:DatatypeProperty ;
+    rdfs:domain dbpi:Property ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "longitude" ;
+    rdfs:comment "WGS84 longitude of the property centroid." .
+
+gis:zoneDesignation a owl:DatatypeProperty ;
+    rdfs:domain dbpi:Property ;
+    rdfs:range xsd:string ;
+    rdfs:label "zone designation" ;
+    rdfs:comment "Municipal zoning designation (e.g., R-1, C-2, M-1)." .
+
+gis:floodZoneCode a owl:DatatypeProperty ;
+    rdfs:domain dbpi:Property ;
+    rdfs:range xsd:string ;
+    rdfs:label "flood zone code" ;
+    rdfs:comment "FEMA flood zone designation for the parcel." .
+
+### ---------------------------------------------------------------
+### Finance Department augmentations
+### The City Finance Department extends DBPI Permit and Fee with
+### accounting classification properties.
+### In CMF, these become AugmentationRecords in the fin namespace
+### referencing dbpi.PermitType and dbpi.FeeType.
+### ---------------------------------------------------------------
+
+<https://data.redvale.gov/ontology/finance> a owl:Ontology ;
+    owl:imports <https://data.redvale.gov/ontology/dbpi/core>,
+                <https://data.redvale.gov/ontology/dbpi/permitting> ;
+    rdfs:label "Red Vale Finance Extensions" ;
+    rdfs:comment "Financial reporting augmentations for DBPI permits and fees, provided by the City Finance Department." .
+
+fin:revenueClassificationCode a owl:DatatypeProperty ;
+    rdfs:domain dbpi:Permit ;
+    rdfs:range xsd:string ;
+    rdfs:label "revenue classification code" ;
+    rdfs:comment "City revenue classification code for permit fee categorization." .
+
+fin:generalLedgerAccount a owl:DatatypeProperty ;
+    rdfs:domain dbpi:Fee ;
+    rdfs:range xsd:string ;
+    rdfs:label "general ledger account" ;
+    rdfs:comment "General ledger account number for financial posting." .
+
+fin:fiscalYearCode a owl:DatatypeProperty ;
+    rdfs:domain dbpi:Fee ;
+    rdfs:range xsd:string ;
+    rdfs:label "fiscal year code" ;
+    rdfs:comment "Fiscal year to which this fee is attributed (e.g., FY2026)." .

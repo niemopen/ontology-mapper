@@ -1,0 +1,100 @@
+@prefix dbpi: <https://data.redvale.gov/ontology/dbpi/> .
+@prefix dcp: <https://data.redvale.gov/ontology/dbpi/codelists#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://data.redvale.gov/ontology/dbpi/permitting> a owl:Ontology ;
+    owl:imports <https://data.redvale.gov/ontology/dbpi/core>, <https://data.redvale.gov/ontology/dbpi/organization> ;
+    rdfs:label "DBPI Permitting Ontology" ;
+    rdfs:comment "Permitting lifecycle ontology for DBPI." .
+
+dbpi:PermitApplication a owl:Class ; rdfs:label "Permit Application" .
+dbpi:Permit a owl:Class ; rdfs:label "Permit" .
+dbpi:PlanReview a owl:Class ; rdfs:label "Plan Review" .
+dbpi:ReviewComment a owl:Class ; rdfs:label "Review Comment" .
+
+dbpi:basedOnApplication a owl:ObjectProperty ;
+    rdfs:domain dbpi:Permit ;
+    rdfs:range dbpi:PermitApplication ;
+    rdfs:label "based on application" .
+
+dbpi:requestedPermitType a owl:ObjectProperty ;
+    rdfs:domain dbpi:PermitApplication ;
+    rdfs:range skos:Concept ;
+    rdfs:label "requested permit type" .
+
+dbpi:authorizedPermitType a owl:ObjectProperty ;
+    rdfs:domain dbpi:Permit ;
+    rdfs:range skos:Concept ;
+    rdfs:label "authorized permit type" .
+
+dbpi:requestedWorkType a owl:ObjectProperty ;
+    rdfs:domain dbpi:PermitApplication ;
+    rdfs:range skos:Concept ;
+    rdfs:label "requested work type" .
+
+dbpi:authorizedWorkType a owl:ObjectProperty ;
+    rdfs:domain dbpi:Permit ;
+    rdfs:range skos:Concept ;
+    rdfs:label "authorized work type" .
+
+dbpi:hasApplicationStatus a owl:ObjectProperty ;
+    rdfs:domain dbpi:PermitApplication ;
+    rdfs:range skos:Concept ;
+    rdfs:label "has application status" .
+
+dbpi:hasPermitStatus a owl:ObjectProperty ;
+    rdfs:domain dbpi:Permit ;
+    rdfs:range skos:Concept ;
+    rdfs:label "has permit status" .
+
+dbpi:hasPlanReview a owl:ObjectProperty ;
+    rdfs:domain dbpi:PermitApplication ;
+    rdfs:range dbpi:PlanReview ;
+    rdfs:label "has plan review" .
+
+dbpi:hasReviewComment a owl:ObjectProperty ;
+    rdfs:domain dbpi:PlanReview ;
+    rdfs:range dbpi:ReviewComment ;
+    rdfs:label "has review comment" .
+
+dbpi:reviewedBy a owl:ObjectProperty ;
+    rdfs:domain dbpi:PlanReview ;
+    rdfs:range dbpi:Employee ;
+    rdfs:label "reviewed by" .
+
+dbpi:resultedInPermit a owl:ObjectProperty ;
+    rdfs:domain dbpi:PermitApplication ;
+    rdfs:range dbpi:Permit ;
+    rdfs:label "resulted in permit" .
+
+dbpi:applicationNumber a owl:DatatypeProperty ;
+    rdfs:domain dbpi:PermitApplication ;
+    rdfs:range xsd:string ;
+    rdfs:label "application number" .
+
+dbpi:permitNumber a owl:DatatypeProperty ;
+    rdfs:domain dbpi:Permit ;
+    rdfs:range xsd:string ;
+    rdfs:label "permit number" .
+
+dbpi:submittedDate a owl:DatatypeProperty ;
+    rdfs:range xsd:date ;
+    rdfs:label "submitted date" .
+
+dbpi:decisionDate a owl:DatatypeProperty ;
+    rdfs:range xsd:date ;
+    rdfs:label "decision date" .
+
+dbpi:issuedDate a owl:DatatypeProperty ;
+    rdfs:domain dbpi:Permit ;
+    rdfs:range xsd:date ;
+    rdfs:label "issued date" .
+
+dbpi:expirationDate a owl:DatatypeProperty ;
+    rdfs:domain dbpi:Permit ;
+    rdfs:range xsd:date ;
+    rdfs:label "expiration date" .

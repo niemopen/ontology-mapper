@@ -1,0 +1,1818 @@
+@prefix dbpi: <https://data.redvale.gov/ontology/dbpi/> .
+@prefix dcp: <https://data.redvale.gov/ontology/dbpi/codelists#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+dbpi:AppealLifecycle a dbpi:WorkflowModel ;
+    dbpi:appliesAuthorityId "AUTH-DBPI-005",
+        "AUTH-DBPI-009" ;
+    dbpi:appliesToClass dbpi:Appeal ;
+    dbpi:displayName "Appeal Lifecycle" ;
+    dbpi:hasWorkflowState dbpi:WFS_Appeal_Denied,
+        dbpi:WFS_Appeal_Granted,
+        dbpi:WFS_Appeal_Pending ;
+    dbpi:hasWorkflowTransition dbpi:WFT_Appeal_1,
+        dbpi:WFT_Appeal_2 .
+
+dbpi:Hearing_7782 a dbpi:Hearing ;
+    dbpi:description "Administrative hearing on appeal APL-7782." ;
+    dbpi:forCase dbpi:ViolationCase_7782 ;
+    dbpi:heardBy dbpi:RosaMartinez ;
+    dbpi:hearingDate "2026-03-15T13:30:00"^^xsd:dateTime ;
+    dbpi:identifier "HEAR-7782" .
+
+dbpi:Hearing_7819 a dbpi:Hearing ;
+    dbpi:description "Administrative hearing on unpermitted occupancy and habitability deficiencies." ;
+    dbpi:forCase dbpi:ViolationCase_7819 ;
+    dbpi:heardBy dbpi:RosaMartinez ;
+    dbpi:hearingDate "2026-04-11T09:00:00"^^xsd:dateTime ;
+    dbpi:identifier "HRG-2026-7819" .
+
+dbpi:InspectionRequestLifecycle a dbpi:WorkflowModel ;
+    dbpi:appliesAuthorityId "AUTH-DBPI-003",
+        "AUTH-DBPI-014" ;
+    dbpi:appliesToClass dbpi:InspectionRequest ;
+    dbpi:displayName "Inspection Request Lifecycle" ;
+    dbpi:hasWorkflowState dbpi:WFS_InspReq_Canceled,
+        dbpi:WFS_InspReq_Completed,
+        dbpi:WFS_InspReq_Requested,
+        dbpi:WFS_InspReq_Scheduled ;
+    dbpi:hasWorkflowTransition dbpi:WFT_InspReq_1,
+        dbpi:WFT_InspReq_2,
+        dbpi:WFT_InspReq_3,
+        dbpi:WFT_InspReq_4 .
+
+dbpi:InspectionShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path dbpi:inspectionNumber ],
+        [ sh:class skos:Concept ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path dbpi:inspectionType ],
+        [ sh:class skos:Concept ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path dbpi:hasInspectionResult ],
+        [ sh:class dbpi:Property ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path dbpi:inspectedProperty ],
+        [ sh:class dbpi:Inspector ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path dbpi:performedBy ],
+        [ sh:class dbpi:Permit ;
+            sh:maxCount 1 ;
+            sh:path dbpi:forPermit ] ;
+    sh:targetClass dbpi:Inspection .
+
+dbpi:Inspection_612 a dbpi:Inspection ;
+    dbpi:completedAt "2026-03-12T10:18:00"^^xsd:dateTime ;
+    dbpi:forPermit dbpi:Permit_0064 ;
+    dbpi:fulfillsRequest dbpi:InspectionRequest_612 ;
+    dbpi:hasInspectionResult dcp:InspectionPass ;
+    dbpi:hasInspectionStatus dcp:InspectionCompleted ;
+    dbpi:inspectedProperty dbpi:Property_18Harbor ;
+    dbpi:inspectionNumber "INSP-2026-0612" ;
+    dbpi:inspectionType dcp:InspectionFinal ;
+    dbpi:note "Service panel upgrade completed in conformity with approved plans." ;
+    dbpi:performedBy dbpi:AliceNguyen ;
+    dbpi:scheduledFor "2026-03-12T10:00:00"^^xsd:dateTime .
+
+dbpi:MarcoSilva a dbpi:PermitTechnician ;
+    dbpi:displayName "Marco Silva" ;
+    dbpi:email "marco.silva@redvale.gov" ;
+    dbpi:employeeNumber "E1015" ;
+    dbpi:hasRole dbpi:Role_PermitTechnician ;
+    dbpi:memberOf dbpi:PermitServicesDivision .
+
+dbpi:PermitApplicationLifecycle a dbpi:WorkflowModel ;
+    dbpi:appliesAuthorityId "AUTH-DBPI-002",
+        "AUTH-DBPI-012" ;
+    dbpi:appliesToClass dbpi:PermitApplication ;
+    dbpi:displayName "Permit Application Lifecycle" ;
+    dbpi:hasWorkflowState dbpi:WFS_App_Approved,
+        dbpi:WFS_App_Denied,
+        dbpi:WFS_App_Received,
+        dbpi:WFS_App_UnderReview,
+        dbpi:WFS_App_Withdrawn ;
+    dbpi:hasWorkflowTransition dbpi:WFT_App_1,
+        dbpi:WFT_App_2,
+        dbpi:WFT_App_3,
+        dbpi:WFT_App_4,
+        dbpi:WFT_App_5 .
+
+dbpi:PermitApplicationShape a sh:NodeShape ;
+    sh:property [ sh:class skos:Concept ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path dbpi:requestedWorkType ],
+        [ sh:class skos:Concept ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path dbpi:hasApplicationStatus ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path dbpi:applicationNumber ],
+        [ sh:datatype xsd:date ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path dbpi:submittedDate ],
+        [ sh:class dbpi:Agent ;
+            sh:minCount 1 ;
+            sh:path dbpi:submittedBy ],
+        [ sh:class dbpi:Property ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path dbpi:concernsProperty ],
+        [ sh:class dbpi:PublicService ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path dbpi:forService ],
+        [ sh:class skos:Concept ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path dbpi:requestedPermitType ] ;
+    sh:targetClass dbpi:PermitApplication .
+
+dbpi:PermitLifecycle a dbpi:WorkflowModel ;
+    dbpi:appliesAuthorityId "AUTH-DBPI-002",
+        "AUTH-DBPI-004" ;
+    dbpi:appliesToClass dbpi:Permit ;
+    dbpi:displayName "Permit Lifecycle" ;
+    dbpi:hasWorkflowState dbpi:WFS_Permit_Active,
+        dbpi:WFS_Permit_Expired,
+        dbpi:WFS_Permit_Finaled,
+        dbpi:WFS_Permit_Revoked,
+        dbpi:WFS_Permit_Suspended ;
+    dbpi:hasWorkflowTransition dbpi:WFT_Permit_1,
+        dbpi:WFT_Permit_2,
+        dbpi:WFT_Permit_3,
+        dbpi:WFT_Permit_4,
+        dbpi:WFT_Permit_5,
+        dbpi:WFT_Permit_6,
+        dbpi:WFT_Permit_7 .
+
+dbpi:PermitShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path dbpi:permitNumber ],
+        [ sh:datatype xsd:date ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path dbpi:issuedDate ],
+        [ sh:datatype xsd:date ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path dbpi:expirationDate ],
+        [ sh:class dbpi:PermitApplication ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path dbpi:basedOnApplication ],
+        [ sh:class skos:Concept ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path dbpi:authorizedPermitType ],
+        [ sh:class skos:Concept ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path dbpi:authorizedWorkType ],
+        [ sh:class skos:Concept ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path dbpi:hasPermitStatus ],
+        [ sh:class dbpi:Organization ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path dbpi:issuedBy ] ;
+    sh:targetClass dbpi:Permit .
+
+dbpi:PropertyShape a sh:NodeShape ;
+    sh:property [ sh:class dbpi:Parcel ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path dbpi:hasParcel ],
+        [ sh:class dbpi:Jurisdiction ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path dbpi:locatedInJurisdiction ],
+        [ sh:class dbpi:Address ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path dbpi:hasAddress ] ;
+    sh:targetClass dbpi:Property .
+
+dbpi:RecordsRequestDocument_0091 a dbpi:Document ;
+    dbpi:assignedToEmployee dbpi:SamuelReed ;
+    dbpi:assignedToUnit dbpi:RecordsUnit ;
+    dbpi:concernsProperty dbpi:Property_500Market ;
+    dbpi:description "Requester sought issued permits, inspection outcomes, and violation notices for the property." ;
+    dbpi:displayName "Public records request for permit history of 500 Market Street" ;
+    dbpi:documentDate "2026-03-09"^^xsd:date ;
+    dbpi:documentNumber "PRR-2026-0091" ;
+    dbpi:forService dbpi:PublicRecordsService ;
+    dbpi:submittedBy dbpi:Citizen_MaryCole .
+
+dbpi:RecordsRequestLifecycle a dbpi:WorkflowModel ;
+    dbpi:appliesAuthorityId "AUTH-DBPI-010",
+        "AUTH-DBPI-016" ;
+    dbpi:appliesToClass dbpi:Document ;
+    dbpi:displayName "Records Request Lifecycle" ;
+    dbpi:hasWorkflowState dbpi:WFS_RecReq_Closed,
+        dbpi:WFS_RecReq_Denied,
+        dbpi:WFS_RecReq_Fulfilled,
+        dbpi:WFS_RecReq_InReview,
+        dbpi:WFS_RecReq_PartiallyFulfilled,
+        dbpi:WFS_RecReq_Received ;
+    dbpi:hasWorkflowTransition dbpi:WFT_RecReq_1,
+        dbpi:WFT_RecReq_2,
+        dbpi:WFT_RecReq_3,
+        dbpi:WFT_RecReq_4,
+        dbpi:WFT_RecReq_5,
+        dbpi:WFT_RecReq_6,
+        dbpi:WFT_RecReq_7 .
+
+dbpi:RecordsResponseDocument_0091 a dbpi:Document ;
+    dbpi:description "Released permit history, final inspection records, and notice log with one personal-contact redaction." ;
+    dbpi:displayName "Responsive records package for PRR-2026-0091" ;
+    dbpi:documentDate "2026-03-13"^^xsd:date ;
+    dbpi:documentNumber "PRR-2026-0091-RESP" ;
+    dbpi:forService dbpi:PublicRecordsService .
+
+dbpi:ViolationCaseLifecycle a dbpi:WorkflowModel ;
+    dbpi:appliesAuthorityId "AUTH-DBPI-004",
+        "AUTH-DBPI-015" ;
+    dbpi:appliesToClass dbpi:ViolationCase ;
+    dbpi:displayName "Violation Case Lifecycle" ;
+    dbpi:hasWorkflowState dbpi:WFS_Case_Closed,
+        dbpi:WFS_Case_Open,
+        dbpi:WFS_Case_PendingCompliance,
+        dbpi:WFS_Case_Referred ;
+    dbpi:hasWorkflowTransition dbpi:WFT_Case_1,
+        dbpi:WFT_Case_2,
+        dbpi:WFT_Case_3,
+        dbpi:WFT_Case_4,
+        dbpi:WFT_Case_5 .
+
+dbpi:ViolationCaseShape a sh:NodeShape ;
+    sh:or ( [ sh:property [ sh:class dbpi:Inspection ;
+                        sh:minCount 1 ;
+                        sh:path dbpi:relatedInspection ] ] [ sh:property [ sh:class dbpi:Permit ;
+                        sh:minCount 1 ;
+                        sh:path dbpi:relatedPermit ] ] ) ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path dbpi:violationCaseNumber ],
+        [ sh:datatype xsd:date ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path dbpi:openedDate ],
+        [ sh:class dbpi:Property ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path dbpi:relatedProperty ],
+        [ sh:class skos:Concept ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path dbpi:hasCaseStatus ] ;
+    sh:targetClass dbpi:ViolationCase .
+
+dbpi:all a owl:Ontology ;
+    rdfs:label "DBPI Combined Ontology" ;
+    rdfs:comment "Import ontology that gathers the DBPI modules." ;
+    owl:imports dbpi:core,
+        dbpi:enforcement,
+        dbpi:inspections,
+        dbpi:organization,
+        dbpi:permitting,
+        dbpi:workflows .
+
+dbpi:amount a owl:DatatypeProperty ;
+    rdfs:label "amount" ;
+    rdfs:range xsd:decimal .
+
+dbpi:appliesAuthorityId a owl:DatatypeProperty ;
+    rdfs:label "applies authority id" ;
+    rdfs:domain dbpi:WorkflowModel ;
+    rdfs:range xsd:string .
+
+dbpi:appliesToClass a owl:ObjectProperty ;
+    rdfs:label "applies to class" ;
+    rdfs:domain dbpi:WorkflowModel ;
+    rdfs:range owl:Class .
+
+dbpi:assignedToEmployee a owl:ObjectProperty ;
+    rdfs:label "assigned to employee" .
+
+dbpi:assignedToUnit a owl:ObjectProperty ;
+    rdfs:label "assigned to unit" .
+
+dbpi:citesCodeSection a owl:ObjectProperty ;
+    rdfs:label "cites code section" ;
+    rdfs:range dbpi:CodeSection .
+
+dbpi:city a owl:DatatypeProperty ;
+    rdfs:label "city" ;
+    rdfs:range xsd:string .
+
+dbpi:closedDate a owl:DatatypeProperty ;
+    rdfs:label "closed date" ;
+    rdfs:domain dbpi:ViolationCase ;
+    rdfs:range xsd:date .
+
+dcp:InspectionFraming a skos:Concept ;
+    skos:inScheme dcp:InspectionTypeScheme ;
+    skos:prefLabel "Framing Inspection" .
+
+dcp:InspectionNoAccess a skos:Concept ;
+    skos:inScheme dcp:InspectionResultScheme ;
+    skos:prefLabel "No Access" .
+
+dcp:InspectionPartialPass a skos:Concept ;
+    skos:inScheme dcp:InspectionResultScheme ;
+    skos:prefLabel "Partial Pass" .
+
+dcp:PermitTypeDemolition a skos:Concept ;
+    skos:inScheme dcp:PermitTypeScheme ;
+    skos:prefLabel "Demolition" .
+
+dcp:PermitTypeMechanical a skos:Concept ;
+    skos:inScheme dcp:PermitTypeScheme ;
+    skos:prefLabel "Mechanical" .
+
+dcp:WorkBathroomRemodel a skos:Concept ;
+    skos:inScheme dcp:WorkTypeScheme ;
+    skos:prefLabel "Bathroom Remodel" .
+
+dcp:WorkInteriorRenovation a skos:Concept ;
+    skos:inScheme dcp:WorkTypeScheme ;
+    skos:prefLabel "Interior Renovation" .
+
+dbpi:completedAt a owl:DatatypeProperty ;
+    rdfs:label "completed at" ;
+    rdfs:domain dbpi:Inspection ;
+    rdfs:range xsd:dateTime .
+
+dbpi:countryCode a owl:DatatypeProperty ;
+    rdfs:label "country code" ;
+    rdfs:range xsd:string .
+
+dbpi:createdAt a owl:DatatypeProperty ;
+    rdfs:label "created at" ;
+    rdfs:range xsd:dateTime .
+
+dbpi:currencyCode a owl:DatatypeProperty ;
+    rdfs:label "currency code" ;
+    rdfs:range xsd:string .
+
+dbpi:decisionDate a owl:DatatypeProperty ;
+    rdfs:label "decision date" ;
+    rdfs:range xsd:date .
+
+dbpi:description a owl:DatatypeProperty ;
+    rdfs:label "description" ;
+    rdfs:range xsd:string .
+
+dbpi:displayName a owl:DatatypeProperty ;
+    rdfs:label "display name" ;
+    rdfs:range xsd:string .
+
+dbpi:documentDate a owl:DatatypeProperty ;
+    rdfs:label "document date" ;
+    rdfs:range xsd:date .
+
+dbpi:documentNumber a owl:DatatypeProperty ;
+    rdfs:label "document number" ;
+    rdfs:range xsd:string .
+
+dbpi:dueDate a owl:DatatypeProperty ;
+    rdfs:label "due date" ;
+    rdfs:domain dbpi:CorrectiveAction ;
+    rdfs:range xsd:date .
+
+dbpi:email a owl:DatatypeProperty ;
+    rdfs:label "email" ;
+    rdfs:range xsd:string .
+
+dbpi:employeeNumber a owl:DatatypeProperty ;
+    rdfs:label "employee number" ;
+    rdfs:domain dbpi:Employee ;
+    rdfs:range xsd:string .
+
+dbpi:endDate a owl:DatatypeProperty ;
+    rdfs:label "end date" ;
+    rdfs:range xsd:date .
+
+dbpi:externalReference a owl:DatatypeProperty ;
+    rdfs:label "external reference" ;
+    rdfs:range xsd:string .
+
+dbpi:forCase a owl:ObjectProperty ;
+    rdfs:label "for case" ;
+    rdfs:range dbpi:ViolationCase .
+
+dbpi:fromState a owl:ObjectProperty ;
+    rdfs:label "from state" ;
+    rdfs:domain dbpi:WorkflowTransition ;
+    rdfs:range dbpi:WorkflowState .
+
+dbpi:fulfillsRequest a owl:ObjectProperty ;
+    rdfs:label "fulfills request" ;
+    rdfs:domain dbpi:Inspection ;
+    rdfs:range dbpi:InspectionRequest .
+
+dbpi:hasAppeal a owl:ObjectProperty ;
+    rdfs:label "has appeal" ;
+    rdfs:domain dbpi:ViolationCase ;
+    rdfs:range dbpi:Appeal .
+
+dbpi:hasAppealStatus a owl:ObjectProperty ;
+    rdfs:label "has appeal status" ;
+    rdfs:domain dbpi:Appeal ;
+    rdfs:range skos:Concept .
+
+dbpi:hasContactPoint a owl:ObjectProperty ;
+    rdfs:label "has contact point" ;
+    rdfs:domain dbpi:Agent ;
+    rdfs:range dbpi:ContactPoint .
+
+dbpi:hasCorrectiveAction a owl:ObjectProperty ;
+    rdfs:label "has corrective action" ;
+    rdfs:domain dbpi:ViolationCase ;
+    rdfs:range dbpi:CorrectiveAction .
+
+dbpi:hasFee a owl:ObjectProperty ;
+    rdfs:label "has fee" ;
+    rdfs:range dbpi:Fee .
+
+dbpi:hasInspectionStatus a owl:ObjectProperty ;
+    rdfs:label "has inspection status" ;
+    rdfs:domain dbpi:Inspection ;
+    rdfs:range skos:Concept .
+
+dbpi:hasNotice a owl:ObjectProperty ;
+    rdfs:label "has notice" ;
+    rdfs:domain dbpi:ViolationCase ;
+    rdfs:range dbpi:NoticeOfViolation .
+
+dbpi:hasOwner a owl:ObjectProperty ;
+    rdfs:label "has owner" ;
+    rdfs:domain dbpi:Property ;
+    rdfs:range dbpi:Agent .
+
+dbpi:hasPayment a owl:ObjectProperty ;
+    rdfs:label "has payment" ;
+    rdfs:range dbpi:Payment .
+
+dbpi:hasPlanReview a owl:ObjectProperty ;
+    rdfs:label "has plan review" ;
+    rdfs:domain dbpi:PermitApplication ;
+    rdfs:range dbpi:PlanReview .
+
+dbpi:hasRequirement a owl:ObjectProperty ;
+    rdfs:label "has requirement" ;
+    rdfs:range dbpi:Requirement .
+
+dbpi:hasReviewComment a owl:ObjectProperty ;
+    rdfs:label "has review comment" ;
+    rdfs:domain dbpi:PlanReview ;
+    rdfs:range dbpi:ReviewComment .
+
+dbpi:hasRole a owl:ObjectProperty ;
+    rdfs:label "has role" ;
+    rdfs:domain dbpi:Employee ;
+    rdfs:range dbpi:Role .
+
+dbpi:hasStatus a owl:ObjectProperty ;
+    rdfs:label "has status" ;
+    rdfs:range skos:Concept .
+
+dbpi:hasSubUnit a owl:ObjectProperty ;
+    rdfs:label "has sub-unit" ;
+    rdfs:domain dbpi:Organization ;
+    rdfs:range dbpi:Organization .
+
+dbpi:hasSupportingDocument a owl:ObjectProperty ;
+    rdfs:label "has supporting document" ;
+    rdfs:range dbpi:Document .
+
+dbpi:hasWorkflowState a owl:ObjectProperty ;
+    rdfs:label "has workflow state" ;
+    rdfs:domain dbpi:WorkflowModel ;
+    rdfs:range dbpi:WorkflowState .
+
+dbpi:hasWorkflowTransition a owl:ObjectProperty ;
+    rdfs:label "has workflow transition" ;
+    rdfs:domain dbpi:WorkflowModel ;
+    rdfs:range dbpi:WorkflowTransition .
+
+dbpi:heardBy a owl:ObjectProperty ;
+    rdfs:label "heard by" ;
+    rdfs:domain dbpi:Hearing ;
+    rdfs:range dbpi:HearingOfficer .
+
+dbpi:hearingDate a owl:DatatypeProperty ;
+    rdfs:label "hearing date" ;
+    rdfs:domain dbpi:Hearing ;
+    rdfs:range xsd:dateTime .
+
+dbpi:identifier a owl:DatatypeProperty ;
+    rdfs:label "identifier" ;
+    rdfs:range xsd:string .
+
+dbpi:legalName a owl:DatatypeProperty ;
+    rdfs:label "legal name" ;
+    rdfs:range xsd:string .
+
+dbpi:line1 a owl:DatatypeProperty ;
+    rdfs:label "address line 1" ;
+    rdfs:range xsd:string .
+
+dbpi:line2 a owl:DatatypeProperty ;
+    rdfs:label "address line 2" ;
+    rdfs:range xsd:string .
+
+dbpi:managesUnit a owl:ObjectProperty ;
+    rdfs:label "manages unit" ;
+    rdfs:domain dbpi:Employee ;
+    rdfs:range dbpi:Organization .
+
+dbpi:mapsToConcept a owl:ObjectProperty ;
+    rdfs:label "maps to concept" ;
+    rdfs:domain dbpi:WorkflowState ;
+    rdfs:range skos:Concept .
+
+dbpi:memberOf a owl:ObjectProperty ;
+    rdfs:label "member of" ;
+    rdfs:domain dbpi:Employee ;
+    rdfs:range dbpi:Organization .
+
+dbpi:note a owl:DatatypeProperty ;
+    rdfs:label "note" ;
+    rdfs:range xsd:string .
+
+dbpi:paidDate a owl:DatatypeProperty ;
+    rdfs:label "paid date" ;
+    rdfs:range xsd:date .
+
+dbpi:parcelNumber a owl:DatatypeProperty ;
+    rdfs:label "parcel number" ;
+    rdfs:range xsd:string .
+
+dbpi:postalCode a owl:DatatypeProperty ;
+    rdfs:label "postal code" ;
+    rdfs:range xsd:string .
+
+dbpi:regionCode a owl:DatatypeProperty ;
+    rdfs:label "region code" ;
+    rdfs:range xsd:string .
+
+dbpi:reportsTo a owl:ObjectProperty ;
+    rdfs:label "reports to" ;
+    rdfs:domain dbpi:Organization ;
+    rdfs:range dbpi:Organization .
+
+dbpi:requestedBy a owl:ObjectProperty ;
+    rdfs:label "requested by" ;
+    rdfs:domain dbpi:InspectionRequest ;
+    rdfs:range dbpi:Agent .
+
+dbpi:requestedDate a owl:DatatypeProperty ;
+    rdfs:label "requested date" ;
+    rdfs:domain dbpi:InspectionRequest ;
+    rdfs:range xsd:date .
+
+dbpi:requestedInspectionType a owl:ObjectProperty ;
+    rdfs:label "requested inspection type" ;
+    rdfs:domain dbpi:InspectionRequest ;
+    rdfs:range skos:Concept .
+
+dbpi:resultedInPermit a owl:ObjectProperty ;
+    rdfs:label "resulted in permit" ;
+    rdfs:domain dbpi:PermitApplication ;
+    rdfs:range dbpi:Permit .
+
+dbpi:reviewedBy a owl:ObjectProperty ;
+    rdfs:label "reviewed by" ;
+    rdfs:domain dbpi:PlanReview ;
+    rdfs:range dbpi:Employee .
+
+dbpi:scheduledFor a owl:DatatypeProperty ;
+    rdfs:label "scheduled for" ;
+    rdfs:range xsd:dateTime .
+
+dbpi:shapes a owl:Ontology ;
+    rdfs:label "DBPI SHACL Shapes" .
+
+dbpi:startDate a owl:DatatypeProperty ;
+    rdfs:label "start date" ;
+    rdfs:range xsd:date .
+
+dbpi:telephone a owl:DatatypeProperty ;
+    rdfs:label "telephone" ;
+    rdfs:range xsd:string .
+
+dbpi:toState a owl:ObjectProperty ;
+    rdfs:label "to state" ;
+    rdfs:domain dbpi:WorkflowTransition ;
+    rdfs:range dbpi:WorkflowState .
+
+dbpi:transitionTrigger a owl:DatatypeProperty ;
+    rdfs:label "transition trigger" ;
+    rdfs:domain dbpi:WorkflowTransition ;
+    rdfs:range xsd:string .
+
+dbpi:updatedAt a owl:DatatypeProperty ;
+    rdfs:label "updated at" ;
+    rdfs:range xsd:dateTime .
+
+dbpi:url a owl:DatatypeProperty ;
+    rdfs:label "URL" ;
+    rdfs:range xsd:anyURI .
+
+dbpi:Address_18Harbor a dbpi:Address ;
+    dbpi:city "Red Vale" ;
+    dbpi:countryCode "US" ;
+    dbpi:line1 "18 Harbor Avenue" ;
+    dbpi:postalCode "94106" ;
+    dbpi:regionCode "CA" .
+
+dbpi:Address_500Market a dbpi:Address ;
+    dbpi:city "Red Vale" ;
+    dbpi:countryCode "US" ;
+    dbpi:line1 "500 Market Street" ;
+    dbpi:line2 "Suite 200" ;
+    dbpi:postalCode "94105" ;
+    dbpi:regionCode "CA" .
+
+dbpi:Address_77Juniper a dbpi:Address ;
+    dbpi:city "Red Vale" ;
+    dbpi:countryCode "US" ;
+    dbpi:line1 "77 Juniper Lane" ;
+    dbpi:postalCode "94107" ;
+    dbpi:regionCode "CA" .
+
+dbpi:Appeal_7782 a dbpi:Appeal ;
+    dbpi:description "Applicant disputes interpretation of listed equipment requirement." ;
+    dbpi:forCase dbpi:ViolationCase_7782 ;
+    dbpi:hasAppealStatus dcp:AppealPending ;
+    dbpi:identifier "APL-7782" ;
+    dbpi:submittedBy dbpi:JaneDevelopmentLLC ;
+    dbpi:submittedDate "2026-03-02"^^xsd:date .
+
+dbpi:Appeal_7819 a dbpi:Appeal ;
+    dbpi:description "Owner appealed notice on hardship grounds; original action sustained." ;
+    dbpi:forCase dbpi:ViolationCase_7819 ;
+    dbpi:hasAppealStatus dcp:AppealDenied ;
+    dbpi:identifier "APL-2026-7819" ;
+    dbpi:submittedBy dbpi:JuniperHomesLLC ;
+    dbpi:submittedDate "2026-03-22"^^xsd:date .
+
+dbpi:Application_1001 a dbpi:PermitApplication ;
+    dbpi:applicationNumber "APP-2026-1001" ;
+    dbpi:assignedToEmployee dbpi:BobPatel ;
+    dbpi:assignedToUnit dbpi:PermitServicesDivision ;
+    dbpi:concernsProperty dbpi:Property_500Market ;
+    dbpi:createdAt "2026-02-02T08:14:22"^^xsd:dateTime ;
+    dbpi:forService dbpi:BuildingPermitService ;
+    dbpi:hasApplicationStatus dcp:StatusApproved ;
+    dbpi:hasFee dbpi:Fee_1001 ;
+    dbpi:hasPayment dbpi:Payment_1001 ;
+    dbpi:hasPlanReview dbpi:PlanReview_1001 ;
+    dbpi:hasRequirement dbpi:Requirement_PlanSet ;
+    dbpi:hasStatus dcp:StatusApproved ;
+    dbpi:hasSupportingDocument dbpi:PlanSet_1001 ;
+    dbpi:requestedPermitType dcp:PermitTypeResidentialRemodel ;
+    dbpi:requestedWorkType dcp:WorkKitchenRemodel ;
+    dbpi:resultedInPermit dbpi:Permit_0042 ;
+    dbpi:submittedBy dbpi:JaneDevelopmentLLC ;
+    dbpi:submittedDate "2026-02-02"^^xsd:date ;
+    dbpi:updatedAt "2026-02-18T16:05:00"^^xsd:dateTime .
+
+dbpi:Application_1017 a dbpi:PermitApplication ;
+    dbpi:applicationNumber "APP-2026-1017" ;
+    dbpi:assignedToEmployee dbpi:BobPatel ;
+    dbpi:assignedToUnit dbpi:PermitServicesDivision ;
+    dbpi:concernsProperty dbpi:Property_18Harbor ;
+    dbpi:forService dbpi:BuildingPermitService ;
+    dbpi:hasApplicationStatus dcp:StatusApproved ;
+    dbpi:hasFee dbpi:Fee_1017 ;
+    dbpi:hasPayment dbpi:Payment_1017 ;
+    dbpi:hasPlanReview dbpi:PlanReview_1017 ;
+    dbpi:hasSupportingDocument dbpi:PlanSet_1017 ;
+    dbpi:requestedPermitType dcp:PermitTypeElectrical ;
+    dbpi:requestedWorkType dcp:WorkPanelUpgrade ;
+    dbpi:resultedInPermit dbpi:Permit_0064 ;
+    dbpi:submittedBy dbpi:HarborElectricCo ;
+    dbpi:submittedDate "2026-03-03"^^xsd:date .
+
+dbpi:Citizen_MaryCole a dbpi:Person ;
+    dbpi:displayName "Mary Cole" ;
+    dbpi:identifier "CIT-2004" .
+
+dbpi:CodeEnforcementOfficer a owl:Class ;
+    rdfs:label "Code Enforcement Officer" ;
+    rdfs:subClassOf dbpi:Employee .
+
+dbpi:CodeSection_110_3B a dbpi:CodeSection ;
+    dbpi:displayName "Electrical installations shall be used and installed in accordance with listing and labeling" ;
+    dbpi:identifier "ELEC-110.3(B)" .
+
+dbpi:ComplaintDocument_204 a dbpi:Document ;
+    dbpi:displayName "Complaint regarding unpermitted garage conversion at 77 Juniper Lane" ;
+    dbpi:documentDate "2026-03-14"^^xsd:date ;
+    dbpi:documentNumber "CMP-2026-0204" .
+
+dbpi:ContactPoint_DBPI a dbpi:ContactPoint ;
+    dbpi:displayName "DBPI Main Office" ;
+    dbpi:email "permits@redvale.gov" ;
+    dbpi:telephone "+1-555-867-5309" ;
+    dbpi:url "https://permits.redvale.gov/contact"^^xsd:anyURI .
+
+dbpi:CorrectiveAction_7782_1 a dbpi:CorrectiveAction ;
+    dbpi:description "Replace the unlisted component and request re-inspection." ;
+    dbpi:dueDate "2026-03-10"^^xsd:date ;
+    dbpi:identifier "CA-7782-1" .
+
+dbpi:CorrectiveAction_7819_1 a dbpi:CorrectiveAction ;
+    dbpi:description "Cease occupancy of the converted space and submit legalization or restoration plan." ;
+    dbpi:dueDate "2026-04-02"^^xsd:date ;
+    dbpi:identifier "CA-7819-1" .
+
+dbpi:Department a owl:Class ;
+    rdfs:label "Department" ;
+    rdfs:subClassOf dbpi:Organization .
+
+dbpi:Fee_1001 a dbpi:Fee ;
+    dbpi:amount 620.00 ;
+    dbpi:currencyCode "USD" ;
+    dbpi:description "Plan review and permit issuance fee" ;
+    dbpi:identifier "FEE-1001" .
+
+dbpi:Fee_1017 a dbpi:Fee ;
+    dbpi:amount 244.00 ;
+    dbpi:currencyCode "USD" ;
+    dbpi:description "Electrical permit and final inspection fee" ;
+    dbpi:identifier "FEE-1017" .
+
+dbpi:HelenaCho a dbpi:CodeEnforcementOfficer ;
+    dbpi:displayName "Helena Cho" ;
+    dbpi:email "helena.cho@redvale.gov" ;
+    dbpi:employeeNumber "E1044" ;
+    dbpi:hasRole dbpi:Role_CodeEnforcementOfficer ;
+    dbpi:memberOf dbpi:EnforcementDivision .
+
+dbpi:InspectionRequest_501 a dbpi:InspectionRequest ;
+    dbpi:concernsProperty dbpi:Property_500Market ;
+    dbpi:forPermit dbpi:Permit_0042 ;
+    dbpi:identifier "INSPRQ-501" ;
+    dbpi:requestedBy dbpi:JaneDevelopmentLLC ;
+    dbpi:requestedDate "2026-02-25"^^xsd:date ;
+    dbpi:requestedInspectionType dcp:InspectionElectricalRough .
+
+dbpi:InspectionRequest_612 a dbpi:InspectionRequest ;
+    dbpi:concernsProperty dbpi:Property_18Harbor ;
+    dbpi:forPermit dbpi:Permit_0064 ;
+    dbpi:identifier "INSPRQ-612" ;
+    dbpi:requestedBy dbpi:HarborElectricCo ;
+    dbpi:requestedDate "2026-03-11"^^xsd:date ;
+    dbpi:requestedInspectionType dcp:InspectionFinal .
+
+dbpi:Inspection_501 a dbpi:Inspection ;
+    dbpi:citesCodeSection dbpi:CodeSection_110_3B ;
+    dbpi:completedAt "2026-02-27T09:35:00"^^xsd:dateTime ;
+    dbpi:forPermit dbpi:Permit_0042 ;
+    dbpi:fulfillsRequest dbpi:InspectionRequest_501 ;
+    dbpi:hasInspectionResult dcp:InspectionFail ;
+    dbpi:hasInspectionStatus dcp:InspectionCompleted ;
+    dbpi:inspectedProperty dbpi:Property_500Market ;
+    dbpi:inspectionNumber "INSP-2026-0501" ;
+    dbpi:inspectionType dcp:InspectionElectricalRough ;
+    dbpi:note "Unlisted component installed in branch circuit panel." ;
+    dbpi:performedBy dbpi:AliceNguyen ;
+    dbpi:scheduledFor "2026-02-27T09:00:00"^^xsd:dateTime .
+
+dbpi:Inspection_7819 a dbpi:Inspection ;
+    dbpi:citesCodeSection dbpi:CodeSection_HAB_12_4 ;
+    dbpi:completedAt "2026-03-17T14:05:00"^^xsd:dateTime ;
+    dbpi:hasInspectionResult dcp:InspectionFail ;
+    dbpi:hasInspectionStatus dcp:InspectionCompleted ;
+    dbpi:inspectedProperty dbpi:Property_77Juniper ;
+    dbpi:inspectionNumber "INSP-2026-07819" ;
+    dbpi:inspectionType dcp:InspectionFinal ;
+    dbpi:note "Observed converted garage occupied without permit and without code-compliant egress." ;
+    dbpi:performedBy dbpi:AliceNguyen ;
+    dbpi:scheduledFor "2026-03-17T13:30:00"^^xsd:dateTime .
+
+dbpi:NorthHarborHoldings a dbpi:Organization ;
+    dbpi:identifier "ORG-EXT-4401" ;
+    dbpi:legalName "North Harbor Holdings, Inc." .
+
+dbpi:Notice_7782 a dbpi:NoticeOfViolation ;
+    dbpi:displayName "Notice of Violation NOV-7782" ;
+    dbpi:documentDate "2026-02-28"^^xsd:date ;
+    dbpi:documentNumber "NOV-7782" .
+
+dbpi:Notice_7819 a dbpi:NoticeOfViolation ;
+    dbpi:citesCodeSection dbpi:CodeSection_HAB_12_4 ;
+    dbpi:description "Occupancy and egress deficiencies identified in unpermitted garage conversion." ;
+    dbpi:displayName "Notice of Violation NOV-7819" ;
+    dbpi:documentDate "2026-03-18"^^xsd:date ;
+    dbpi:documentNumber "NOV-7819" .
+
+dbpi:Parcel_010889004 a dbpi:Parcel ;
+    dbpi:locatedInJurisdiction dbpi:Jurisdiction_RedVale ;
+    dbpi:parcelNumber "010-889-004" .
+
+dbpi:Parcel_011122008 a dbpi:Parcel ;
+    dbpi:locatedInJurisdiction dbpi:Jurisdiction_RedVale ;
+    dbpi:parcelNumber "011-122-008" .
+
+dbpi:Parcel_014233019 a dbpi:Parcel ;
+    dbpi:locatedInJurisdiction dbpi:Jurisdiction_RedVale ;
+    dbpi:parcelNumber "014-233-019" .
+
+dbpi:Payment_1001 a dbpi:Payment ;
+    dbpi:amount 620.00 ;
+    dbpi:currencyCode "USD" ;
+    dbpi:identifier "PAY-1001" ;
+    dbpi:paidDate "2026-02-03"^^xsd:date .
+
+dbpi:Payment_1017 a dbpi:Payment ;
+    dbpi:amount 244.00 ;
+    dbpi:currencyCode "USD" ;
+    dbpi:identifier "PAY-1017" ;
+    dbpi:paidDate "2026-03-03"^^xsd:date .
+
+dbpi:PermitTechnician a owl:Class ;
+    rdfs:label "Permit Technician" ;
+    rdfs:subClassOf dbpi:Employee .
+
+dbpi:PlanReview_1001 a dbpi:PlanReview ;
+    dbpi:decisionDate "2026-02-18"^^xsd:date ;
+    dbpi:description "Kitchen remodel plan review completed." ;
+    dbpi:hasReviewComment dbpi:ReviewComment_1001_1 ;
+    dbpi:identifier "REVIEW-1001" ;
+    dbpi:reviewedBy dbpi:BobPatel .
+
+dbpi:PlanReview_1017 a dbpi:PlanReview ;
+    dbpi:decisionDate "2026-03-06"^^xsd:date ;
+    dbpi:description "Approved panel upgrade and service grounding corrections incorporated." ;
+    dbpi:identifier "REVIEW-1017" ;
+    dbpi:reviewedBy dbpi:BobPatel .
+
+dbpi:PlanReviewer a owl:Class ;
+    rdfs:label "Plan Reviewer" ;
+    rdfs:subClassOf dbpi:Employee .
+
+dbpi:PlanSet_1001 a dbpi:Document ;
+    dbpi:displayName "Initial Plan Set" ;
+    dbpi:documentDate "2026-02-02"^^xsd:date ;
+    dbpi:documentNumber "DOC-1001-PLANSET" .
+
+dbpi:PlanSet_1017 a dbpi:Document ;
+    dbpi:displayName "Electrical Panel Upgrade Plans" ;
+    dbpi:documentDate "2026-03-03"^^xsd:date ;
+    dbpi:documentNumber "DOC-1017-PLANSET" .
+
+dbpi:RecordsOfficer a owl:Class ;
+    rdfs:label "Records Officer" ;
+    rdfs:subClassOf dbpi:Employee .
+
+dbpi:Requirement_PlanSet a dbpi:Requirement ;
+    dbpi:description "Applicant must submit a full plan set prepared by a licensed architect or engineer." ;
+    dbpi:displayName "Complete Plan Set Required" ;
+    dbpi:identifier "REQ-PLANSET" .
+
+dbpi:ReviewComment_1001_1 a dbpi:ReviewComment ;
+    dbpi:createdAt "2026-02-10T11:30:00"^^xsd:dateTime ;
+    dbpi:description "Verify load calculations for relocated panel. Applicant's engineer to confirm amperage." ;
+    dbpi:identifier "RC-1001-1" .
+
+dbpi:Role_CodeEnforcementOfficer a dbpi:Role ;
+    dbpi:displayName "Code Enforcement Officer" .
+
+dbpi:Role_HearingOfficer a dbpi:Role ;
+    dbpi:displayName "Hearing Officer" .
+
+dbpi:Role_Inspector a dbpi:Role ;
+    dbpi:displayName "Inspector" .
+
+dbpi:Role_PermitTechnician a dbpi:Role ;
+    dbpi:displayName "Permit Technician" .
+
+dbpi:Role_PlanReviewer a dbpi:Role ;
+    dbpi:displayName "Plan Reviewer" .
+
+dbpi:Role_RecordsOfficer a dbpi:Role ;
+    dbpi:displayName "Records Officer" .
+
+dbpi:SamuelReed a dbpi:RecordsOfficer ;
+    dbpi:displayName "Samuel Reed" ;
+    dbpi:email "samuel.reed@redvale.gov" ;
+    dbpi:employeeNumber "E1118" ;
+    dbpi:hasRole dbpi:Role_RecordsOfficer ;
+    dbpi:memberOf dbpi:RecordsUnit .
+
+dbpi:WFT_App_1 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_App_Received ;
+    dbpi:toState dbpi:WFS_App_UnderReview ;
+    dbpi:transitionTrigger "Intake completeness confirmed and routing initiated." .
+
+dbpi:WFT_App_2 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_App_UnderReview ;
+    dbpi:toState dbpi:WFS_App_Approved ;
+    dbpi:transitionTrigger "All required reviews approved and issuance prerequisites satisfied." .
+
+dbpi:WFT_App_3 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_App_UnderReview ;
+    dbpi:toState dbpi:WFS_App_Denied ;
+    dbpi:transitionTrigger "Substantive noncompliance results in denial." .
+
+dbpi:WFT_App_4 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_App_UnderReview ;
+    dbpi:toState dbpi:WFS_App_Withdrawn ;
+    dbpi:transitionTrigger "Applicant withdraws the application during review." .
+
+dbpi:WFT_App_5 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_App_Received ;
+    dbpi:toState dbpi:WFS_App_Withdrawn ;
+    dbpi:transitionTrigger "Applicant withdraws before review begins." .
+
+dbpi:WFT_Appeal_1 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_Appeal_Pending ;
+    dbpi:toState dbpi:WFS_Appeal_Granted ;
+    dbpi:transitionTrigger "Hearing or review results in modified or reversed action." .
+
+dbpi:WFT_Appeal_2 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_Appeal_Pending ;
+    dbpi:toState dbpi:WFS_Appeal_Denied ;
+    dbpi:transitionTrigger "Original action sustained after review." .
+
+dbpi:WFT_Case_1 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_Case_Open ;
+    dbpi:toState dbpi:WFS_Case_PendingCompliance ;
+    dbpi:transitionTrigger "Violation confirmed and corrective action issued." .
+
+dbpi:WFT_Case_2 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_Case_Open ;
+    dbpi:toState dbpi:WFS_Case_Closed ;
+    dbpi:transitionTrigger "Complaint unsubstantiated or outside jurisdiction." .
+
+dbpi:WFT_Case_3 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_Case_PendingCompliance ;
+    dbpi:toState dbpi:WFS_Case_Closed ;
+    dbpi:transitionTrigger "Compliance verified." .
+
+dbpi:WFT_Case_4 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_Case_PendingCompliance ;
+    dbpi:toState dbpi:WFS_Case_Referred ;
+    dbpi:transitionTrigger "Noncompliance persists and matter is escalated." .
+
+dbpi:WFT_Case_5 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_Case_Referred ;
+    dbpi:toState dbpi:WFS_Case_Closed ;
+    dbpi:transitionTrigger "Referred matter reaches final disposition." .
+
+dbpi:WFT_InspReq_1 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_InspReq_Requested ;
+    dbpi:toState dbpi:WFS_InspReq_Scheduled ;
+    dbpi:transitionTrigger "Appointment slot assigned." .
+
+dbpi:WFT_InspReq_2 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_InspReq_Requested ;
+    dbpi:toState dbpi:WFS_InspReq_Canceled ;
+    dbpi:transitionTrigger "Request canceled before scheduling." .
+
+dbpi:WFT_InspReq_3 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_InspReq_Scheduled ;
+    dbpi:toState dbpi:WFS_InspReq_Completed ;
+    dbpi:transitionTrigger "Inspection performed and request fulfilled." .
+
+dbpi:WFT_InspReq_4 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_InspReq_Scheduled ;
+    dbpi:toState dbpi:WFS_InspReq_Canceled ;
+    dbpi:transitionTrigger "Appointment canceled." .
+
+dbpi:WFT_Permit_1 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_Permit_Active ;
+    dbpi:toState dbpi:WFS_Permit_Suspended ;
+    dbpi:transitionTrigger "Active work is placed on hold pending correction or administrative action." .
+
+dbpi:WFT_Permit_2 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_Permit_Suspended ;
+    dbpi:toState dbpi:WFS_Permit_Active ;
+    dbpi:transitionTrigger "Suspension basis cured and permit reinstated." .
+
+dbpi:WFT_Permit_3 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_Permit_Active ;
+    dbpi:toState dbpi:WFS_Permit_Expired ;
+    dbpi:transitionTrigger "Permit lapses by time or inactivity." .
+
+dbpi:WFT_Permit_4 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_Permit_Active ;
+    dbpi:toState dbpi:WFS_Permit_Finaled ;
+    dbpi:transitionTrigger "All required final approvals completed." .
+
+dbpi:WFT_Permit_5 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_Permit_Active ;
+    dbpi:toState dbpi:WFS_Permit_Revoked ;
+    dbpi:transitionTrigger "Permit is revoked for authorized cause." .
+
+dbpi:WFT_Permit_6 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_Permit_Suspended ;
+    dbpi:toState dbpi:WFS_Permit_Revoked ;
+    dbpi:transitionTrigger "Suspended permit proceeds to revocation." .
+
+dbpi:WFT_Permit_7 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_Permit_Suspended ;
+    dbpi:toState dbpi:WFS_Permit_Expired ;
+    dbpi:transitionTrigger "Suspended permit lapses before reinstatement." .
+
+dbpi:WFT_RecReq_1 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_RecReq_Received ;
+    dbpi:toState dbpi:WFS_RecReq_InReview ;
+    dbpi:transitionTrigger "Request sufficiently specific and accepted for processing." .
+
+dbpi:WFT_RecReq_2 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_RecReq_InReview ;
+    dbpi:toState dbpi:WFS_RecReq_Fulfilled ;
+    dbpi:transitionTrigger "Records located and released in full." .
+
+dbpi:WFT_RecReq_3 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_RecReq_InReview ;
+    dbpi:toState dbpi:WFS_RecReq_PartiallyFulfilled ;
+    dbpi:transitionTrigger "Records released with lawful redactions or partial withholding." .
+
+dbpi:WFT_RecReq_4 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_RecReq_InReview ;
+    dbpi:toState dbpi:WFS_RecReq_Denied ;
+    dbpi:transitionTrigger "Exemption applies or unable to locate responsive records." .
+
+dbpi:WFT_RecReq_5 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_RecReq_Fulfilled ;
+    dbpi:toState dbpi:WFS_RecReq_Closed ;
+    dbpi:transitionTrigger "Administrative completion." .
+
+dbpi:WFT_RecReq_6 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_RecReq_PartiallyFulfilled ;
+    dbpi:toState dbpi:WFS_RecReq_Closed ;
+    dbpi:transitionTrigger "Administrative completion." .
+
+dbpi:WFT_RecReq_7 a dbpi:WorkflowTransition ;
+    dbpi:fromState dbpi:WFS_RecReq_Denied ;
+    dbpi:toState dbpi:WFS_RecReq_Closed ;
+    dbpi:transitionTrigger "Administrative completion." .
+
+dbpi:WorkUnit a owl:Class ;
+    rdfs:label "Work Unit" ;
+    rdfs:subClassOf dbpi:Organization .
+
+dbpi:applicationNumber a owl:DatatypeProperty ;
+    rdfs:label "application number" ;
+    rdfs:domain dbpi:PermitApplication ;
+    rdfs:range xsd:string .
+
+dbpi:authorizedPermitType a owl:ObjectProperty ;
+    rdfs:label "authorized permit type" ;
+    rdfs:domain dbpi:Permit ;
+    rdfs:range skos:Concept .
+
+dbpi:authorizedWorkType a owl:ObjectProperty ;
+    rdfs:label "authorized work type" ;
+    rdfs:domain dbpi:Permit ;
+    rdfs:range skos:Concept .
+
+dbpi:basedOnApplication a owl:ObjectProperty ;
+    rdfs:label "based on application" ;
+    rdfs:domain dbpi:Permit ;
+    rdfs:range dbpi:PermitApplication .
+
+dbpi:codelists a owl:Ontology ;
+    rdfs:label "DBPI Controlled Vocabularies" ;
+    rdfs:comment "SKOS concept schemes for statuses and classifications used by DBPI." .
+
+dcp:AppealGranted a skos:Concept ;
+    skos:inScheme dcp:AppealStatusScheme ;
+    skos:prefLabel "Granted" .
+
+dcp:CaseClosed a skos:Concept ;
+    skos:inScheme dcp:CaseStatusScheme ;
+    skos:prefLabel "Closed" .
+
+dcp:CaseOpen a skos:Concept ;
+    skos:inScheme dcp:CaseStatusScheme ;
+    skos:prefLabel "Open" .
+
+dcp:InspectionCanceled a skos:Concept ;
+    skos:inScheme dcp:InspectionStatusScheme ;
+    skos:prefLabel "Canceled" .
+
+dcp:InspectionPass a skos:Concept ;
+    skos:inScheme dcp:InspectionResultScheme ;
+    skos:prefLabel "Pass" .
+
+dcp:InspectionRequested a skos:Concept ;
+    skos:inScheme dcp:InspectionStatusScheme ;
+    skos:prefLabel "Requested" .
+
+dcp:InspectionScheduled a skos:Concept ;
+    skos:inScheme dcp:InspectionStatusScheme ;
+    skos:prefLabel "Scheduled" .
+
+dcp:PermitExpired a skos:Concept ;
+    skos:inScheme dcp:PermitStatusScheme ;
+    skos:prefLabel "Expired" .
+
+dcp:PermitRevoked a skos:Concept ;
+    skos:inScheme dcp:PermitStatusScheme ;
+    skos:prefLabel "Revoked" .
+
+dcp:PermitSuspended a skos:Concept ;
+    skos:inScheme dcp:PermitStatusScheme ;
+    skos:prefLabel "Suspended" .
+
+dcp:RecordsClosed a skos:Concept ;
+    skos:inScheme dcp:RecordsRequestStatusScheme ;
+    skos:prefLabel "Closed" .
+
+dcp:RecordsDenied a skos:Concept ;
+    skos:inScheme dcp:RecordsRequestStatusScheme ;
+    skos:prefLabel "Denied" .
+
+dcp:RecordsFulfilled a skos:Concept ;
+    skos:inScheme dcp:RecordsRequestStatusScheme ;
+    skos:prefLabel "Fulfilled" .
+
+dcp:RecordsInReview a skos:Concept ;
+    skos:inScheme dcp:RecordsRequestStatusScheme ;
+    skos:prefLabel "In Review" .
+
+dcp:RecordsPartiallyFulfilled a skos:Concept ;
+    skos:inScheme dcp:RecordsRequestStatusScheme ;
+    skos:prefLabel "Partially Fulfilled" .
+
+dcp:RecordsReceived a skos:Concept ;
+    skos:inScheme dcp:RecordsRequestStatusScheme ;
+    skos:prefLabel "Received" .
+
+dcp:StatusDenied a skos:Concept ;
+    skos:inScheme dcp:ApplicationStatusScheme ;
+    skos:prefLabel "Denied" .
+
+dcp:StatusReceived a skos:Concept ;
+    skos:inScheme dcp:ApplicationStatusScheme ;
+    skos:prefLabel "Received" .
+
+dcp:StatusUnderReview a skos:Concept ;
+    skos:inScheme dcp:ApplicationStatusScheme ;
+    skos:prefLabel "Under Review" .
+
+dcp:StatusWithdrawn a skos:Concept ;
+    skos:inScheme dcp:ApplicationStatusScheme ;
+    skos:prefLabel "Withdrawn" .
+
+dbpi:concernsProperty a owl:ObjectProperty ;
+    rdfs:label "concerns property" ;
+    rdfs:range dbpi:Property .
+
+dbpi:expirationDate a owl:DatatypeProperty ;
+    rdfs:label "expiration date" ;
+    rdfs:domain dbpi:Permit ;
+    rdfs:range xsd:date .
+
+dbpi:forPermit a owl:ObjectProperty ;
+    rdfs:label "for permit" ;
+    rdfs:range dbpi:Permit .
+
+dbpi:forService a owl:ObjectProperty ;
+    rdfs:label "for service" ;
+    rdfs:range dbpi:PublicService .
+
+dbpi:hasAddress a owl:ObjectProperty ;
+    rdfs:label "has address" ;
+    rdfs:range dbpi:Address .
+
+dbpi:hasApplicationStatus a owl:ObjectProperty ;
+    rdfs:label "has application status" ;
+    rdfs:domain dbpi:PermitApplication ;
+    rdfs:range skos:Concept .
+
+dbpi:hasCaseStatus a owl:ObjectProperty ;
+    rdfs:label "has case status" ;
+    rdfs:domain dbpi:ViolationCase ;
+    rdfs:range skos:Concept .
+
+dbpi:hasInspectionResult a owl:ObjectProperty ;
+    rdfs:label "has inspection result" ;
+    rdfs:domain dbpi:Inspection ;
+    rdfs:range skos:Concept .
+
+dbpi:hasParcel a owl:ObjectProperty ;
+    rdfs:label "has parcel" ;
+    rdfs:domain dbpi:Property ;
+    rdfs:range dbpi:Parcel .
+
+dbpi:hasPermitStatus a owl:ObjectProperty ;
+    rdfs:label "has permit status" ;
+    rdfs:domain dbpi:Permit ;
+    rdfs:range skos:Concept .
+
+dbpi:inspectedProperty a owl:ObjectProperty ;
+    rdfs:label "inspected property" ;
+    rdfs:domain dbpi:Inspection ;
+    rdfs:range dbpi:Property .
+
+dbpi:inspectionNumber a owl:DatatypeProperty ;
+    rdfs:label "inspection number" ;
+    rdfs:domain dbpi:Inspection ;
+    rdfs:range xsd:string .
+
+dbpi:inspectionType a owl:ObjectProperty ;
+    rdfs:label "inspection type" ;
+    rdfs:domain dbpi:Inspection ;
+    rdfs:range skos:Concept .
+
+dbpi:issuedBy a owl:ObjectProperty ;
+    rdfs:label "issued by" ;
+    rdfs:range dbpi:Organization .
+
+dbpi:issuedDate a owl:DatatypeProperty ;
+    rdfs:label "issued date" ;
+    rdfs:domain dbpi:Permit ;
+    rdfs:range xsd:date .
+
+dbpi:locatedInJurisdiction a owl:ObjectProperty ;
+    rdfs:label "located in jurisdiction" ;
+    rdfs:range dbpi:Jurisdiction .
+
+dbpi:openedDate a owl:DatatypeProperty ;
+    rdfs:label "opened date" ;
+    rdfs:domain dbpi:ViolationCase ;
+    rdfs:range xsd:date .
+
+dbpi:performedBy a owl:ObjectProperty ;
+    rdfs:label "performed by" ;
+    rdfs:domain dbpi:Inspection ;
+    rdfs:range dbpi:Inspector .
+
+dbpi:permitNumber a owl:DatatypeProperty ;
+    rdfs:label "permit number" ;
+    rdfs:domain dbpi:Permit ;
+    rdfs:range xsd:string .
+
+dbpi:relatedInspection a owl:ObjectProperty ;
+    rdfs:label "related inspection" ;
+    rdfs:domain dbpi:ViolationCase ;
+    rdfs:range dbpi:Inspection .
+
+dbpi:relatedPermit a owl:ObjectProperty ;
+    rdfs:label "related permit" ;
+    rdfs:domain dbpi:ViolationCase ;
+    rdfs:range dbpi:Permit .
+
+dbpi:relatedProperty a owl:ObjectProperty ;
+    rdfs:label "related property" ;
+    rdfs:domain dbpi:ViolationCase ;
+    rdfs:range dbpi:Property .
+
+dbpi:requestedPermitType a owl:ObjectProperty ;
+    rdfs:label "requested permit type" ;
+    rdfs:domain dbpi:PermitApplication ;
+    rdfs:range skos:Concept .
+
+dbpi:requestedWorkType a owl:ObjectProperty ;
+    rdfs:label "requested work type" ;
+    rdfs:domain dbpi:PermitApplication ;
+    rdfs:range skos:Concept .
+
+dbpi:submittedBy a owl:ObjectProperty ;
+    rdfs:label "submitted by" ;
+    rdfs:range dbpi:Agent .
+
+dbpi:submittedDate a owl:DatatypeProperty ;
+    rdfs:label "submitted date" ;
+    rdfs:range xsd:date .
+
+dbpi:violationCaseNumber a owl:DatatypeProperty ;
+    rdfs:label "violation case number" ;
+    rdfs:domain dbpi:ViolationCase ;
+    rdfs:range xsd:string .
+
+dbpi:workflows a owl:Ontology ;
+    rdfs:label "DBPI Workflow Ontology" ;
+    rdfs:comment "Canonical lifecycle models and state transitions for core DBPI operational records." ;
+    owl:imports dbpi:codelists,
+        dbpi:core,
+        dbpi:enforcement,
+        dbpi:inspections,
+        dbpi:permitting .
+
+dbpi:BuildingPermitService a dbpi:PublicService ;
+    dbpi:displayName "Permit Intake and Case Creation" ;
+    dbpi:identifier "SVC-DBPI-001" .
+
+dbpi:CodeSection_HAB_12_4 a dbpi:CodeSection ;
+    dbpi:displayName "Habitable rooms and emergency egress requirements" ;
+    dbpi:identifier "HAB-12.4" .
+
+dbpi:ContactPoint a owl:Class ;
+    rdfs:label "Contact Point" .
+
+dbpi:HarborElectricCo a dbpi:Organization ;
+    dbpi:identifier "LIC-EC-2891" ;
+    dbpi:legalName "Harbor Electric Co." .
+
+dbpi:HearingOfficer a owl:Class ;
+    rdfs:label "Hearing Officer" ;
+    rdfs:subClassOf dbpi:Employee .
+
+dbpi:JuniperHomesLLC a dbpi:Organization ;
+    dbpi:identifier "ORG-EXT-5520" ;
+    dbpi:legalName "Juniper Homes LLC" .
+
+dbpi:Person a owl:Class ;
+    rdfs:label "Person" ;
+    rdfs:subClassOf dbpi:Agent .
+
+dbpi:PlanReviewDivision a dbpi:Division ;
+    dbpi:displayName "Plan Review Division" ;
+    dbpi:identifier "ORG-PLANREV" ;
+    dbpi:reportsTo dbpi:DBPI_Department .
+
+dbpi:Property_77Juniper a dbpi:Property ;
+    dbpi:displayName "77 Juniper Lane" ;
+    dbpi:hasAddress dbpi:Address_77Juniper ;
+    dbpi:hasOwner dbpi:JuniperHomesLLC ;
+    dbpi:hasParcel dbpi:Parcel_011122008 ;
+    dbpi:identifier "PROP-77-JUNIPER" ;
+    dbpi:locatedInJurisdiction dbpi:Jurisdiction_RedVale .
+
+dbpi:PublicRecordsService a dbpi:PublicService ;
+    dbpi:displayName "Records and Certified Copies" ;
+    dbpi:identifier "SVC-DBPI-012" .
+
+dbpi:RecordsUnit a dbpi:WorkUnit ;
+    dbpi:displayName "Records and Disclosure Unit" ;
+    dbpi:identifier "ORG-RECORDS" ;
+    dbpi:reportsTo dbpi:DBPI_Department .
+
+dbpi:Requirement a owl:Class ;
+    rdfs:label "Requirement" .
+
+dbpi:ReviewComment a owl:Class ;
+    rdfs:label "Review Comment" .
+
+dbpi:RosaMartinez a dbpi:HearingOfficer ;
+    dbpi:displayName "Rosa Martinez" ;
+    dbpi:email "rosa.martinez@redvale.gov" ;
+    dbpi:employeeNumber "E1102" ;
+    dbpi:hasRole dbpi:Role_HearingOfficer ;
+    dbpi:memberOf dbpi:EnforcementDivision .
+
+dbpi:ViolationCase_7782 a dbpi:ViolationCase ;
+    dbpi:assignedToUnit dbpi:EnforcementDivision ;
+    dbpi:closedDate "2026-04-15"^^xsd:date ;
+    dbpi:hasAppeal dbpi:Appeal_7782 ;
+    dbpi:hasCaseStatus dcp:CasePendingCompliance ;
+    dbpi:hasCorrectiveAction dbpi:CorrectiveAction_7782_1 ;
+    dbpi:hasNotice dbpi:Notice_7782 ;
+    dbpi:openedDate "2026-02-28"^^xsd:date ;
+    dbpi:relatedInspection dbpi:Inspection_501 ;
+    dbpi:relatedPermit dbpi:Permit_0042 ;
+    dbpi:relatedProperty dbpi:Property_500Market ;
+    dbpi:violationCaseNumber "CASE-2026-7782" .
+
+dbpi:ViolationCase_7819 a dbpi:ViolationCase ;
+    dbpi:assignedToEmployee dbpi:HelenaCho ;
+    dbpi:assignedToUnit dbpi:EnforcementDivision ;
+    dbpi:description "Garage conversion case escalated to administrative hearing after missed compliance deadline." ;
+    dbpi:hasAppeal dbpi:Appeal_7819 ;
+    dbpi:hasCaseStatus dcp:CaseReferred ;
+    dbpi:hasCorrectiveAction dbpi:CorrectiveAction_7819_1 ;
+    dbpi:hasNotice dbpi:Notice_7819 ;
+    dbpi:hasSupportingDocument dbpi:ComplaintDocument_204 ;
+    dbpi:openedDate "2026-03-17"^^xsd:date ;
+    dbpi:relatedInspection dbpi:Inspection_7819 ;
+    dbpi:relatedProperty dbpi:Property_77Juniper ;
+    dbpi:violationCaseNumber "CASE-2026-7819" .
+
+dbpi:WFS_App_Approved a dbpi:WorkflowState ;
+    dbpi:displayName "Approved" ;
+    dbpi:mapsToConcept dcp:StatusApproved .
+
+dbpi:WFS_App_Denied a dbpi:WorkflowState ;
+    dbpi:displayName "Denied" ;
+    dbpi:mapsToConcept dcp:StatusDenied .
+
+dbpi:WFS_Appeal_Denied a dbpi:WorkflowState ;
+    dbpi:displayName "Denied" ;
+    dbpi:mapsToConcept dcp:AppealDenied .
+
+dbpi:WFS_Appeal_Granted a dbpi:WorkflowState ;
+    dbpi:displayName "Granted" ;
+    dbpi:mapsToConcept dcp:AppealGranted .
+
+dbpi:WFS_InspReq_Completed a dbpi:WorkflowState ;
+    dbpi:displayName "Completed" ;
+    dbpi:mapsToConcept dcp:InspectionCompleted .
+
+dbpi:WFS_Permit_Finaled a dbpi:WorkflowState ;
+    dbpi:displayName "Finaled" ;
+    dbpi:mapsToConcept dcp:PermitFinaled .
+
+dbpi:WFS_RecReq_Received a dbpi:WorkflowState ;
+    dbpi:displayName "Received" ;
+    dbpi:mapsToConcept dcp:RecordsReceived .
+
+dcp:AppealDenied a skos:Concept ;
+    skos:inScheme dcp:AppealStatusScheme ;
+    skos:prefLabel "Denied" .
+
+dcp:AppealPending a skos:Concept ;
+    skos:inScheme dcp:AppealStatusScheme ;
+    skos:prefLabel "Pending" .
+
+dcp:CasePendingCompliance a skos:Concept ;
+    skos:inScheme dcp:CaseStatusScheme ;
+    skos:prefLabel "Pending Compliance" .
+
+dcp:CaseReferred a skos:Concept ;
+    skos:inScheme dcp:CaseStatusScheme ;
+    skos:prefLabel "Referred" .
+
+dcp:InspectionElectricalRough a skos:Concept ;
+    skos:inScheme dcp:InspectionTypeScheme ;
+    skos:prefLabel "Electrical Rough Inspection" .
+
+dcp:InspectionFail a skos:Concept ;
+    skos:inScheme dcp:InspectionResultScheme ;
+    skos:prefLabel "Fail" .
+
+dcp:PermitActive a skos:Concept ;
+    skos:inScheme dcp:PermitStatusScheme ;
+    skos:prefLabel "Active" .
+
+dcp:PermitFinaled a skos:Concept ;
+    skos:inScheme dcp:PermitStatusScheme ;
+    skos:prefLabel "Finaled" .
+
+dcp:PermitTypeElectrical a skos:Concept ;
+    skos:inScheme dcp:PermitTypeScheme ;
+    skos:prefLabel "Electrical" .
+
+dcp:PermitTypeResidentialRemodel a skos:Concept ;
+    skos:inScheme dcp:PermitTypeScheme ;
+    skos:prefLabel "Residential Remodel" .
+
+dcp:WorkKitchenRemodel a skos:Concept ;
+    skos:inScheme dcp:WorkTypeScheme ;
+    skos:prefLabel "Kitchen Remodel" .
+
+dcp:WorkPanelUpgrade a skos:Concept ;
+    skos:inScheme dcp:WorkTypeScheme ;
+    skos:prefLabel "Panel Upgrade" .
+
+dbpi:enforcement a owl:Ontology ;
+    rdfs:label "DBPI Enforcement Ontology" ;
+    rdfs:comment "Enforcement, appeals, and hearing model for DBPI." ;
+    owl:imports dbpi:core,
+        dbpi:inspections,
+        dbpi:organization,
+        dbpi:permitting .
+
+dbpi:CodeSection a owl:Class ;
+    rdfs:label "Code Section" .
+
+dbpi:Fee a owl:Class ;
+    rdfs:label "Fee" .
+
+dbpi:Inspector a owl:Class ;
+    rdfs:label "Inspector" ;
+    rdfs:subClassOf dbpi:Employee .
+
+dbpi:Jurisdiction a owl:Class ;
+    rdfs:label "Jurisdiction" .
+
+dbpi:NoticeOfViolation a owl:Class ;
+    rdfs:label "Notice of Violation" ;
+    rdfs:subClassOf dbpi:Document .
+
+dbpi:Payment a owl:Class ;
+    rdfs:label "Payment" .
+
+dbpi:Permit_0064 a dbpi:Permit ;
+    dbpi:assignedToEmployee dbpi:AliceNguyen ;
+    dbpi:assignedToUnit dbpi:FieldInspectionsDivision ;
+    dbpi:authorizedPermitType dcp:PermitTypeElectrical ;
+    dbpi:authorizedWorkType dcp:WorkPanelUpgrade ;
+    dbpi:basedOnApplication dbpi:Application_1017 ;
+    dbpi:expirationDate "2027-03-07"^^xsd:date ;
+    dbpi:hasPermitStatus dcp:PermitFinaled ;
+    dbpi:issuedBy dbpi:DBPI_Department ;
+    dbpi:issuedDate "2026-03-07"^^xsd:date ;
+    dbpi:permitNumber "PMT-2026-0064" .
+
+dbpi:Property_18Harbor a dbpi:Property ;
+    dbpi:displayName "18 Harbor Avenue" ;
+    dbpi:hasAddress dbpi:Address_18Harbor ;
+    dbpi:hasOwner dbpi:NorthHarborHoldings ;
+    dbpi:hasParcel dbpi:Parcel_010889004 ;
+    dbpi:identifier "PROP-18-HARBOR" ;
+    dbpi:locatedInJurisdiction dbpi:Jurisdiction_RedVale .
+
+dbpi:WFS_App_Received a dbpi:WorkflowState ;
+    dbpi:displayName "Received" ;
+    dbpi:mapsToConcept dcp:StatusReceived .
+
+dbpi:WFS_App_Withdrawn a dbpi:WorkflowState ;
+    dbpi:displayName "Withdrawn" ;
+    dbpi:mapsToConcept dcp:StatusWithdrawn .
+
+dbpi:WFS_Appeal_Pending a dbpi:WorkflowState ;
+    dbpi:displayName "Pending" ;
+    dbpi:mapsToConcept dcp:AppealPending .
+
+dbpi:WFS_Case_Open a dbpi:WorkflowState ;
+    dbpi:displayName "Open" ;
+    dbpi:mapsToConcept dcp:CaseOpen .
+
+dbpi:WFS_Case_Referred a dbpi:WorkflowState ;
+    dbpi:displayName "Referred" ;
+    dbpi:mapsToConcept dcp:CaseReferred .
+
+dbpi:WFS_InspReq_Canceled a dbpi:WorkflowState ;
+    dbpi:displayName "Canceled" ;
+    dbpi:mapsToConcept dcp:InspectionCanceled .
+
+dbpi:WFS_InspReq_Requested a dbpi:WorkflowState ;
+    dbpi:displayName "Requested" ;
+    dbpi:mapsToConcept dcp:InspectionRequested .
+
+dbpi:WFS_Permit_Expired a dbpi:WorkflowState ;
+    dbpi:displayName "Expired" ;
+    dbpi:mapsToConcept dcp:PermitExpired .
+
+dbpi:WFS_Permit_Revoked a dbpi:WorkflowState ;
+    dbpi:displayName "Revoked" ;
+    dbpi:mapsToConcept dcp:PermitRevoked .
+
+dbpi:WFS_RecReq_Denied a dbpi:WorkflowState ;
+    dbpi:displayName "Denied" ;
+    dbpi:mapsToConcept dcp:RecordsDenied .
+
+dbpi:WFS_RecReq_Fulfilled a dbpi:WorkflowState ;
+    dbpi:displayName "Fulfilled" ;
+    dbpi:mapsToConcept dcp:RecordsFulfilled .
+
+dbpi:WFS_RecReq_PartiallyFulfilled a dbpi:WorkflowState ;
+    dbpi:displayName "Partially Fulfilled" ;
+    dbpi:mapsToConcept dcp:RecordsPartiallyFulfilled .
+
+dcp:AppealStatusScheme a skos:ConceptScheme ;
+    skos:prefLabel "Appeal Status Scheme" .
+
+dcp:InspectionFinal a skos:Concept ;
+    skos:inScheme dcp:InspectionTypeScheme ;
+    skos:prefLabel "Final Inspection" .
+
+dcp:InspectionTypeScheme a skos:ConceptScheme ;
+    skos:prefLabel "Inspection Type Scheme" .
+
+dbpi:inspections a owl:Ontology ;
+    rdfs:label "DBPI Inspections Ontology" ;
+    rdfs:comment "Inspection scheduling and outcome model for DBPI." ;
+    owl:imports dbpi:core,
+        dbpi:organization,
+        dbpi:permitting .
+
+dbpi:BobPatel a dbpi:PlanReviewer ;
+    dbpi:displayName "Bob Patel" ;
+    dbpi:email "bob.patel@redvale.gov" ;
+    dbpi:employeeNumber "E1034" ;
+    dbpi:hasRole dbpi:Role_PlanReviewer ;
+    dbpi:memberOf dbpi:PlanReviewDivision .
+
+dbpi:CorrectiveAction a owl:Class ;
+    rdfs:label "Corrective Action" .
+
+dbpi:Division a owl:Class ;
+    rdfs:label "Division" ;
+    rdfs:subClassOf dbpi:Organization .
+
+dbpi:Hearing a owl:Class ;
+    rdfs:label "Hearing" .
+
+dbpi:JaneDevelopmentLLC a dbpi:Organization ;
+    dbpi:externalReference "CA-SOS-LLC-2018-04772" ;
+    dbpi:identifier "APPL-9001" ;
+    dbpi:legalName "Jane Development LLC" .
+
+dbpi:PermitServicesDivision a dbpi:Division ;
+    dbpi:displayName "Permit Services Division" ;
+    dbpi:identifier "ORG-PERMIT" ;
+    dbpi:reportsTo dbpi:DBPI_Department .
+
+dbpi:Permit_0042 a dbpi:Permit ;
+    dbpi:assignedToEmployee dbpi:AliceNguyen ;
+    dbpi:assignedToUnit dbpi:FieldInspectionsDivision ;
+    dbpi:authorizedPermitType dcp:PermitTypeResidentialRemodel ;
+    dbpi:authorizedWorkType dcp:WorkKitchenRemodel ;
+    dbpi:basedOnApplication dbpi:Application_1001 ;
+    dbpi:endDate "2027-02-20"^^xsd:date ;
+    dbpi:expirationDate "2027-02-20"^^xsd:date ;
+    dbpi:hasPermitStatus dcp:PermitActive ;
+    dbpi:issuedBy dbpi:DBPI_Department ;
+    dbpi:issuedDate "2026-02-20"^^xsd:date ;
+    dbpi:permitNumber "PMT-2026-0042" ;
+    dbpi:startDate "2026-02-20"^^xsd:date .
+
+dbpi:PublicService a owl:Class ;
+    rdfs:label "Public Service" .
+
+dbpi:WFS_Case_Closed a dbpi:WorkflowState ;
+    dbpi:displayName "Closed" ;
+    dbpi:mapsToConcept dcp:CaseClosed .
+
+dbpi:WFS_Case_PendingCompliance a dbpi:WorkflowState ;
+    dbpi:displayName "Pending Compliance" ;
+    dbpi:mapsToConcept dcp:CasePendingCompliance .
+
+dbpi:WFS_InspReq_Scheduled a dbpi:WorkflowState ;
+    dbpi:displayName "Scheduled" ;
+    dbpi:mapsToConcept dcp:InspectionScheduled .
+
+dbpi:WFS_RecReq_Closed a dbpi:WorkflowState ;
+    dbpi:displayName "Closed" ;
+    dbpi:mapsToConcept dcp:RecordsClosed .
+
+dcp:CaseStatusScheme a skos:ConceptScheme ;
+    skos:prefLabel "Case Status Scheme" .
+
+dcp:InspectionCompleted a skos:Concept ;
+    skos:inScheme dcp:InspectionStatusScheme ;
+    skos:prefLabel "Completed" .
+
+dcp:InspectionResultScheme a skos:ConceptScheme ;
+    skos:prefLabel "Inspection Result Scheme" .
+
+dcp:InspectionStatusScheme a skos:ConceptScheme ;
+    skos:prefLabel "Inspection Status Scheme" .
+
+dcp:PermitTypeScheme a skos:ConceptScheme ;
+    skos:prefLabel "Permit Type Scheme" .
+
+dcp:StatusApproved a skos:Concept ;
+    skos:inScheme dcp:ApplicationStatusScheme ;
+    skos:prefLabel "Approved" .
+
+dcp:WorkTypeScheme a skos:ConceptScheme ;
+    skos:prefLabel "Work Type Scheme" .
+
+dbpi:organization a owl:Ontology ;
+    rdfs:label "DBPI Organization Ontology" ;
+    rdfs:comment "Organizational model for the City of Red Vale Department of Building Permits and Inspections." ;
+    owl:imports dbpi:core .
+
+dbpi:permitting a owl:Ontology ;
+    rdfs:label "DBPI Permitting Ontology" ;
+    rdfs:comment "Permitting lifecycle ontology for DBPI." ;
+    owl:imports dbpi:core,
+        dbpi:organization .
+
+dbpi:Address a owl:Class ;
+    rdfs:label "Address" .
+
+dbpi:AliceNguyen a dbpi:Inspector ;
+    dbpi:displayName "Alice Nguyen" ;
+    dbpi:email "alice.nguyen@redvale.gov" ;
+    dbpi:employeeNumber "E1007" ;
+    dbpi:hasRole dbpi:Role_Inspector ;
+    dbpi:managesUnit dbpi:FieldInspectionsDivision ;
+    dbpi:memberOf dbpi:FieldInspectionsDivision ;
+    dbpi:startDate "2019-06-15"^^xsd:date .
+
+dbpi:Appeal a owl:Class ;
+    rdfs:label "Appeal" .
+
+dbpi:EnforcementDivision a dbpi:Division ;
+    dbpi:displayName "Code Enforcement Division" ;
+    dbpi:identifier "ORG-ENF" ;
+    dbpi:reportsTo dbpi:DBPI_Department .
+
+dbpi:FieldInspectionsDivision a dbpi:Division ;
+    dbpi:displayName "Field Inspections Division" ;
+    dbpi:identifier "ORG-INSP" ;
+    dbpi:reportsTo dbpi:DBPI_Department .
+
+dbpi:Parcel a owl:Class ;
+    rdfs:label "Parcel" .
+
+dbpi:PlanReview a owl:Class ;
+    rdfs:label "Plan Review" .
+
+dbpi:Property_500Market a dbpi:Property ;
+    dbpi:displayName "500 Market Street Property" ;
+    dbpi:hasAddress dbpi:Address_500Market ;
+    dbpi:hasOwner dbpi:JaneDevelopmentLLC ;
+    dbpi:hasParcel dbpi:Parcel_014233019 ;
+    dbpi:identifier "PROP-500-MARKET" ;
+    dbpi:locatedInJurisdiction dbpi:Jurisdiction_RedVale .
+
+dbpi:WFS_App_UnderReview a dbpi:WorkflowState ;
+    dbpi:displayName "Under Review" ;
+    dbpi:mapsToConcept dcp:StatusUnderReview .
+
+dbpi:WFS_Permit_Suspended a dbpi:WorkflowState ;
+    dbpi:displayName "Suspended" ;
+    dbpi:mapsToConcept dcp:PermitSuspended .
+
+dbpi:WFS_RecReq_InReview a dbpi:WorkflowState ;
+    dbpi:displayName "In Review" ;
+    dbpi:mapsToConcept dcp:RecordsInReview .
+
+dcp:ApplicationStatusScheme a skos:ConceptScheme ;
+    skos:prefLabel "Application Status Scheme" .
+
+dcp:PermitStatusScheme a skos:ConceptScheme ;
+    skos:prefLabel "Permit Status Scheme" .
+
+dbpi:WFS_Permit_Active a dbpi:WorkflowState ;
+    dbpi:displayName "Active" ;
+    dbpi:mapsToConcept dcp:PermitActive .
+
+dcp:RecordsRequestStatusScheme a skos:ConceptScheme ;
+    skos:prefLabel "Records Request Status Scheme" .
+
+dbpi:core a owl:Ontology ;
+    rdfs:label "DBPI Core Ontology" ;
+    rdfs:comment "Foundational entities and shared properties for the City of Red Vale Department of Building Permits and Inspections." .
+
+dbpi:Agent a owl:Class ;
+    rdfs:label "Agent" .
+
+dbpi:DBPI_Department a dbpi:Department ;
+    dbpi:hasContactPoint dbpi:ContactPoint_DBPI ;
+    dbpi:hasSubUnit dbpi:EnforcementDivision,
+        dbpi:FieldInspectionsDivision,
+        dbpi:PermitServicesDivision,
+        dbpi:PlanReviewDivision ;
+    dbpi:identifier "ORG-DBPI" ;
+    dbpi:legalName "City of Red Vale Department of Building Permits and Inspections" ;
+    dbpi:locatedInJurisdiction dbpi:Jurisdiction_RedVale ;
+    dbpi:url "https://permits.redvale.gov"^^xsd:anyURI .
+
+dbpi:InspectionRequest a owl:Class ;
+    rdfs:label "Inspection Request" .
+
+dbpi:Jurisdiction_RedVale a dbpi:Jurisdiction ;
+    dbpi:displayName "Red Vale" ;
+    dbpi:identifier "JUR-RV-001" .
+
+dbpi:Role a owl:Class ;
+    rdfs:label "Role" .
+
+dbpi:Document a owl:Class ;
+    rdfs:label "Document" .
+
+dbpi:WorkflowModel a owl:Class ;
+    rdfs:label "Workflow Model" .
+
+dbpi:Employee a owl:Class ;
+    rdfs:label "Employee" ;
+    rdfs:subClassOf dbpi:Person .
+
+dbpi:PermitApplication a owl:Class ;
+    rdfs:label "Permit Application" .
+
+dbpi:Property a owl:Class ;
+    rdfs:label "Property" .
+
+dbpi:Inspection a owl:Class ;
+    rdfs:label "Inspection" .
+
+dbpi:Organization a owl:Class ;
+    rdfs:label "Organization" ;
+    rdfs:subClassOf dbpi:Agent .
+
+dbpi:ViolationCase a owl:Class ;
+    rdfs:label "Violation Case" .
+
+dbpi:Permit a owl:Class ;
+    rdfs:label "Permit" .
+
+dbpi:WorkflowState a owl:Class ;
+    rdfs:label "Workflow State" .
+
+dbpi:WorkflowTransition a owl:Class ;
+    rdfs:label "Workflow Transition" .
+

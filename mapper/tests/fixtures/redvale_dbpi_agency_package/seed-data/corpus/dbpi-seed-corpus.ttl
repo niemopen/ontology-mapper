@@ -1,0 +1,254 @@
+@prefix dbpi: <https://data.redvale.gov/ontology/dbpi/> .
+@prefix dcp: <https://data.redvale.gov/ontology/dbpi/codelists#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+### Additional personnel
+dbpi:RecordsUnit a dbpi:WorkUnit ;
+    dbpi:identifier "ORG-RECORDS" ;
+    dbpi:displayName "Records and Disclosure Unit" ;
+    dbpi:reportsTo dbpi:DBPI_Department .
+
+dbpi:Role_PermitTechnician a dbpi:Role ; dbpi:displayName "Permit Technician" .
+dbpi:Role_CodeEnforcementOfficer a dbpi:Role ; dbpi:displayName "Code Enforcement Officer" .
+dbpi:Role_RecordsOfficer a dbpi:Role ; dbpi:displayName "Records Officer" .
+
+dbpi:MarcoSilva a dbpi:PermitTechnician ;
+    dbpi:employeeNumber "E1015" ;
+    dbpi:displayName "Marco Silva" ;
+    dbpi:hasRole dbpi:Role_PermitTechnician ;
+    dbpi:memberOf dbpi:PermitServicesDivision ;
+    dbpi:email "marco.silva@redvale.gov" .
+
+dbpi:HelenaCho a dbpi:CodeEnforcementOfficer ;
+    dbpi:employeeNumber "E1044" ;
+    dbpi:displayName "Helena Cho" ;
+    dbpi:hasRole dbpi:Role_CodeEnforcementOfficer ;
+    dbpi:memberOf dbpi:EnforcementDivision ;
+    dbpi:email "helena.cho@redvale.gov" .
+
+dbpi:SamuelReed a dbpi:RecordsOfficer ;
+    dbpi:employeeNumber "E1118" ;
+    dbpi:displayName "Samuel Reed" ;
+    dbpi:hasRole dbpi:Role_RecordsOfficer ;
+    dbpi:memberOf dbpi:RecordsUnit ;
+    dbpi:email "samuel.reed@redvale.gov" .
+
+### Additional external parties
+dbpi:NorthHarborHoldings a dbpi:Organization ;
+    dbpi:legalName "North Harbor Holdings, Inc." ;
+    dbpi:identifier "ORG-EXT-4401" .
+
+dbpi:JuniperHomesLLC a dbpi:Organization ;
+    dbpi:legalName "Juniper Homes LLC" ;
+    dbpi:identifier "ORG-EXT-5520" .
+
+dbpi:HarborElectricCo a dbpi:Organization ;
+    dbpi:legalName "Harbor Electric Co." ;
+    dbpi:identifier "LIC-EC-2891" .
+
+dbpi:Citizen_MaryCole a dbpi:Person ;
+    dbpi:identifier "CIT-2004" ;
+    dbpi:displayName "Mary Cole" .
+
+### Additional locations and properties
+dbpi:Address_18Harbor a dbpi:Address ;
+    dbpi:line1 "18 Harbor Avenue" ;
+    dbpi:city "Red Vale" ;
+    dbpi:regionCode "CA" ;
+    dbpi:postalCode "94106" ;
+    dbpi:countryCode "US" .
+
+dbpi:Parcel_010889004 a dbpi:Parcel ;
+    dbpi:parcelNumber "010-889-004" ;
+    dbpi:locatedInJurisdiction dbpi:Jurisdiction_RedVale .
+
+dbpi:Property_18Harbor a dbpi:Property ;
+    dbpi:identifier "PROP-18-HARBOR" ;
+    dbpi:displayName "18 Harbor Avenue" ;
+    dbpi:hasAddress dbpi:Address_18Harbor ;
+    dbpi:hasParcel dbpi:Parcel_010889004 ;
+    dbpi:hasOwner dbpi:NorthHarborHoldings ;
+    dbpi:locatedInJurisdiction dbpi:Jurisdiction_RedVale .
+
+dbpi:Address_77Juniper a dbpi:Address ;
+    dbpi:line1 "77 Juniper Lane" ;
+    dbpi:city "Red Vale" ;
+    dbpi:regionCode "CA" ;
+    dbpi:postalCode "94107" ;
+    dbpi:countryCode "US" .
+
+dbpi:Parcel_011122008 a dbpi:Parcel ;
+    dbpi:parcelNumber "011-122-008" ;
+    dbpi:locatedInJurisdiction dbpi:Jurisdiction_RedVale .
+
+dbpi:Property_77Juniper a dbpi:Property ;
+    dbpi:identifier "PROP-77-JUNIPER" ;
+    dbpi:displayName "77 Juniper Lane" ;
+    dbpi:hasAddress dbpi:Address_77Juniper ;
+    dbpi:hasParcel dbpi:Parcel_011122008 ;
+    dbpi:hasOwner dbpi:JuniperHomesLLC ;
+    dbpi:locatedInJurisdiction dbpi:Jurisdiction_RedVale .
+
+### Additional plan set and permit scenario
+dbpi:PlanSet_1017 a dbpi:Document ;
+    dbpi:documentNumber "DOC-1017-PLANSET" ;
+    dbpi:displayName "Electrical Panel Upgrade Plans" ;
+    dbpi:documentDate "2026-03-03"^^xsd:date .
+
+dbpi:Application_1017 a dbpi:PermitApplication ;
+    dbpi:applicationNumber "APP-2026-1017" ;
+    dbpi:submittedDate "2026-03-03"^^xsd:date ;
+    dbpi:submittedBy dbpi:HarborElectricCo ;
+    dbpi:concernsProperty dbpi:Property_18Harbor ;
+    dbpi:forService dbpi:BuildingPermitService ;
+    dbpi:requestedPermitType dcp:PermitTypeElectrical ;
+    dbpi:requestedWorkType dcp:WorkPanelUpgrade ;
+    dbpi:hasApplicationStatus dcp:StatusApproved ;
+    dbpi:hasSupportingDocument dbpi:PlanSet_1017 ;
+    dbpi:assignedToUnit dbpi:PermitServicesDivision ;
+    dbpi:assignedToEmployee dbpi:BobPatel .
+
+dbpi:PlanReview_1017 a dbpi:PlanReview ;
+    dbpi:identifier "REVIEW-1017" ;
+    dbpi:reviewedBy dbpi:BobPatel ;
+    dbpi:decisionDate "2026-03-06"^^xsd:date ;
+    dbpi:description "Approved panel upgrade and service grounding corrections incorporated." .
+
+dbpi:Application_1017 dbpi:hasPlanReview dbpi:PlanReview_1017 .
+
+dbpi:Permit_0064 a dbpi:Permit ;
+    dbpi:permitNumber "PMT-2026-0064" ;
+    dbpi:issuedDate "2026-03-07"^^xsd:date ;
+    dbpi:expirationDate "2027-03-07"^^xsd:date ;
+    dbpi:basedOnApplication dbpi:Application_1017 ;
+    dbpi:authorizedPermitType dcp:PermitTypeElectrical ;
+    dbpi:authorizedWorkType dcp:WorkPanelUpgrade ;
+    dbpi:hasPermitStatus dcp:PermitFinaled ;
+    dbpi:issuedBy dbpi:DBPI_Department ;
+    dbpi:assignedToUnit dbpi:FieldInspectionsDivision ;
+    dbpi:assignedToEmployee dbpi:AliceNguyen .
+
+dbpi:Application_1017 dbpi:resultedInPermit dbpi:Permit_0064 .
+
+dbpi:InspectionRequest_612 a dbpi:InspectionRequest ;
+    dbpi:identifier "INSPRQ-612" ;
+    dbpi:requestedDate "2026-03-11"^^xsd:date ;
+    dbpi:requestedBy dbpi:HarborElectricCo ;
+    dbpi:forPermit dbpi:Permit_0064 ;
+    dbpi:requestedInspectionType dcp:InspectionFinal ;
+    dbpi:concernsProperty dbpi:Property_18Harbor .
+
+dbpi:Inspection_612 a dbpi:Inspection ;
+    dbpi:inspectionNumber "INSP-2026-0612" ;
+    dbpi:inspectionType dcp:InspectionFinal ;
+    dbpi:hasInspectionStatus dcp:InspectionCompleted ;
+    dbpi:hasInspectionResult dcp:InspectionPass ;
+    dbpi:scheduledFor "2026-03-12T10:00:00"^^xsd:dateTime ;
+    dbpi:completedAt "2026-03-12T10:18:00"^^xsd:dateTime ;
+    dbpi:performedBy dbpi:AliceNguyen ;
+    dbpi:inspectedProperty dbpi:Property_18Harbor ;
+    dbpi:forPermit dbpi:Permit_0064 ;
+    dbpi:fulfillsRequest dbpi:InspectionRequest_612 ;
+    dbpi:note "Service panel upgrade completed in conformity with approved plans." .
+
+### Violation scenario with appeal
+dbpi:ComplaintDocument_204 a dbpi:Document ;
+    dbpi:documentNumber "CMP-2026-0204" ;
+    dbpi:displayName "Complaint regarding unpermitted garage conversion at 77 Juniper Lane" ;
+    dbpi:documentDate "2026-03-14"^^xsd:date .
+
+dbpi:Notice_7819 a dbpi:NoticeOfViolation ;
+    dbpi:documentNumber "NOV-7819" ;
+    dbpi:displayName "Notice of Violation NOV-7819" ;
+    dbpi:documentDate "2026-03-18"^^xsd:date ;
+    dbpi:citesCodeSection dbpi:CodeSection_HAB_12_4 ;
+    dbpi:description "Occupancy and egress deficiencies identified in unpermitted garage conversion." .
+
+dbpi:CodeSection_HAB_12_4 a dbpi:CodeSection ;
+    dbpi:identifier "HAB-12.4" ;
+    dbpi:displayName "Habitable rooms and emergency egress requirements" .
+
+dbpi:Inspection_7819 a dbpi:Inspection ;
+    dbpi:inspectionNumber "INSP-2026-07819" ;
+    dbpi:inspectionType dcp:InspectionFinal ;
+    dbpi:hasInspectionStatus dcp:InspectionCompleted ;
+    dbpi:hasInspectionResult dcp:InspectionFail ;
+    dbpi:scheduledFor "2026-03-17T13:30:00"^^xsd:dateTime ;
+    dbpi:completedAt "2026-03-17T14:05:00"^^xsd:dateTime ;
+    dbpi:performedBy dbpi:AliceNguyen ;
+    dbpi:inspectedProperty dbpi:Property_77Juniper ;
+    dbpi:note "Observed converted garage occupied without permit and without code-compliant egress." ;
+    dbpi:citesCodeSection dbpi:CodeSection_HAB_12_4 .
+
+dbpi:CorrectiveAction_7819_1 a dbpi:CorrectiveAction ;
+    dbpi:identifier "CA-7819-1" ;
+    dbpi:description "Cease occupancy of the converted space and submit legalization or restoration plan." ;
+    dbpi:dueDate "2026-04-02"^^xsd:date .
+
+dbpi:ViolationCase_7819 a dbpi:ViolationCase ;
+    dbpi:violationCaseNumber "CASE-2026-7819" ;
+    dbpi:openedDate "2026-03-17"^^xsd:date ;
+    dbpi:relatedInspection dbpi:Inspection_7819 ;
+    dbpi:relatedProperty dbpi:Property_77Juniper ;
+    dbpi:hasCaseStatus dcp:CaseReferred ;
+    dbpi:hasNotice dbpi:Notice_7819 ;
+    dbpi:hasCorrectiveAction dbpi:CorrectiveAction_7819_1 ;
+    dbpi:assignedToUnit dbpi:EnforcementDivision ;
+    dbpi:assignedToEmployee dbpi:HelenaCho ;
+    dbpi:description "Garage conversion case escalated to administrative hearing after missed compliance deadline." ;
+    dbpi:hasSupportingDocument dbpi:ComplaintDocument_204 .
+
+dbpi:Appeal_7819 a dbpi:Appeal ;
+    dbpi:identifier "APL-2026-7819" ;
+    dbpi:forCase dbpi:ViolationCase_7819 ;
+    dbpi:submittedBy dbpi:JuniperHomesLLC ;
+    dbpi:submittedDate "2026-03-22"^^xsd:date ;
+    dbpi:hasAppealStatus dcp:AppealDenied ;
+    dbpi:description "Owner appealed notice on hardship grounds; original action sustained." .
+
+dbpi:Hearing_7819 a dbpi:Hearing ;
+    dbpi:identifier "HRG-2026-7819" ;
+    dbpi:forCase dbpi:ViolationCase_7819 ;
+    dbpi:heardBy dbpi:RosaMartinez ;
+    dbpi:hearingDate "2026-04-11T09:00:00"^^xsd:dateTime ;
+    dbpi:description "Administrative hearing on unpermitted occupancy and habitability deficiencies." .
+
+dbpi:ViolationCase_7819 dbpi:hasAppeal dbpi:Appeal_7819 .
+
+### Records request scenario represented as documents and services
+dbpi:RecordsRequestDocument_0091 a dbpi:Document ;
+    dbpi:documentNumber "PRR-2026-0091" ;
+    dbpi:displayName "Public records request for permit history of 500 Market Street" ;
+    dbpi:documentDate "2026-03-09"^^xsd:date ;
+    dbpi:submittedBy dbpi:Citizen_MaryCole ;
+    dbpi:concernsProperty dbpi:Property_500Market ;
+    dbpi:forService dbpi:PublicRecordsService ;
+    dbpi:assignedToUnit dbpi:RecordsUnit ;
+    dbpi:assignedToEmployee dbpi:SamuelReed ;
+    dbpi:description "Requester sought issued permits, inspection outcomes, and violation notices for the property." .
+
+dbpi:RecordsResponseDocument_0091 a dbpi:Document ;
+    dbpi:documentNumber "PRR-2026-0091-RESP" ;
+    dbpi:displayName "Responsive records package for PRR-2026-0091" ;
+    dbpi:documentDate "2026-03-13"^^xsd:date ;
+    dbpi:forService dbpi:PublicRecordsService ;
+    dbpi:description "Released permit history, final inspection records, and notice log with one personal-contact redaction." .
+
+dbpi:PublicRecordsService a dbpi:PublicService ;
+    dbpi:identifier "SVC-DBPI-012" ;
+    dbpi:displayName "Records and Certified Copies" .
+
+### Financial record
+dbpi:Fee_1017 a dbpi:Fee ;
+    dbpi:identifier "FEE-1017" ;
+    dbpi:description "Electrical permit and final inspection fee" ;
+    dbpi:amount "244.00"^^xsd:decimal ;
+    dbpi:currencyCode "USD" .
+
+dbpi:Payment_1017 a dbpi:Payment ;
+    dbpi:identifier "PAY-1017" ;
+    dbpi:amount "244.00"^^xsd:decimal ;
+    dbpi:currencyCode "USD" ;
+    dbpi:paidDate "2026-03-03"^^xsd:date .
+
+dbpi:Application_1017 dbpi:hasFee dbpi:Fee_1017 ; dbpi:hasPayment dbpi:Payment_1017 .

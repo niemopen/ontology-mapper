@@ -1,0 +1,14 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+<https://data.redvale.gov/ontology/dbpi/all> a owl:Ontology ;
+    owl:imports <https://data.redvale.gov/ontology/dbpi/core>,
+                <https://data.redvale.gov/ontology/dbpi/organization>,
+                <https://data.redvale.gov/ontology/dbpi/permitting>,
+                <https://data.redvale.gov/ontology/dbpi/inspections>,
+                <https://data.redvale.gov/ontology/dbpi/enforcement>,
+                <https://data.redvale.gov/ontology/dbpi/workflows>,
+                <https://data.redvale.gov/ontology/gis>,
+                <https://data.redvale.gov/ontology/finance> ;
+    rdfs:label "DBPI Combined Ontology" ;
+    rdfs:comment "Import ontology that gathers the DBPI modules and cross-agency augmentations." .

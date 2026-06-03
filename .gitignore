@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node / frontend
+node_modules/
+dist/
+.svelte-kit/
+
+# Runtime / pipeline output
+.mapper-runs/
+sources.zip
+*.sources.zip
+# Per-subdir sources/ dirs are gitignored (their contents only), except
+# for the demo source package that ships with the repo so a fresh
+# checkout (OASIS, reviewers) can run the dashboard end-to-end. The
+# per-subdir .gitignore (e.g. runner/.gitignore) owns the actual rule.
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Claude per-project state
+.claude/
