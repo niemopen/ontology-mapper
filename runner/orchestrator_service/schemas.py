@@ -67,6 +67,8 @@ def _fix_source_field(evaluation: dict, field: str, expected: str) -> bool:
     Returns True if a correction was made.
     """
     actual = evaluation.get(field, "")
+    if not isinstance(actual, str):
+        return False
     corrected = html.unescape(actual)
     if corrected != actual:
         evaluation[field] = corrected
