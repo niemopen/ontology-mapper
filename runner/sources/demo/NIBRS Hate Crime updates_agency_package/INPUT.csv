@@ -22,7 +22,7 @@
 "Offense","","","",""
 "Offense","UCROffenseCode","","1","NIBRS Element 6. This data element should be used to enter the UCR Offense Codes of the up to ten most serious (as determined by the reporting agency) offenses involved in the incident."
 "Offense","OffenseAttemptedCompletedUnfounded","","1","NIBRS Element 7. This data element should be used to indicate whether any of the offenders in the incident were suspected of consuming alcohol or using drugs/narcotics during or shortly before the incident; or of using a computer, computer terminal, or other computer equipment to perpetrate the crime."
-"Offense","OffendersSuspecteofUsing","","0..1","NIBRS Element 8. This data element should be used to indicate whether any of the offenders in the incident were suspected of consuming alcohol or using drugs/narcotics during or shortly before the incident; or of using a computer, computer terminal, or other computer equipment to perpetrate the crime."
+"Offense","OffendersSuspectedofUsing","","0..1","NIBRS Element 8. This data element should be used to indicate whether any of the offenders in the incident were suspected of consuming alcohol or using drugs/narcotics during or shortly before the incident; or of using a computer, computer terminal, or other computer equipment to perpetrate the crime."
 "Offense","BiasMotivation","string","*","BiasMotivation
 NIBRS Element 8A. A designation for a bias factor that motivated a person to commit an offense.
 
