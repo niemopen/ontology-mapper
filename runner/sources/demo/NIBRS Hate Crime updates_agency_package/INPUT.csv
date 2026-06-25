@@ -29,7 +29,7 @@ NIBRS Element 8A. A designation for a bias factor that motivated a person to com
 Changes to Existing Bias Motivation Codes:
 - Replace 99 - ""Unknown"" with ""Bias Suspected - Pending Investigation"".
 - Replace 88 - ""None"" to ""No Known Bias""."
-"Offense","NumberofPremisesEntered","","0.1","NIBRS Element 10. This data element is to be used only if the crime is BURGLARY-BREAKING_ENTERING (220)"
+"Offense","NumberofPremisesEntered","","0..1","NIBRS Element 10. This data element is to be used only if the crime is BURGLARY-BREAKING_ENTERING (220)"
 "Offense","MethodofEntry","","0..1","NIBRS Element This data element should be used only if the offense is BURGLARY-BREAKING_ENTERING (220)"
 "Offense","TypeCriminalActivityGangInformation","","*","NIBRS Element 12. This data element should be used to provide additional information on the criminal activity of the offender(s) in incidents involving:
 "
