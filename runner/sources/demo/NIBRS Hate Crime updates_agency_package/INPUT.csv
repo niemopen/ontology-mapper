@@ -143,8 +143,8 @@ Added codes:
  ""Schoolmate - High School""
  ""Schoolmate - Post-secondary""
 "
-"SubjectVictimAssociation","OffenderNumberstobeRelated (<unidirectional association>)","","0,1","NIBRS Element 34. This data element should be used, along with Data Element 35 (Relationships of Victim to Offenders), to report the relationships of the victim to offenders who have perpetrated a Crime Against Person or a Crime Against Property."
-"SubjectVictimAssociation","Victim (<unidirectional association>)","","0,1",""
+"SubjectVictimAssociation","OffenderNumberstobeRelated (<unidirectional association>)","","0..1","NIBRS Element 34. This data element should be used, along with Data Element 35 (Relationships of Victim to Offenders), to report the relationships of the victim to offenders who have perpetrated a Crime Against Person or a Crime Against Property."
+"SubjectVictimAssociation","Victim (<unidirectional association>)","","0..1",""
 "PersonAge","","","","NIBRS Element 26. The age of the arrestee should be entered either as an exact number of years, a range of years, or as unknown.
 NIBRS Element 37. If the offender was a person, his/her age should be entered into this data element either as an exact age, a range of days or years, or as unknown. Accepted values are: UNKNOWN
 NIBRS Element 47. If the arrestee was a person, his/her age should be entered into this data element either as an exact age, a range of days or years, or as unknown. Accepted values are: UNKNOWN"
