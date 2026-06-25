@@ -312,13 +312,20 @@ def _run_pipeline_stages_1_4(run_id: str, run_dir: Path, cwd: str, env: dict) ->
     if input_type == "csv":
         source = inputs.get("source", "source")
         ns_slug = source.lower().replace(" ", "-").replace("_", "-")
-        # Resolve CSV path: prefer input/INPUT.csv, fall back to any CSV at the package root
-        _abs_input_csv = Path(cwd) / package_path / "input" / "INPUT.csv"
-        _abs_root_csvs = sorted((Path(cwd) / package_path).glob("*.csv"))
-        if _abs_input_csv.exists():
+        pkg_dir = Path(cwd) / package_path
+        input_dir = pkg_dir / "input"
+
+        # Resolve CSV path: prefer input/INPUT.csv, then any CSV in input/, then any CSV at the package root
+        input_csvs = sorted(input_dir.glob("*.csv")) if input_dir.is_dir() else []
+        root_csvs = sorted(pkg_dir.glob("*.csv"))
+        preferred = input_dir / "INPUT.csv"
+
+        if preferred.exists():
             csv_path = f"{package_path}/input/INPUT.csv"
-        elif _abs_root_csvs:
-            csv_path = f"{package_path}/{_abs_root_csvs[0].name}"
+        elif input_csvs:
+            csv_path = f"{package_path}/input/{input_csvs[0].name}"
+        elif root_csvs:
+            csv_path = f"{package_path}/{root_csvs[0].name}"
         else:
             csv_path = f"{package_path}/input/INPUT.csv"  # let om-ingest-csv emit the error
         if not _run_cmd(run_id, "2", [
