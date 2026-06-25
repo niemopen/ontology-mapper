@@ -73,6 +73,22 @@ def csv_with_typo_ref(tmp_path):
     return csv_path
 
 
+@pytest.fixture
+def csv_with_placeholder_association(tmp_path):
+    """CSV with BoUML-style placeholder association rows that should be ignored."""
+    csv_path = tmp_path / "INPUT.csv"
+    rows = [
+        ["Model Class", "Model Attribute", "Model Type", "Model Multiplicity", "Model Definition"],
+        ["Submission", "", "", "", ""],
+        ["Submission", "<directional aggregation>", "", "0..1", ""],
+        ["Submission", "MessageID", "string", "0..1", "A message identifier"],
+    ]
+    with open(csv_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerows(rows)
+    return csv_path
+
+
 # ─── parse_multiplicity ─────────────────────────────────────────────────
 
 class TestParseMultiplicity:
@@ -141,6 +157,12 @@ class TestParseCsv:
         case_num = next(a for a in classes["Case"]["attributes"] if a["name"] == "CaseNumber")
         assert "Element#" not in case_num["definition"]
         assert "I am a clerk" in case_num["definition"]
+
+    def test_ignores_placeholder_association_rows(self, csv_with_placeholder_association):
+        classes = parse_csv(csv_with_placeholder_association)
+        submission = classes["Submission"]
+        assert submission["object_refs"] == []
+        assert [a["name"] for a in submission["attributes"]] == ["MessageID"]
 
 
 # ─── build_concept_inventory ─────────────────────────────────────────────

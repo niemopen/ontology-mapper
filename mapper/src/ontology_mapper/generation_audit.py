@@ -193,7 +193,7 @@ def audit_generation(inv, matrix):
         if unresolved:
             names = [p.get("sourceProperty", "?") for p in unresolved]
             findings.append({
-                "severity": "error",
+                "severity": "warning",
                 "code": "GA-006",
                 "concept": concept,
                 "message": (

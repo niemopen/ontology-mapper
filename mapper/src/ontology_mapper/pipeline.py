@@ -501,12 +501,17 @@ def _handle_ingest(state: PipelineState, spec: StageSpec, started: str) -> Stage
     pkg_path = Path(state.inputs["input_package_path"])
 
     # Check if this is a CSV-based package (skip OWL validation if so)
-    has_input_csv = (pkg_path / "input").is_dir() and any((pkg_path / "input").glob("*.csv"))
+    # Accept CSVs in input/ subdirectory OR at the package root
+    has_input_csv = (
+        ((pkg_path / "input").is_dir() and any((pkg_path / "input").glob("*.csv")))
+        or any(pkg_path.glob("*.csv"))
+    )
 
     if has_input_csv:
-        # CSV-based package: verify CSV files are present
-        csv_files = list((pkg_path / "input").glob("*.csv"))
-        print(f"  CSV package detected: {len(csv_files)} CSV file(s) in input/")
+        # CSV-based package: verify CSV files are present (input/ subdir or package root)
+        csv_files = list((pkg_path / "input").glob("*.csv")) if (pkg_path / "input").is_dir() else []
+        csv_files += list(pkg_path.glob("*.csv"))
+        print(f"  CSV package detected: {len(csv_files)} CSV file(s)")
     else:
         # OWL-based package: run standard RDF/OWL validation
         from ontology_mapper.validate_input_package import validate_input_package, format_findings
@@ -545,7 +550,7 @@ def _handle_ingest(state: PipelineState, spec: StageSpec, started: str) -> Stage
         "contexts": lambda p: p.suffix == ".jsonld",
         "workflows": lambda p: "workflow" in p.name.lower() and p.suffix == ".ttl",
         "docs": lambda p: p.suffix in (".md", ".txt", ".pdf"),
-        "input_csv": lambda p: p.parent.name == "input" and p.suffix == ".csv",
+        "input_csv": lambda p: (p.parent.name == "input" or p.parent == pkg_path) and p.suffix == ".csv",
     }
 
     file_count = 0

@@ -66,7 +66,7 @@ def parse_csv(csv_path):
         classes: dict of {class_name: {definition, attributes: [...], object_refs: [...]}}
     """
     classes = {}
-    with open(csv_path, encoding="utf-8") as f:
+    with open(csv_path, encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
         for row in reader:
             cls_name = row.get("Model Class", "").strip()

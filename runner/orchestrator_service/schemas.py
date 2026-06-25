@@ -8,6 +8,8 @@ The evaluation dict schemas match what ``om-collect-alignments`` expects
 when reading back evaluated search result files.
 """
 
+import html
+
 
 # ---------------------------------------------------------------------------
 # JSON Schemas for --json-schema flag
@@ -60,15 +62,18 @@ def _matches_qname(actual: str, expected: str) -> bool:
 
 
 def _fix_source_field(evaluation: dict, field: str, expected: str) -> bool:
-    """Auto-correct a source field that's missing its namespace prefix.
+    """Auto-correct a source field that's missing its namespace prefix or has HTML entities.
 
     Returns True if a correction was made.
     """
     actual = evaluation.get(field, "")
-    if actual != expected and _matches_qname(actual, expected):
+    corrected = html.unescape(actual)
+    if corrected != actual:
+        evaluation[field] = corrected
+    if corrected != expected and _matches_qname(corrected, expected):
         evaluation[field] = expected
-        return True
-    return False
+        corrected = expected
+    return corrected != actual
 
 
 def validate_response(evaluation: dict, file_doc: dict) -> list[str]:

@@ -306,9 +306,31 @@ def _run_pipeline_stages_1_4(run_id: str, run_dir: Path, cwd: str, env: dict) ->
     _pipeline_status[run_id]["stage"] = "2"
     _record_stage_start(run_dir, "2")
     state = _read_state(run_dir)
-    package_path = (state.get("inputs", {}) if state else {}).get("inputPackagePath", "")
-    if not _run_cmd(run_id, "2", ["om-extract", "--run-dir", rd, "--package", package_path], cwd, env):
-        return False
+    inputs = state.get("inputs", {}) if state else {}
+    input_type = inputs.get("input_type", "owl")
+    package_path = inputs.get("input_package_path", "")
+    if input_type == "csv":
+        source = inputs.get("source", "source")
+        ns_slug = source.lower().replace(" ", "-").replace("_", "-")
+        # Resolve CSV path: prefer input/INPUT.csv, fall back to any CSV at the package root
+        _abs_input_csv = Path(cwd) / package_path / "input" / "INPUT.csv"
+        _abs_root_csvs = sorted((Path(cwd) / package_path).glob("*.csv"))
+        if _abs_input_csv.exists():
+            csv_path = f"{package_path}/input/INPUT.csv"
+        elif _abs_root_csvs:
+            csv_path = f"{package_path}/{_abs_root_csvs[0].name}"
+        else:
+            csv_path = f"{package_path}/input/INPUT.csv"  # let om-ingest-csv emit the error
+        if not _run_cmd(run_id, "2", [
+            "om-ingest-csv", csv_path,
+            "--namespace", ns_slug,
+            "--namespace-uri", f"urn:{ns_slug}-model",
+            "--run-dir", rd,
+        ], cwd, env):
+            return False
+    else:
+        if not _run_cmd(run_id, "2", ["om-extract", "--run-dir", rd, "--package", package_path], cwd, env):
+            return False
     if not _mark_complete(run_id, "2", run_dir, cwd, env):
         return False
 

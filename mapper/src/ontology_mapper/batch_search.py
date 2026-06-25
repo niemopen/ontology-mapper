@@ -19,6 +19,7 @@ Usage:
 """
 
 import json
+import re
 from pathlib import Path
 
 from ontology_mapper.pipeline_context import load_context
@@ -33,8 +34,9 @@ def sanitize_filename(qname: str) -> str:
     """Convert a qualified name to a safe filename stem.
 
     ``"dbpi:AddressType"`` -> ``"dbpi_AddressType"``
+    Windows-illegal characters (< > : " / \\ | ? *) are replaced with ``_``.
     """
-    return qname.replace(":", "_")
+    return re.sub(r'[<>:"/\\|?*]', "_", qname)
 
 
 def load_source_concepts(run_dir: Path) -> list[dict]:
