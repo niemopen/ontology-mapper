@@ -135,7 +135,7 @@ APPEARANCE=Appearance Affiliation; CLOTHING=Clothing Affilitation; UNIFORM=Unifo
 "OffenseVictimAssociation","Victim (<unidirectional association>)","","0..1",""
 "OffenseVictimAssociation","VictimConnectedtoUCROffenseCodes (<unidirectional association>)","","0..1","NIBRS Element 24. This data element should be used to link each victim to the up to ten most serious (as determined by the reporting agency) offenses which were perpetrated against him/her during the incident."
 "SubjectVictimAssociation","","","",""
-"SubjectVictimAssociation","RelationshipsofVictimtoOffenders","","0,1","NIBRS Element 35. This data element should be used along with Data Element 34 (Offender Numbers to be Related) to report the relationship of the victim to offenders who have perpetrated a Crime Against Person or a Crime Against Property.  
+"SubjectVictimAssociation","RelationshipsofVictimtoOffenders","","0..1","NIBRS Element 35. This data element should be used along with Data Element 34 (Offender Numbers to be Related) to report the relationship of the victim to offenders who have perpetrated a Crime Against Person or a Crime Against Property.  
 
 Added codes:
  ""Schoolmate - Elementary""
