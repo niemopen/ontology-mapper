@@ -84,8 +84,8 @@ Added codes:
 "Item","DateRecovered","","0..1","NIBRS Element 17. If previously stolen property is recovered, the month, day, and year (MM/DD/YYYY) of its recovery should be entered into this data element."
 "Item","NumberofStolenRecovered","","0..1","NIBRS Element 18/19. This data element indicates how many motor vehicles were stolen or recovered in a Motor Vehicle Theft incident."
 "Substance","","","",""
-"Substance","SuspectedDrugType","","0,1","NIBRS Element 20. This data element should be used to identify the types of drugs or narcotics that were seized in a drug case."
-"Substance","EstimatedDrugQuantity","","0,1","NIBRS Element 21. This data element should be used to indicate the quantity of drugs or narcotics seized in a drug case."
+"Substance","SuspectedDrugType","","0..1","NIBRS Element 20. This data element should be used to identify the types of drugs or narcotics that were seized in a drug case."
+"Substance","EstimatedDrugQuantity","","0..1","NIBRS Element 21. This data element should be used to indicate the quantity of drugs or narcotics seized in a drug case."
 "Substance","TypeDrugMeasurement","","*","NIBRS Element 22. This data element should be used to indicate the type of measurement used in quantifying drugs or narcotics seized in a drug case."
 "Person","","","",""
 "Person","Sex","","0..1","NIBRS Element 27. The sex of the arrestee should be indicated in this data element.
