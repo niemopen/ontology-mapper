@@ -1,0 +1,2838 @@
+[
+  {
+    "id": "hs:JuvenilePlacementType",
+    "definition": "A data type for information about where a juvenile is directed to reside during the pendency of a delinquency proceeding.",
+    "kind": "type",
+    "context": "Extends hs:PlacementType. Pattern: object. Path: nc:ActivityType/hs:PlacementType/hs:JuvenilePlacementType",
+    "metadata": {
+      "namespace": "hs",
+      "baseType": "hs:PlacementType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType",
+        "hs:PlacementType"
+      ],
+      "path": "nc:ActivityType/hs:PlacementType/hs:JuvenilePlacementType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 0,
+      "properties": [],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "hs:PlacementType",
+    "definition": "A data type for the placement history of a child or youth.",
+    "kind": "type",
+    "context": "Extends nc:ActivityType. Pattern: object. Properties: PlacementCategoryAbstract",
+    "metadata": {
+      "namespace": "hs",
+      "baseType": "nc:ActivityType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType"
+      ],
+      "path": "nc:ActivityType/hs:PlacementType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "PlacementCategoryAbstract"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:ArrestType",
+    "definition": "A data type for the apprehension of a subject by a peace official.",
+    "kind": "type",
+    "context": "Extends nc:ActivityType. Pattern: object. Properties: ArrestAgency, ArrestAgencyRecordIdentification, ArrestCharge, ArrestOfficial, ArrestSequenceID, ArrestSubject",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "nc:ActivityType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType"
+      ],
+      "path": "nc:ActivityType/j:ArrestType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 6,
+      "properties": [
+        "ArrestAgency",
+        "ArrestAgencyRecordIdentification",
+        "ArrestCharge",
+        "ArrestOfficial",
+        "ArrestSequenceID",
+        "ArrestSubject"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:BailBondType",
+    "definition": "A data type for an agreement between a bondsman and a subject in which a bondsman pays the subject's bail or portion of the bail in exchange for certain conditions.",
+    "kind": "type",
+    "context": "Extends nc:ActivityType. Pattern: object. Properties: BailBondAmount",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "nc:ActivityType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType"
+      ],
+      "path": "nc:ActivityType/j:BailBondType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "BailBondAmount"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:CaseOfficialType",
+    "definition": "A data type for an official's involvement in a case.",
+    "kind": "type",
+    "context": "Extends j:JudicialOfficialType. Pattern: object. Path: nc:PersonType/j:JudicialOfficialType/j:CaseOfficialType. Properties: CaseOfficialEndDate, CaseOfficialRoleText, CaseOfficialStartDate",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "j:JudicialOfficialType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:PersonType",
+        "j:JudicialOfficialType"
+      ],
+      "path": "nc:PersonType/j:JudicialOfficialType/j:CaseOfficialType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 3,
+      "properties": [
+        "CaseOfficialEndDate",
+        "CaseOfficialRoleText",
+        "CaseOfficialStartDate"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:ChargeDispositionType",
+    "definition": "A data type for the results or processing of a charge.",
+    "kind": "type",
+    "context": "Extends nc:DispositionType. Pattern: object",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "nc:DispositionType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:DispositionType"
+      ],
+      "path": "nc:DispositionType/j:ChargeDispositionType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 0,
+      "properties": [],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:ChargeType",
+    "definition": "A data type for a formal allegation that a specific person has committed a specific offense.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: ChargeDegreeText, ChargeDescriptionText, ChargeDisposition, ChargeOriginatorEntity, ChargeFilingDate, ChargeSequenceID, ChargeSeverityText, ChargeSpecialAllegationText, ChargeStatute, ChargeSubject",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "j:ChargeType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 11,
+      "properties": [
+        "ChargeDegreeText",
+        "ChargeDescriptionText",
+        "ChargeDisposition",
+        "ChargeOriginatorEntity",
+        "ChargeFilingDate",
+        "ChargeSequenceID",
+        "ChargeSeverityText",
+        "ChargeSpecialAllegationText",
+        "ChargeStatute",
+        "ChargeSubject",
+        "ChargeNCICAbstract"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:CommercialVehicleType",
+    "definition": "A data type for a class of vehicle that includes motor vehicles with a gross vehicle weight rating of 26,001 pounds or more.",
+    "kind": "type",
+    "context": "Extends nc:VehicleType. Pattern: object. Path: nc:ItemType/nc:ConveyanceType/nc:VehicleType/j:CommercialVehicleType. Properties: CommercialVehicleMotorCarrier",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "nc:VehicleType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ItemType",
+        "nc:ConveyanceType",
+        "nc:VehicleType"
+      ],
+      "path": "nc:ItemType/nc:ConveyanceType/nc:VehicleType/j:CommercialVehicleType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "CommercialVehicleMotorCarrier"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:ConditionalReleaseType",
+    "definition": "A data type for a release of a person or item from confinement, holding, or obligation, that is dependent upon certain conditions being met.",
+    "kind": "type",
+    "context": "Extends nc:ReleaseType. Pattern: object. Path: nc:ActivityType/nc:ReleaseType/j:ConditionalReleaseType. Properties: ConditionalReleaseCondition, ConditionalReleaseRevokedReasonText",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "nc:ReleaseType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType",
+        "nc:ReleaseType"
+      ],
+      "path": "nc:ActivityType/nc:ReleaseType/j:ConditionalReleaseType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 2,
+      "properties": [
+        "ConditionalReleaseCondition",
+        "ConditionalReleaseRevokedReasonText"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:CourtAppearanceType",
+    "definition": "A data type for an appearance required of a party in a court of law on a certain date.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: CourtAppearanceEntity",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "j:CourtAppearanceType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "CourtAppearanceEntity"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:CourtEventType",
+    "definition": "A data type for a court occurrence.",
+    "kind": "type",
+    "context": "Extends nc:ActivityType. Pattern: object. Properties: CourtEventAppearance, CourtEventJudge",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "nc:ActivityType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType"
+      ],
+      "path": "nc:ActivityType/j:CourtEventType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 2,
+      "properties": [
+        "CourtEventAppearance",
+        "CourtEventJudge"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:CourtOrderType",
+    "definition": "A data type for a direction of a judge not including a judgment, which determines some point or directs some steps in proceedings.",
+    "kind": "type",
+    "context": "Extends nc:ActivityType. Pattern: object. Properties: CourtOrderDesignatedSubject, CourtOrderIssuingDate, CourtOrderIssuingJudicialOfficial, CourtOrderRecallDate, CourtOrderRecallReasonText, CourtOrderRequestReasonText",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "nc:ActivityType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType"
+      ],
+      "path": "nc:ActivityType/j:CourtOrderType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 6,
+      "properties": [
+        "CourtOrderDesignatedSubject",
+        "CourtOrderIssuingDate",
+        "CourtOrderIssuingJudicialOfficial",
+        "CourtOrderRecallDate",
+        "CourtOrderRecallReasonText",
+        "CourtOrderRequestReasonText"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:CourtType",
+    "definition": "A data type for a court or a unit of a court responsible for trying justice proceedings.",
+    "kind": "type",
+    "context": "Extends nc:OrganizationType. Pattern: object. Properties: CourtName",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "nc:OrganizationType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:OrganizationType"
+      ],
+      "path": "nc:OrganizationType/j:CourtType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "CourtName"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:DriverLicenseType",
+    "definition": "A data type for a license issued to a person granting driving privileges.",
+    "kind": "type",
+    "context": "Extends nc:LicenseType. Pattern: object. Path: nc:IdentificationType/nc:LicenseType/j:DriverLicenseType. Properties: DriverLicenseCommercialClassAbstract, DriverLicenseCardIdentification",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "nc:LicenseType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:IdentificationType",
+        "nc:LicenseType"
+      ],
+      "path": "nc:IdentificationType/nc:LicenseType/j:DriverLicenseType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 2,
+      "properties": [
+        "DriverLicenseCommercialClassAbstract",
+        "DriverLicenseCardIdentification"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:DriverLicenseWithdrawalType",
+    "definition": "A data type for a driver license withdrawal.",
+    "kind": "type",
+    "context": "Extends nc:ActivityType. Pattern: object. Properties: DriverLicenseWithdrawalEffectiveDate, DriverLicenseWithdrawalReinstatementDate",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "nc:ActivityType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType"
+      ],
+      "path": "nc:ActivityType/j:DriverLicenseWithdrawalType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 2,
+      "properties": [
+        "DriverLicenseWithdrawalEffectiveDate",
+        "DriverLicenseWithdrawalReinstatementDate"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:DrivingIncidentType",
+    "definition": "A data type for details of an incident involving a vehicle.",
+    "kind": "type",
+    "context": "Extends nc:IncidentType. Pattern: object. Path: nc:ActivityType/nc:IncidentType/j:DrivingIncidentType. Properties: DrivingIncidentCMVAbstract, DrivingIncidentRecordedSpeedRateMeasure, DrivingIncidentHazMatAbstract, DrivingIncidentLegalSpeedRateMeasure",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "nc:IncidentType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType",
+        "nc:IncidentType"
+      ],
+      "path": "nc:ActivityType/nc:IncidentType/j:DrivingIncidentType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 4,
+      "properties": [
+        "DrivingIncidentCMVAbstract",
+        "DrivingIncidentRecordedSpeedRateMeasure",
+        "DrivingIncidentHazMatAbstract",
+        "DrivingIncidentLegalSpeedRateMeasure"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:EnforcementOfficialType",
+    "definition": "A data type for a person involved in the enforcement of law.",
+    "kind": "type",
+    "context": "Extends nc:PersonType. Pattern: object. Properties: EnforcementOfficialBadgeIdentification",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "nc:PersonType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:PersonType"
+      ],
+      "path": "nc:PersonType/j:EnforcementOfficialType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "EnforcementOfficialBadgeIdentification"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:FinancialCompilationType",
+    "definition": "A data type for a set of financial details for a person.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: FinancialCompilationDate, FinancialAccount",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "j:FinancialCompilationType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 2,
+      "properties": [
+        "FinancialCompilationDate",
+        "FinancialAccount"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:HearingType",
+    "definition": "A data type for a proceeding before an administrative agency or authority to decide how to deal with failure to comply with rules, to determine an issue of fact, or to reach an administrative decision based on evidence.",
+    "kind": "type",
+    "context": "Extends nc:ActivityType. Pattern: object. Properties: HearingContinuationReasonText",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "nc:ActivityType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType"
+      ],
+      "path": "nc:ActivityType/j:HearingType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "HearingContinuationReasonText"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:IntakeType",
+    "definition": "A data type for a process of receiving persons into an institution.",
+    "kind": "type",
+    "context": "Extends nc:ActivityType. Pattern: object. Properties: IntakeScreening",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "nc:ActivityType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType"
+      ],
+      "path": "nc:ActivityType/j:IntakeType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "IntakeScreening"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:JudicialOfficialType",
+    "definition": "A data type for a person involved in a judicial area of government.",
+    "kind": "type",
+    "context": "Extends nc:PersonType. Pattern: object. Properties: JudicialOfficialFirm, JudicialOfficialRegistrationIdentification",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "nc:PersonType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:PersonType"
+      ],
+      "path": "nc:PersonType/j:JudicialOfficialType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 2,
+      "properties": [
+        "JudicialOfficialFirm",
+        "JudicialOfficialRegistrationIdentification"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:MotorCarrierType",
+    "definition": "A data type for an organization providing commercial motor vehicle transportation for compensation.",
+    "kind": "type",
+    "context": "Extends nc:OrganizationType. Pattern: object. Properties: MotorCarrierDOTIdentification",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "nc:OrganizationType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:OrganizationType"
+      ],
+      "path": "nc:OrganizationType/j:MotorCarrierType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "MotorCarrierDOTIdentification"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:OffenseType",
+    "definition": "A data type for an alleged violation of a statute, ordinance, or rule.",
+    "kind": "type",
+    "context": "Extends nc:ActivityType. Pattern: object. Properties: OffenseViolatedStatute",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "nc:ActivityType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType"
+      ],
+      "path": "nc:ActivityType/j:OffenseType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "OffenseViolatedStatute"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:PleaType",
+    "definition": "A data type for an answer which a defendant in an action at law makes to charges.",
+    "kind": "type",
+    "context": "Extends nc:ActivityType. Pattern: object. Properties: PleaDescriptionText",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "nc:ActivityType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType"
+      ],
+      "path": "nc:ActivityType/j:PleaType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "PleaDescriptionText"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:ProgramViolationType",
+    "definition": "A data type for a set of details describing activities and infractions of a subject in a program.",
+    "kind": "type",
+    "context": "Extends j:OffenseType. Pattern: object. Path: nc:ActivityType/j:OffenseType/j:ProgramViolationType. Properties: ProgramViolationCategoryAbstract, ProgramViolationOutcomeAbstract",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "j:OffenseType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType",
+        "j:OffenseType"
+      ],
+      "path": "nc:ActivityType/j:OffenseType/j:ProgramViolationType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 2,
+      "properties": [
+        "ProgramViolationCategoryAbstract",
+        "ProgramViolationOutcomeAbstract"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:SanctionType",
+    "definition": "A data type for a sanction or penalty ordered for a subject as a result of a disposition of a charge.",
+    "kind": "type",
+    "context": "Extends nc:ActivityType. Pattern: object. Properties: SanctionSetObligation, SanctionCategoryText",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "nc:ActivityType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType"
+      ],
+      "path": "nc:ActivityType/j:SanctionType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 2,
+      "properties": [
+        "SanctionSetObligation",
+        "SanctionCategoryText"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:SentenceType",
+    "definition": "A data type for a punishment resulting from conviction of charges in a court case.",
+    "kind": "type",
+    "context": "Extends nc:ActivityType. Pattern: object. Properties: SentenceCondition, SentenceConfinementCreditDayQuantity, SentenceDescriptionText, SentenceSuspendedIndicator, SentenceTerm",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "nc:ActivityType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType"
+      ],
+      "path": "nc:ActivityType/j:SentenceType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 5,
+      "properties": [
+        "SentenceCondition",
+        "SentenceConfinementCreditDayQuantity",
+        "SentenceDescriptionText",
+        "SentenceSuspendedIndicator",
+        "SentenceTerm"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:StatuteType",
+    "definition": "A data type for a law, rule, or ordinance within a jurisdiction.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: StatuteCodeIdentification, StatuteEnactmentDate, StatuteOffenseIdentification",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "j:StatuteType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 3,
+      "properties": [
+        "StatuteCodeIdentification",
+        "StatuteEnactmentDate",
+        "StatuteOffenseIdentification"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:SubjectType",
+    "definition": "A data type for a person or organization that is involved or suspected of being involved in a violation of a criminal statute, ordinance or rule.",
+    "kind": "type",
+    "context": "Extends nc:EntityType. Pattern: object",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "nc:EntityType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:EntityType"
+      ],
+      "path": "nc:EntityType/j:SubjectType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 0,
+      "properties": [],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:TermType",
+    "definition": "A data type for a duration length either in specific terms or as a range.",
+    "kind": "type",
+    "context": "Extends nc:ActivityType. Pattern: object. Properties: TermDuration, TermLifeIndicator",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "nc:ActivityType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType"
+      ],
+      "path": "nc:ActivityType/j:TermType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 2,
+      "properties": [
+        "TermDuration",
+        "TermLifeIndicator"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "j:WarrantType",
+    "definition": "A data type for an authorization for an enforcement official to perform a specified action.",
+    "kind": "type",
+    "context": "Extends j:CourtOrderType. Pattern: object. Path: nc:ActivityType/j:CourtOrderType/j:WarrantType",
+    "metadata": {
+      "namespace": "j",
+      "baseType": "j:CourtOrderType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType",
+        "j:CourtOrderType"
+      ],
+      "path": "nc:ActivityType/j:CourtOrderType/j:WarrantType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 0,
+      "properties": [],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:ActivityType",
+    "definition": "A data type for a single or set of related actions, events, or process steps.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: ActivityIdentification, ActivityApprovedIndicator, ActivityAssignedDate, ActivityCategoryAbstract, ActivityCompletedIndicator, ActivityDate, ActivityDisposition, ActivityLocation, ActivityName, ActivityPrescribedDuration",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:ActivityType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 14,
+      "properties": [
+        "ActivityIdentification",
+        "ActivityApprovedIndicator",
+        "ActivityAssignedDate",
+        "ActivityCategoryAbstract",
+        "ActivityCompletedIndicator",
+        "ActivityDate",
+        "ActivityDisposition",
+        "ActivityLocation",
+        "ActivityName",
+        "ActivityPrescribedDuration",
+        "ActivityReportedDate",
+        "ActivityRequestedDate",
+        "ActivityScheduledDate",
+        "ActivityStatus"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:AddressType",
+    "definition": "A data type for a geophysical location described by postal information.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: AddressFullText, AddressState, AddressPostalCode",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:AddressType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 3,
+      "properties": [
+        "AddressFullText",
+        "AddressState",
+        "AddressPostalCode"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:AmountType",
+    "definition": "A data type for an amount of money.",
+    "kind": "type",
+    "context": "Pattern: object",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:AmountType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 0,
+      "properties": [],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:AssessmentType",
+    "definition": "A data type for an evaluation, appraisal, or assessment of something or someone.",
+    "kind": "type",
+    "context": "Extends nc:ActivityType. Pattern: object. Properties: AssessmentPerson, AssessmentScoreAbstract, AssessmentToolName",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "nc:ActivityType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType"
+      ],
+      "path": "nc:ActivityType/nc:AssessmentType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 3,
+      "properties": [
+        "AssessmentPerson",
+        "AssessmentScoreAbstract",
+        "AssessmentToolName"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:AssociationType",
+    "definition": "A data type for an association, connection, relationship, or involvement somehow linking people, things, and/or activities together.",
+    "kind": "type",
+    "context": "Pattern: association",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "association",
+      "inheritanceChain": [],
+      "path": "nc:AssociationType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 0,
+      "properties": [],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:CaseDispositionDecisionType",
+    "definition": "A data type for the disposition of a case occurring as a result of some decision.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: CaseDispositionDecisionCategoryAbstract",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:CaseDispositionDecisionType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "CaseDispositionDecisionCategoryAbstract"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:CaseDispositionType",
+    "definition": "A data type for an outcome or processing of a case.",
+    "kind": "type",
+    "context": "Extends nc:DispositionType. Pattern: object. Properties: CaseDispositionFinalDate, CaseDispositionDecision",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "nc:DispositionType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:DispositionType"
+      ],
+      "path": "nc:DispositionType/nc:CaseDispositionType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 2,
+      "properties": [
+        "CaseDispositionFinalDate",
+        "CaseDispositionDecision"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:CaseType",
+    "definition": "A data type for an aggregation of information about a set of related activities and events.",
+    "kind": "type",
+    "context": "Extends nc:ActivityType. Pattern: object. Properties: CaseCategoryAbstract, CaseTrackingID",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "nc:ActivityType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType"
+      ],
+      "path": "nc:ActivityType/nc:CaseType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 2,
+      "properties": [
+        "CaseCategoryAbstract",
+        "CaseTrackingID"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:ConditionType",
+    "definition": "A data type for a requirement or stipulation.",
+    "kind": "type",
+    "context": "Extends nc:ActivityType. Pattern: object. Properties: ConditionGroupID",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "nc:ActivityType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType"
+      ],
+      "path": "nc:ActivityType/nc:ConditionType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "ConditionGroupID"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:ContactInformationType",
+    "definition": "A data type for how to contact a person or an organization.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: ContactMeansAbstract",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:ContactInformationType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "ContactMeansAbstract"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:ConveyanceType",
+    "definition": "A data type for a means of transport from place to place.",
+    "kind": "type",
+    "context": "Extends nc:ItemType. Pattern: object",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "nc:ItemType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ItemType"
+      ],
+      "path": "nc:ItemType/nc:ConveyanceType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 0,
+      "properties": [],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:CountryType",
+    "definition": "A data type for a country, territory, dependency, or other such geopolitical subdivision of a location.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: CountryRepresentation",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:CountryType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "CountryRepresentation"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:DateRangeType",
+    "definition": "A data type for a range of dates.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: StartDate, EndDate",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:DateRangeType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 2,
+      "properties": [
+        "StartDate",
+        "EndDate"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:DateType",
+    "definition": "A data type for a calendar date.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: DateRepresentation",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:DateType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "DateRepresentation"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:DispositionType",
+    "definition": "A data type for a result or outcome that is the product of handling, processing, or finalizing something.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: DispositionCategoryAbstract, DispositionDate, DispositionText",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:DispositionType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 3,
+      "properties": [
+        "DispositionCategoryAbstract",
+        "DispositionDate",
+        "DispositionText"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:DocumentType",
+    "definition": "A data type for a paper or electronic document.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: DocumentCategoryAbstract, DocumentFiledDate, DocumentSource, DocumentSourceText, DocumentSubmitter, DocumentTitleText",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:DocumentType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 6,
+      "properties": [
+        "DocumentCategoryAbstract",
+        "DocumentFiledDate",
+        "DocumentSource",
+        "DocumentSourceText",
+        "DocumentSubmitter",
+        "DocumentTitleText"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:EntityType",
+    "definition": "A data type for a person, organization, or item.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: EntityRepresentation",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:EntityType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "EntityRepresentation"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:FinancialAccountType",
+    "definition": "A data type for a financial account maintained by a financial institution.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: FinancialAccountPresentBalanceAmount",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:FinancialAccountType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "FinancialAccountPresentBalanceAmount"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:FullTelephoneNumberType",
+    "definition": "A data type for a full telephone number.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: TelephoneNumberFullID",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:FullTelephoneNumberType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "TelephoneNumberFullID"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:IdentificationType",
+    "definition": "A data type for a representation of an identity.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: IdentificationID, IdentificationJurisdiction, IdentificationCategoryAbstract, IdentificationIssuerCountry",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:IdentificationType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 4,
+      "properties": [
+        "IdentificationID",
+        "IdentificationJurisdiction",
+        "IdentificationCategoryAbstract",
+        "IdentificationIssuerCountry"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:IncidentType",
+    "definition": "A data type for an occurrence or an event that may require a response.",
+    "kind": "type",
+    "context": "Extends nc:ActivityType. Pattern: object",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "nc:ActivityType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType"
+      ],
+      "path": "nc:ActivityType/nc:IncidentType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 0,
+      "properties": [],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:ItemType",
+    "definition": "A data type for an article or thing.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: ItemValue",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:ItemType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "ItemValue"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:ItemValueType",
+    "definition": "A data type for an evaluation of the monetary worth of an item.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: ItemValueAmount",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:ItemValueType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "ItemValueAmount"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:JurisdictionType",
+    "definition": "A data type for a geopolitical area in which an organization, person, or object has a specific range of authority.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: JurisdictionAbstract",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:JurisdictionType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "JurisdictionAbstract"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:LanguageType",
+    "definition": "A data type for a language.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: LanguageRepresentation",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:LanguageType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "LanguageRepresentation"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:LicenseEndorsementType",
+    "definition": "A data type for an endorsement on a license or license permit which authorizes specific privileges.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: LicenseEndorsementAbstract",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:LicenseEndorsementType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "LicenseEndorsementAbstract"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:LicenseRestrictionType",
+    "definition": "A data type for a restriction applicable to a permit or license.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: LicenseRestrictionAbstract",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:LicenseRestrictionType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "LicenseRestrictionAbstract"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:LicenseType",
+    "definition": "A data type for an authorization issued to a person granting certain privileges.",
+    "kind": "type",
+    "context": "Extends nc:IdentificationType. Pattern: object. Properties: LicenseRestriction, LicenseEndorsement",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "nc:IdentificationType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:IdentificationType"
+      ],
+      "path": "nc:IdentificationType/nc:LicenseType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 2,
+      "properties": [
+        "LicenseRestriction",
+        "LicenseEndorsement"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:LocationType",
+    "definition": "A data type for geospatial location.",
+    "kind": "type",
+    "context": "Pattern: object",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:LocationType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 0,
+      "properties": [],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:MeasureType",
+    "definition": "A data type for a measurement.",
+    "kind": "type",
+    "context": "Pattern: object",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:MeasureType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 0,
+      "properties": [],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:ObligationType",
+    "definition": "A data type for something that is owed to an entity.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: ObligationTotalAbstract, ObligationDueAbstract, ObligationRequirementDescriptionText, ObligationCategoryAbstract, ObligationRecipient",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:ObligationType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 5,
+      "properties": [
+        "ObligationTotalAbstract",
+        "ObligationDueAbstract",
+        "ObligationRequirementDescriptionText",
+        "ObligationCategoryAbstract",
+        "ObligationRecipient"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:OrganizationType",
+    "definition": "A data type for a body of people organized for a particular purpose.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: OrganizationIdentification, OrganizationName, OrganizationOtherIdentification, OrganizationPrimaryContactInformation",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:OrganizationType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 4,
+      "properties": [
+        "OrganizationIdentification",
+        "OrganizationName",
+        "OrganizationOtherIdentification",
+        "OrganizationPrimaryContactInformation"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:PersonCitizenshipType",
+    "definition": "A data type for a person's position or status with a country that assigns rights, duties, and privileges because of the birth or naturalization of the person in that country.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: PersonCitizenshipCountry",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:PersonCitizenshipType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "PersonCitizenshipCountry"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:PersonLanguageType",
+    "definition": "A data type for a language capability of a person.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: Language",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:PersonLanguageType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "Language"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:PersonNameType",
+    "definition": "A data type for a combination of names and/or titles by which a person is known.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: personNameCommentText, PersonFullName, PersonNameCategoryAbstract",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:PersonNameType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 3,
+      "properties": [
+        "personNameCommentText",
+        "PersonFullName",
+        "PersonNameCategoryAbstract"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:PersonType",
+    "definition": "A data type for a human being.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: PersonBirthDate, PersonCitizenship, PersonDeathDate, PersonName, PersonOtherIdentification, PersonPhysicalDisabilityText, PersonPrimaryLanguage, PersonRaceAbstract, PersonResidentAbstract, PersonSexAbstract",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:PersonType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 12,
+      "properties": [
+        "PersonBirthDate",
+        "PersonCitizenship",
+        "PersonDeathDate",
+        "PersonName",
+        "PersonOtherIdentification",
+        "PersonPhysicalDisabilityText",
+        "PersonPrimaryLanguage",
+        "PersonRaceAbstract",
+        "PersonResidentAbstract",
+        "PersonSexAbstract",
+        "PersonUnionStatusAbstract",
+        "PersonContactInformation"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:PlanType",
+    "definition": "A data type for a detailed proposal for doing or achieving something.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: PlanCreatedDate, PlanDateRange",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:PlanType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 2,
+      "properties": [
+        "PlanCreatedDate",
+        "PlanDateRange"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:ProgramType",
+    "definition": "A data type for a set of projects, activities, or services intended to meet a need.",
+    "kind": "type",
+    "context": "Extends nc:ActivityType. Pattern: object. Properties: ProgramPerson, ProgramPurposeText",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "nc:ActivityType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType"
+      ],
+      "path": "nc:ActivityType/nc:ProgramType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 2,
+      "properties": [
+        "ProgramPerson",
+        "ProgramPurposeText"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:RealEstateType",
+    "definition": "A data type for a piece of land and any permanent structures and natural resources on it.",
+    "kind": "type",
+    "context": "Extends nc:ItemType. Pattern: object",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "nc:ItemType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ItemType"
+      ],
+      "path": "nc:ItemType/nc:RealEstateType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 0,
+      "properties": [],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:ReleaseType",
+    "definition": "A data type for a freeing or discharging of someone or something from an activity, supervision, or obligation.",
+    "kind": "type",
+    "context": "Extends nc:ActivityType. Pattern: object",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "nc:ActivityType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType"
+      ],
+      "path": "nc:ActivityType/nc:ReleaseType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 0,
+      "properties": [],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:SpeedMeasureType",
+    "definition": "A data type for a measure of a speed or rate of motion.",
+    "kind": "type",
+    "context": "Extends nc:MeasureType. Pattern: object",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "nc:MeasureType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:MeasureType"
+      ],
+      "path": "nc:MeasureType/nc:SpeedMeasureType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 0,
+      "properties": [],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:StateType",
+    "definition": "A data type for a state, commonwealth, province, or other such geopolitical subdivision of a country.",
+    "kind": "type",
+    "context": "Pattern: object",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:StateType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 0,
+      "properties": [],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:StatusType",
+    "definition": "A data type for a state of something or someone.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: StatusAbstract, StatusDate",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:StatusType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 2,
+      "properties": [
+        "StatusAbstract",
+        "StatusDate"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:SupervisionType",
+    "definition": "A data type for an act of officially overseeing, supervising, or keeping track in some capacity of a person.",
+    "kind": "type",
+    "context": "Extends nc:ActivityType. Pattern: object",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "nc:ActivityType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType"
+      ],
+      "path": "nc:ActivityType/nc:SupervisionType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 0,
+      "properties": [],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:TelephoneNumberType",
+    "definition": "A data type for a telephone number for a telecommunication device.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: TelephoneNumberAbstract",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nc:TelephoneNumberType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "TelephoneNumberAbstract"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nc:VehicleType",
+    "definition": "A data type for a conveyance designed to carry an operator, passengers and/or cargo, over land.",
+    "kind": "type",
+    "context": "Extends nc:ConveyanceType. Pattern: object. Path: nc:ItemType/nc:ConveyanceType/nc:VehicleType",
+    "metadata": {
+      "namespace": "nc",
+      "baseType": "nc:ConveyanceType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ItemType",
+        "nc:ConveyanceType"
+      ],
+      "path": "nc:ItemType/nc:ConveyanceType/nc:VehicleType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 0,
+      "properties": [],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:AccountingType",
+    "definition": "Date Accounting due to Court\nElement# 15-9\nUser Story:",
+    "kind": "type",
+    "context": "Extends j:FinancialCompilationType. Pattern: object. Properties: RealEstate, AccountingCategoryCode, AccountingDueDate, FinancialAssets, PersonalProperty, TotalAssets",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "j:FinancialCompilationType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "j:FinancialCompilationType"
+      ],
+      "path": "j:FinancialCompilationType/nods:AccountingType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 6,
+      "properties": [
+        "RealEstate",
+        "AccountingCategoryCode",
+        "AccountingDueDate",
+        "FinancialAssets",
+        "PersonalProperty",
+        "TotalAssets"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:AlternativeDisputeResolutionType",
+    "definition": "Was ADR court-ordered?\nElement# 17-3\nUser Story:",
+    "kind": "type",
+    "context": "Extends nc:ActivityType. Pattern: object. Properties: ActivityDisputeResolutionCategoryCode, AlternativeDisputeResolutionCourtOrderedIndicator, AlternativeDisputeResolutionHearing, AlternativeDisputeResolutionOutcomeCode, AlternativeDisputeResolutionParticipant, AlternativeDisputeResolutionParties",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "nc:ActivityType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType"
+      ],
+      "path": "nc:ActivityType/nods:AlternativeDisputeResolutionType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 6,
+      "properties": [
+        "ActivityDisputeResolutionCategoryCode",
+        "AlternativeDisputeResolutionCourtOrderedIndicator",
+        "AlternativeDisputeResolutionHearing",
+        "AlternativeDisputeResolutionOutcomeCode",
+        "AlternativeDisputeResolutionParticipant",
+        "AlternativeDisputeResolutionParties"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:AttorneyAdvocateCaseRoleType",
+    "definition": "Is attorney admitted to practice in this jurisdiction only for this case?\nElement# 3-7\nUser Story:",
+    "kind": "type",
+    "context": "Extends j:CaseOfficialType. Pattern: object. Path: nc:PersonType/j:JudicialOfficialType/j:CaseOfficialType/nods:AttorneyAdvocateCaseRoleType. Properties: AttorneyAdvocateCategoryCode, AttorneyAdvocateLimitedScopeIndicator, AttorneyAdvocateProHacViceIndicator, AttorneyAdvocateRepresentedParticipant, AttorneyAdvocateRepresentedParticipantText",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "j:CaseOfficialType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:PersonType",
+        "j:JudicialOfficialType",
+        "j:CaseOfficialType"
+      ],
+      "path": "nc:PersonType/j:JudicialOfficialType/j:CaseOfficialType/nods:AttorneyAdvocateCaseRoleType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 5,
+      "properties": [
+        "AttorneyAdvocateCategoryCode",
+        "AttorneyAdvocateLimitedScopeIndicator",
+        "AttorneyAdvocateProHacViceIndicator",
+        "AttorneyAdvocateRepresentedParticipant",
+        "AttorneyAdvocateRepresentedParticipantText"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:BondType",
+    "definition": "Element# 10-7\nUser Story:",
+    "kind": "type",
+    "context": "Extends j:BailBondType. Pattern: object. Path: nc:ActivityType/j:BailBondType/nods:BondType. Properties: BondCategoryCode, BondHearingCategoryCode, DefendantStatusBondCode",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "j:BailBondType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType",
+        "j:BailBondType"
+      ],
+      "path": "nc:ActivityType/j:BailBondType/nods:BondType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 3,
+      "properties": [
+        "BondCategoryCode",
+        "BondHearingCategoryCode",
+        "DefendantStatusBondCode"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:CaseCourtEventType",
+    "definition": "Way that the hearing was held\nElement# 7-6\nUser Story:",
+    "kind": "type",
+    "context": "Pattern: object. Properties: HearingModalityCode",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nods:CaseCourtEventType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "HearingModalityCode"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:CaseFilingType",
+    "definition": "Is this an amended pleading?\nElement# 5-15\nUser Story:",
+    "kind": "type",
+    "context": "Extends nc:DocumentType. Pattern: object. Properties: CaseFilingAmendedIndicator, CaseFilingCategoryCode, CaseFilingInOppositionIndicator, CaseFilingOpposedIndicator, CaseFilingStipulatedIndicator, MotionOutcomeCode, PetitionDenialReasonCode",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "nc:DocumentType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:DocumentType"
+      ],
+      "path": "nc:DocumentType/nods:CaseFilingType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 7,
+      "properties": [
+        "CaseFilingAmendedIndicator",
+        "CaseFilingCategoryCode",
+        "CaseFilingInOppositionIndicator",
+        "CaseFilingOpposedIndicator",
+        "CaseFilingStipulatedIndicator",
+        "MotionOutcomeCode",
+        "PetitionDenialReasonCode"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:CaseParticipantAssociationType",
+    "definition": "Participant's role/standing in the case.\nElement# 2-18\nUser Story:",
+    "kind": "type",
+    "context": "Extends nc:AssociationType. Pattern: association. Properties: RelationshipToActionCode, RelationshipToCivilActionCode, RelationshipToPersonCode",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "nc:AssociationType",
+      "pattern": "association",
+      "inheritanceChain": [
+        "nc:AssociationType"
+      ],
+      "path": "nc:AssociationType/nods:CaseParticipantAssociationType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 3,
+      "properties": [
+        "RelationshipToActionCode",
+        "RelationshipToCivilActionCode",
+        "RelationshipToPersonCode"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:CaseParticipantType",
+    "definition": "Has Party opted in to text message notifications?\nElement# 2-2\nUser Story: I am a clerk and I want to know how to contact the party about court dates.",
+    "kind": "type",
+    "context": "Extends nc:EntityType. Pattern: object. Properties: CaseParticipantAssociation, GuardianConservatorRegistrationDate, GuardianConservatorRepresentativePayeeIndicator, GuardianConservatorVAFiduciaryIndicator, ICWAChildDeterminationDate, ParticipantCategoryCode, ParticipantElectronicServiceCategoryCode, ParticipantOptInToTextNotificationsIndicator, ParticipantRepresentedIndicator",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "nc:EntityType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:EntityType"
+      ],
+      "path": "nc:EntityType/nods:CaseParticipantType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 9,
+      "properties": [
+        "CaseParticipantAssociation",
+        "GuardianConservatorRegistrationDate",
+        "GuardianConservatorRepresentativePayeeIndicator",
+        "GuardianConservatorVAFiduciaryIndicator",
+        "ICWAChildDeterminationDate",
+        "ParticipantCategoryCode",
+        "ParticipantElectronicServiceCategoryCode",
+        "ParticipantOptInToTextNotificationsIndicator",
+        "ParticipantRepresentedIndicator"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:CaseStatusType",
+    "definition": "Reason for change to inactive status\nElement# 4-3\nUser Story:",
+    "kind": "type",
+    "context": "Extends nc:StatusType. Pattern: object. Properties: CaseStatusInactiveReasonCode",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "nc:StatusType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:StatusType"
+      ],
+      "path": "nc:StatusType/nods:CaseStatusType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "CaseStatusInactiveReasonCode"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:ChargeType",
+    "definition": "Date when the offense occurred.\nElement# 9-1\nUser Story:",
+    "kind": "type",
+    "context": "Extends j:ChargeType. Pattern: object. Properties: Arrest, CommercialVehicle, DrivingIncident, IntoxicationLevelText, Offense, ProgramViolation, ChargeAdjudicatedDelinquentCode, IntoxicationTestRefusedIndicator, VehicleStyleCode",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "j:ChargeType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "j:ChargeType"
+      ],
+      "path": "j:ChargeType/nods:ChargeType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 9,
+      "properties": [
+        "Arrest",
+        "CommercialVehicle",
+        "DrivingIncident",
+        "IntoxicationLevelText",
+        "Offense",
+        "ProgramViolation",
+        "ChargeAdjudicatedDelinquentCode",
+        "IntoxicationTestRefusedIndicator",
+        "VehicleStyleCode"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:CivilJudgmentType",
+    "definition": "Which party prevailed?\nElement# 12-2\nUser Story:",
+    "kind": "type",
+    "context": "Extends nc:ActivityType. Pattern: object. Properties: ChildCaseParticipant, JudgementAgainstParticipant, JudgementAgainstParticipantCode, JudgmentAgainstParticipant, JudgmentMontetaryDamagesAmount, JudgmentNonMonetaryDamagesIndicator, JudgmentTotalAmount, PrevailingParticipant, PrevailingParticipantCode",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "nc:ActivityType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType"
+      ],
+      "path": "nc:ActivityType/nods:CivilJudgmentType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 9,
+      "properties": [
+        "ChildCaseParticipant",
+        "JudgementAgainstParticipant",
+        "JudgementAgainstParticipantCode",
+        "JudgmentAgainstParticipant",
+        "JudgmentMontetaryDamagesAmount",
+        "JudgmentNonMonetaryDamagesIndicator",
+        "JudgmentTotalAmount",
+        "PrevailingParticipant",
+        "PrevailingParticipantCode"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:CourtCaseCode",
+    "definition": "Additional legal issues in a family case, beyond case type.\nElement# 1-12\nUser Story: I am a judge and I need to easily identify the associated legal issues in family cases since these cases often have multiple issues",
+    "kind": "type",
+    "context": "Pattern: object. Properties: CaseAssociatedLegalIssueCode",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nods:CourtCaseCode",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "CaseAssociatedLegalIssueCode"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:CourtCaseType",
+    "definition": "Primary case category based on the complaint or petition\nElement# 1-5\nUser Story: I am a court administrator and I want to know how many cases were filed in each case category for reports.",
+    "kind": "type",
+    "context": "Extends nc:CaseType. Pattern: object. Path: nc:ActivityType/nc:CaseType/nods:CourtCaseType. Properties: Arrest, ChargeDisposition, DiversionProgram, ProgramViolation, CaseDisposition, AlternativeDisputeResolution, AttorneyAdvocateCaseRole, CaseAppealedIndicator, CaseCalendarAssignment, CaseConfidentialIndicator",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "nc:CaseType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType",
+        "nc:CaseType"
+      ],
+      "path": "nc:ActivityType/nc:CaseType/nods:CourtCaseType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 47,
+      "properties": [
+        "Arrest",
+        "ChargeDisposition",
+        "DiversionProgram",
+        "ProgramViolation",
+        "CaseDisposition",
+        "AlternativeDisputeResolution",
+        "AttorneyAdvocateCaseRole",
+        "CaseAppealedIndicator",
+        "CaseCalendarAssignment",
+        "CaseConfidentialIndicator",
+        "CaseContestedIndicator",
+        "CaseExcludedTimeIndicator",
+        "CaseExpeditedIndicator",
+        "CaseFatalityIndicator",
+        "CaseFeesWaivedDate",
+        "CaseFiling",
+        "CaseICWAIndicator",
+        "CaseInitialFilingDate",
+        "CaseInitiatingInstrumentCode",
+        "CaseInitiationCategoryCode",
+        "CaseInternationalIndicator",
+        "CaseInterpreterIndicator",
+        "CaseInterstateIndicator",
+        "CaseIntestateIndicator",
+        "CaseJuvenileDetentionIndicator",
+        "CaseMinorsInvolvedIndicator",
+        "CaseParticipant",
+        "CaseTrackText",
+        "Charge",
+        "CivilCategoryCode",
+        "CivilJudgment",
+        "CivilSubCategoryCode",
+        "CourtOrder",
+        "CriminalCategoryCode",
+        "CriminalSubcategoryCode",
+        "DependencyCategoryCode",
+        "DependencyPermanancyPlan",
+        "FamilyCategoryCode",
+        "Hearing",
+        "PersonUnionDate",
+        "PersonUnionSeparationDate",
+        "Pleading",
+        "PretrialIntake",
+        "ProbateCategoryCode",
+        "ProbateReview",
+        "Sanction",
+        "TrafficLocalOrdinanceCategoryCode"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:CourtOrderType",
+    "definition": "Title of order\nElement# 8-2\nUser Story:",
+    "kind": "type",
+    "context": "Extends j:CourtOrderType. Pattern: object. Path: nc:ActivityType/j:CourtOrderType/nods:CourtOrderType. Properties: DiversionProgram, HearingContinuationReasonText, Warrant, Assessment, Obligation, CivilOrderCategoryCode, CourtOrderContemptReasonCode, CourtOrderDismissedWithPrejudiceIndicator, CourtOrderFindingCode, CourtOrderTitleText",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "j:CourtOrderType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType",
+        "j:CourtOrderType"
+      ],
+      "path": "nc:ActivityType/j:CourtOrderType/nods:CourtOrderType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 12,
+      "properties": [
+        "DiversionProgram",
+        "HearingContinuationReasonText",
+        "Warrant",
+        "Assessment",
+        "Obligation",
+        "CivilOrderCategoryCode",
+        "CourtOrderContemptReasonCode",
+        "CourtOrderDismissedWithPrejudiceIndicator",
+        "CourtOrderFindingCode",
+        "CourtOrderTitleText",
+        "GuardianConservatorRoleOrderedCode",
+        "ProbateOrderCategoryCode"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:DependencyPermanancyPlanType",
+    "definition": "The type of permanency plan selected.\nElement# 14-2\nUser Story:",
+    "kind": "type",
+    "context": "Extends nc:PlanType. Pattern: object. Properties: ChildCaseClosureReasonCode, DependencyPermanencyCategoryCode, PlanImplementationCategoryCode",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "nc:PlanType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:PlanType"
+      ],
+      "path": "nc:PlanType/nods:DependencyPermanancyPlanType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 3,
+      "properties": [
+        "ChildCaseClosureReasonCode",
+        "DependencyPermanencyCategoryCode",
+        "PlanImplementationCategoryCode"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:FinancialCompilationType",
+    "definition": "Date the inventory of assets is due\nElement# 15-1\nUser Story:",
+    "kind": "type",
+    "context": "Extends j:FinancialCompilationType. Pattern: object. Properties: FinancialCompilationDueDate, PersonalPropertyPresentBalanceAmount, RealPropertyPresentBalanceAmount, TotalAssetsPresentBalanceAmount",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "j:FinancialCompilationType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "j:FinancialCompilationType"
+      ],
+      "path": "j:FinancialCompilationType/nods:FinancialCompilationType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 4,
+      "properties": [
+        "FinancialCompilationDueDate",
+        "PersonalPropertyPresentBalanceAmount",
+        "RealPropertyPresentBalanceAmount",
+        "TotalAssetsPresentBalanceAmount"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:HearingType",
+    "definition": "Outcome of hearing or event\nElement# 7-5\nUser Story:",
+    "kind": "type",
+    "context": "Extends j:CourtEventType. Pattern: object. Path: nc:ActivityType/j:CourtEventType/nods:HearingType. Properties: Attorney, CaseOfficialEndDate, HearingEvidencePresentedIndicator, ActivityActualDuration, ActivityEstimatedDuration, CivilHearingCategoryCode, CourtEventOutcomeCode, CriminalTrafficHearingCategoryCode, DependencyHearingCategoryCode, EvidenceIntroducedDate",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "j:CourtEventType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType",
+        "j:CourtEventType"
+      ],
+      "path": "nc:ActivityType/j:CourtEventType/nods:HearingType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 27,
+      "properties": [
+        "Attorney",
+        "CaseOfficialEndDate",
+        "HearingEvidencePresentedIndicator",
+        "ActivityActualDuration",
+        "ActivityEstimatedDuration",
+        "CivilHearingCategoryCode",
+        "CourtEventOutcomeCode",
+        "CriminalTrafficHearingCategoryCode",
+        "DependencyHearingCategoryCode",
+        "EvidenceIntroducedDate",
+        "FamilyHearingCategoryCode",
+        "HearingConferenceCategoryCode",
+        "HearingContinuationParticipant",
+        "HearingContinuationParticipantCode",
+        "HearingDirectedVerdictIndicator",
+        "HearingInitiationCode",
+        "HearingInterpreterCode",
+        "HearingInterpreterLanguageText",
+        "HearingParticipant",
+        "HearingRecordCategoryCode",
+        "HearingTrialDeNovoIndicator",
+        "HearingWitnessIndicator",
+        "Jury",
+        "JuvenileHearingCategoryCode",
+        "ProbateHearingCategoryCode",
+        "RemoteParticipantIndicator",
+        "RemoteWitnessIndicator"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:JuryType",
+    "definition": "Date on which jury selection began\nElement# 7-25\nUser Story:",
+    "kind": "type",
+    "context": "Extends nc:ActivityType. Pattern: object. Properties: JuryAlternateJurorsQuantity, JuryJurorsQuantity, JurySelectionDate, JurySwornDate",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "nc:ActivityType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType"
+      ],
+      "path": "nc:ActivityType/nods:JuryType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 4,
+      "properties": [
+        "JuryAlternateJurorsQuantity",
+        "JuryJurorsQuantity",
+        "JurySelectionDate",
+        "JurySwornDate"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:JuvenileDetentionType",
+    "definition": "Flag to indicate the youth was placed in detention prior to adjudication\nElement# 10-22\nUser Story:",
+    "kind": "type",
+    "context": "Extends nc:SupervisionType. Pattern: object. Path: nc:ActivityType/nc:SupervisionType/nods:JuvenileDetentionType. Properties: JuvenileDetentionCategoryCode, PreAdjudicationDetentionIndicator, PreAdjudicationDetentionReasonCode",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "nc:SupervisionType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType",
+        "nc:SupervisionType"
+      ],
+      "path": "nc:ActivityType/nc:SupervisionType/nods:JuvenileDetentionType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 3,
+      "properties": [
+        "JuvenileDetentionCategoryCode",
+        "PreAdjudicationDetentionIndicator",
+        "PreAdjudicationDetentionReasonCode"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:NODSMessageType",
+    "definition": "The base message for all NODS exchanges.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: CourtCase",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nods:NODSMessageType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "CourtCase"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:OnlineDisputeResolutionType",
+    "definition": "Type of on-line dispute resolution facilitation\nElement# 17-5\nUser Story:",
+    "kind": "type",
+    "context": "Pattern: object. Properties: OnlineDisputeResolutionCategoryCode",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nods:OnlineDisputeResolutionType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "OnlineDisputeResolutionCategoryCode"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:PersonIndigentType",
+    "definition": "Indicator of whether individual was determined to be indigent at any point during the case.\nElement# 2-25\nUser Story:",
+    "kind": "type",
+    "context": "Pattern: object. Properties: PersonIndigentIndicator, PersonIndigentMethodCode",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nods:PersonIndigentType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 2,
+      "properties": [
+        "PersonIndigentIndicator",
+        "PersonIndigentMethodCode"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:PleadingType",
+    "definition": "Number of counts in pleading\nElement# 5-14\nUser Story:",
+    "kind": "type",
+    "context": "Extends nods:CaseFilingType. Pattern: object. Path: nc:DocumentType/nods:CaseFilingType/nods:PleadingType. Properties: Summons, InControversyAmount, InControversyInExcessOfAmountIndicator, InControversyUpToAmountIndicator, InitialProbatePleadingReasonText, PleadingCountsQuantity, FeeWaiverFiledDate, PleadingRequestCode, SubsequentProbatePleadingReasonText",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "nods:CaseFilingType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:DocumentType",
+        "nods:CaseFilingType"
+      ],
+      "path": "nc:DocumentType/nods:CaseFilingType/nods:PleadingType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 9,
+      "properties": [
+        "Summons",
+        "InControversyAmount",
+        "InControversyInExcessOfAmountIndicator",
+        "InControversyUpToAmountIndicator",
+        "InitialProbatePleadingReasonText",
+        "PleadingCountsQuantity",
+        "FeeWaiverFiledDate",
+        "PleadingRequestCode",
+        "SubsequentProbatePleadingReasonText"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:PretrialIntakeType",
+    "definition": "The decision made by the court for the defendant's pretrial custody status.\nElement# 10-3\nUser Story:",
+    "kind": "type",
+    "context": "Extends j:IntakeType. Pattern: object. Path: nc:ActivityType/j:IntakeType/nods:PretrialIntakeType. Properties: JuvenilePlacement, ConditionalRelease, JuvenileAsAdultIndicator, ReleaseReviewDecision, Subject, Summons, SupervisionAssessment, Bond, CaseDeferredDate, CaseDiversionEligibleIndicator",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "j:IntakeType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType",
+        "j:IntakeType"
+      ],
+      "path": "nc:ActivityType/j:IntakeType/nods:PretrialIntakeType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 15,
+      "properties": [
+        "JuvenilePlacement",
+        "ConditionalRelease",
+        "JuvenileAsAdultIndicator",
+        "ReleaseReviewDecision",
+        "Subject",
+        "Summons",
+        "SupervisionAssessment",
+        "Bond",
+        "CaseDeferredDate",
+        "CaseDiversionEligibleIndicator",
+        "ChildResidenceCode",
+        "GrandJuryIndictmentIndicator",
+        "IntakeDecisionCode",
+        "JuvenileDetention",
+        "Referral"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:ProbateBondType",
+    "definition": "Bond was ordered\nElement# 15-18\nUser Story:",
+    "kind": "type",
+    "context": "Pattern: object. Properties: ProbateBondAmount, ProbateBondCategoryCode, ProbateBondFiledDate, ProbateBondOrderedIndicator",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nods:ProbateBondType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 4,
+      "properties": [
+        "ProbateBondAmount",
+        "ProbateBondCategoryCode",
+        "ProbateBondFiledDate",
+        "ProbateBondOrderedIndicator"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:ProbateComplaintType",
+    "definition": "Court has been alerted there is a potential cause for concern.\nElement# 15-25\nUser Story:",
+    "kind": "type",
+    "context": "Extends nc:DocumentType. Pattern: object. Properties: ProbateComplaintActivity",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "nc:DocumentType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:DocumentType"
+      ],
+      "path": "nc:DocumentType/nods:ProbateComplaintType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "ProbateComplaintActivity"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:ProbateReminderType",
+    "definition": "Reminder of upcoming report or filing due to court\nElement# 15-23\nUser Story:",
+    "kind": "type",
+    "context": "Extends nc:ActivityType. Pattern: object. Properties: ProbateReminderCategoryCode",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "nc:ActivityType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType"
+      ],
+      "path": "nc:ActivityType/nods:ProbateReminderType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "ProbateReminderCategoryCode"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:ProbateWaiverType",
+    "definition": "Judicial Officer waived reporting requirement\nElement# 15-3\nUser Story:",
+    "kind": "type",
+    "context": "Extends nc:ActivityType. Pattern: object. Properties: ProbateWaiverOrderedIndicator, ProbateWaiverReasonCode",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "nc:ActivityType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType"
+      ],
+      "path": "nc:ActivityType/nods:ProbateWaiverType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 2,
+      "properties": [
+        "ProbateWaiverOrderedIndicator",
+        "ProbateWaiverReasonCode"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:ReferralType",
+    "definition": "The type of agency or person that referred the incident.\nElement# 10-14\nUser Story:",
+    "kind": "type",
+    "context": "Extends nc:DocumentType. Pattern: object. Properties: ReferralSourceText",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "nc:DocumentType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:DocumentType"
+      ],
+      "path": "nc:DocumentType/nods:ReferralType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "ReferralSourceText"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:RemoteParticipantType",
+    "definition": "Manner of remote witness appearance\nElement# 7-21\nUser Story:",
+    "kind": "type",
+    "context": "Pattern: object. Properties: RemoteParticipantMannerCode, RemoteWitnessMannerCode",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "nods:RemoteParticipantType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 2,
+      "properties": [
+        "RemoteParticipantMannerCode",
+        "RemoteWitnessMannerCode"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:SanctionType",
+    "definition": "Was there a sanction or alternative to fine, such as community service\nElement# 13-12\nUser Story:",
+    "kind": "type",
+    "context": "Extends j:SanctionType. Pattern: object. Path: nc:ActivityType/j:SanctionType/nods:SanctionType. Properties: DriverLicenseWithdrawal, Restitution, Sentence, MonetaryPenalty, SanctionAlternativeFineIndicator, SanctionBlendedDispositionIndicator, SanctionedCaseParticipant, SanctionPaymentPlanIndicator",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "j:SanctionType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:ActivityType",
+        "j:SanctionType"
+      ],
+      "path": "nc:ActivityType/j:SanctionType/nods:SanctionType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 8,
+      "properties": [
+        "DriverLicenseWithdrawal",
+        "Restitution",
+        "Sentence",
+        "MonetaryPenalty",
+        "SanctionAlternativeFineIndicator",
+        "SanctionBlendedDispositionIndicator",
+        "SanctionedCaseParticipant",
+        "SanctionPaymentPlanIndicator"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "nods:WellbeingReportType",
+    "definition": "Date Well-being Report due to Court\nElement# 15-16\nUser Story:",
+    "kind": "type",
+    "context": "Extends nc:DocumentType. Pattern: object. Properties: ReportDueDate",
+    "metadata": {
+      "namespace": "nods",
+      "baseType": "nc:DocumentType",
+      "pattern": "object",
+      "inheritanceChain": [
+        "nc:DocumentType"
+      ],
+      "path": "nc:DocumentType/nods:WellbeingReportType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 1,
+      "properties": [
+        "ReportDueDate"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "structures:AssociationType",
+    "definition": "A data type for a relationship between two or more objects, including any properties of that relationship.",
+    "kind": "type",
+    "context": "Pattern: association. Properties: appliesToParent, id, ref, uri",
+    "metadata": {
+      "namespace": "structures",
+      "baseType": "",
+      "pattern": "association",
+      "inheritanceChain": [],
+      "path": "structures:AssociationType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 4,
+      "properties": [
+        "appliesToParent",
+        "id",
+        "ref",
+        "uri"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  },
+  {
+    "id": "structures:ObjectType",
+    "definition": "A data type for a thing with its own lifespan that has some existence.",
+    "kind": "type",
+    "context": "Pattern: object. Properties: appliesToParent, id, ref, uri",
+    "metadata": {
+      "namespace": "structures",
+      "baseType": "",
+      "pattern": "object",
+      "inheritanceChain": [],
+      "path": "structures:ObjectType",
+      "isAugmentation": false,
+      "isAdapter": false,
+      "isMetadata": false,
+      "propertyCount": 4,
+      "properties": [
+        "appliesToParent",
+        "id",
+        "ref",
+        "uri"
+      ],
+      "altLabels": []
+    },
+    "label": ""
+  }
+]

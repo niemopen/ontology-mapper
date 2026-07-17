@@ -1,0 +1,2686 @@
+[
+  {
+    "id": "R0q5hTo2yTMlnIAbmFnwCH",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R0q5hTo2yTMlnIAbmFnwCH",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "hasFigure"
+  },
+  {
+    "id": "R1L3IueMeHCrxnDlOU2dRg",
+    "definition": "In the context of an argument, \"opposed\" refers to the stance taken against a particular claim, assertion, or position. An opposed argument counters or refutes the original claim by presenting contrary evidence, reasoning, or viewpoints. In debates or discussions, this oppositional stance is vital for ensuring a comprehensive exploration of the topic at hand.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R1L3IueMeHCrxnDlOU2dRg",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:opposed"
+  },
+  {
+    "id": "R1us3pQhG9zkEb39dZHByB",
+    "definition": "In various legal contexts, \"observed\" refers to the act of witnessing, watching, or monitoring an event, situation, or process. This can include an attorney attending a deposition to oversee the process, a witness visually witnessing a crime, or a citizen attending and watching a trial. Observation in legal contexts can imply going beyond passive viewing, where the observer may potentially provide future testimony or use the observed information in later proceedings.",
+    "kind": "property",
+    "context": "Type: Event. Path: Actor / Player/sali:observed",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R1us3pQhG9zkEb39dZHByB",
+      "qualifiedType": "R73hoH1RXYjBTYiGfolpsAF",
+      "containingTypes": [
+        "R8CdMpOM0RmyrgCCvbpiLS0"
+      ],
+      "paths": [
+        "Actor / Player/sali:observed"
+      ]
+    },
+    "label": "sali:observed"
+  },
+  {
+    "id": "R3DWdkCuByi2y5EimZYMab",
+    "definition": "In legal and financial contexts, \"owned\" refers to the possession or holding of rights, titles, or interests in property, assets, or securities. This implies a legal relationship between the owner and the object of ownership, conferring certain rights, such as usage, control, and transfer. Ownership can apply to tangible assets like houses or intangible assets like shares in a company.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R3DWdkCuByi2y5EimZYMab",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:owned"
+  },
+  {
+    "id": "R3FCcrFyaoiMddiRqdTfgf",
+    "definition": "A logical negation operator that excludes items containing the subsequent search term from the results.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R3FCcrFyaoiMddiRqdTfgf",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:not"
+  },
+  {
+    "id": "R3zM4v3AKS03zKslpmcdLP",
+    "definition": "\"Analyzed\" in a legal context encompasses a comprehensive and methodical examination of legal issues, documents, or evidence. It involves applying critical thinking, legal knowledge, and analytical skills to understand, interpret, and draw conclusions from legal materials, often forming the basis for legal strategies, arguments, or decisions.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R3zM4v3AKS03zKslpmcdLP",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:analyzed"
+  },
+  {
+    "id": "R4HVaajKP29IEU6HxKgCBL",
+    "definition": "Specifies a limit on the number of results returned by a query.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R4HVaajKP29IEU6HxKgCBL",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:maxResults"
+  },
+  {
+    "id": "R55RwIpe6K1xGWsaee45Ch",
+    "definition": "In legal and business contexts, \"negotiated\" refers to the process of discussing, deliberating, and reaching an agreement or compromise between parties. This involves the back-and-forth exchange of proposals and concessions, with the goal of resolving differences and concluding an arrangement, such as a contract, settlement, or plea deal.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R55RwIpe6K1xGWsaee45Ch",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:negotiated"
+  },
+  {
+    "id": "R6qohvM786wjw0MNQJg9Dq",
+    "definition": "In the context of legal work, \"drafted\" refers to the process of composing and preparing legal documents, such as contracts, memos, pleadings, briefs, motions, or judicial opinions. This often involves a preliminary version subject to review, revision, and finalization.",
+    "kind": "property",
+    "context": "Type: Document / Artifact. Path: Actor / Player/sali:drafted",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R6qohvM786wjw0MNQJg9Dq",
+      "qualifiedType": "RDt4vQCYDfY0R9fZ5FNnTbj",
+      "containingTypes": [
+        "R8CdMpOM0RmyrgCCvbpiLS0"
+      ],
+      "paths": [
+        "Actor / Player/sali:drafted"
+      ]
+    },
+    "label": "sali:drafted"
+  },
+  {
+    "id": "R72kzuH5FWGcpdiLIHetuNM",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R72kzuH5FWGcpdiLIHetuNM",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "utbms:Research"
+  },
+  {
+    "id": "R74zuvPdysbm8JDf0v5JU4n",
+    "definition": "In legal procedures, \"docketed\" refers to the act of formally recording an document (e.g., application, motion) or proceeding (e.g., case, appeal, license proceeding), or other legal matter in the official registry or list of a government agency or court. This signifies that the matter has been officially entered into the system and is scheduled for consideration. A document may be \"filed\" but not \"docketed,\" often because the clerk of court rejected the filing.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R74zuvPdysbm8JDf0v5JU4n",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:docketed"
+  },
+  {
+    "id": "R76GQpUlQwvyklNYZI3Yd9S",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R76GQpUlQwvyklNYZI3Yd9S",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "utbms:Manage data/files"
+  },
+  {
+    "id": "R78CKihZmI99oRGDBSO0X9Z",
+    "definition": "In the legal domain, \"reversed\" refers to the decision of an appellate court to overturn or change the ruling of a lower court. This action indicates that the appellate court found errors or issues in the lower court's judgment that significantly affected the outcome, warranting a different legal conclusion.",
+    "kind": "property",
+    "context": "Type: Litigation Document. Path: Decisionmaker for Legal Disputes/sali:reversed",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R78CKihZmI99oRGDBSO0X9Z",
+      "qualifiedType": "Rjco9ohucVSJ0XxprM5Opb",
+      "containingTypes": [
+        "RDSYPGgBlFz5eWNtwoMA2c5",
+        "Rx1vavFiVPoynp4F3SB0uD"
+      ],
+      "paths": [
+        "Decisionmaker for Legal Disputes/sali:reversed",
+        "Appellate Court Forum/sali:reversed"
+      ]
+    },
+    "label": "sali:reversed"
+  },
+  {
+    "id": "R7AjiNe4tLDt1Z4s1rZep1Y",
+    "definition": "In legal terms, \"accepted\" refers to the formal acknowledgment and approval of legal documents, filings, or propositions by a decisionmaker, court, judge, or other legal authority. This acceptance signifies that the material or argument meets required standards or criteria and is deemed suitable for consideration within the legal process.",
+    "kind": "property",
+    "context": "Type: Legal Proposition. Path: Decisionmaker for Legal Disputes/sali:accepted",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R7AjiNe4tLDt1Z4s1rZep1Y",
+      "qualifiedType": "RNICD9MDcFQJJX6nxX11Vt",
+      "containingTypes": [
+        "RDSYPGgBlFz5eWNtwoMA2c5"
+      ],
+      "paths": [
+        "Decisionmaker for Legal Disputes/sali:accepted"
+      ]
+    },
+    "label": "sali:accepted"
+  },
+  {
+    "id": "R7IaFnjI5OndDVqgzfMPpco",
+    "definition": "In a legal context, \"authored\" refers to the creation or writing of a legal document, article, opinion, or other written work. In contrast with someone who \"drafted\" the document (and might be unnamed in the final document), persons who \"authored\" a document are named authors.",
+    "kind": "property",
+    "context": "Type: Document / Artifact. Path: Actor / Player/sali:authored",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R7IaFnjI5OndDVqgzfMPpco",
+      "qualifiedType": "RDt4vQCYDfY0R9fZ5FNnTbj",
+      "containingTypes": [
+        "R8CdMpOM0RmyrgCCvbpiLS0"
+      ],
+      "paths": [
+        "Actor / Player/sali:authored"
+      ]
+    },
+    "label": "sali:authored"
+  },
+  {
+    "id": "R7Icq7RNxBnj6SSAqy0jvVa",
+    "definition": "An operator that returns items where the field's value exactly matches the given value.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R7Icq7RNxBnj6SSAqy0jvVa",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:equal"
+  },
+  {
+    "id": "R7N2b7y7ob6CHZK4mV5FO8R",
+    "definition": "In the context of law and commerce, \"billed to\" refers to the process of issuing a bill or invoice by a service provider, seller, or vendor to a client, customer, or purchaser for goods sold or services rendered. This action signifies a request for payment, detailing the cost of services or products provided.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R7N2b7y7ob6CHZK4mV5FO8R",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:billedTo"
+  },
+  {
+    "id": "R7NbWQfdIKgNd43XLIu6RHe",
+    "definition": "In various contexts, \"received\" denotes the act of being given or awarded something, such as a degree, license, or parole. This implies that the recipient has met certain criteria or conditions and has been formally granted a particular item, status, or privilege by an authoritative body or institution.",
+    "kind": "property",
+    "context": "Type: Document / Artifact. Path: Actor / Player/sali:received",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R7NbWQfdIKgNd43XLIu6RHe",
+      "qualifiedType": "RDt4vQCYDfY0R9fZ5FNnTbj",
+      "containingTypes": [
+        "R8CdMpOM0RmyrgCCvbpiLS0"
+      ],
+      "paths": [
+        "Actor / Player/sali:received"
+      ]
+    },
+    "label": "sali:received"
+  },
+  {
+    "id": "R7OXOZZNn8AC6Kw7F6t7ZP4",
+    "definition": "a collection of Roles",
+    "kind": "property",
+    "context": "Type: oasis:role collection. Path: oasis:LegalRuleMLDocument/has role collection",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R7OXOZZNn8AC6Kw7F6t7ZP4",
+      "qualifiedType": "R7cLxNTHXARH6xtJZ2kNYQW",
+      "containingTypes": [
+        "R9PfY9lASO3JAZnFZiWzBKN"
+      ],
+      "paths": [
+        "oasis:LegalRuleMLDocument/has role collection"
+      ]
+    },
+    "label": "has role collection"
+  },
+  {
+    "id": "R7PEVL4EDe99UD7dVx58cFp",
+    "definition": "E.g., Client sali:engaged Lawyer",
+    "kind": "property",
+    "context": "Type: Actor / Player. Path: Actor / Player/sali:engaged",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R7PEVL4EDe99UD7dVx58cFp",
+      "qualifiedType": "R8CdMpOM0RmyrgCCvbpiLS0",
+      "containingTypes": [
+        "R8CdMpOM0RmyrgCCvbpiLS0"
+      ],
+      "paths": [
+        "Actor / Player/sali:engaged"
+      ]
+    },
+    "label": "sali:engaged"
+  },
+  {
+    "id": "R7VtpAC807aOYLVtKmPvFRt",
+    "definition": "In a legal setting, \"argued\" refers to the presentation and advocacy of a legal position or interpretation before a court or tribunal. This process involves a structured discourse, utilizing facts, evidence, and legal principles to persuade the judge or jury of the validity of a party's stance or viewpoint on the matter at hand.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R7VtpAC807aOYLVtKmPvFRt",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:argued"
+  },
+  {
+    "id": "R7ZAbXHy3i3DUFYGKRC9Ti2",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R7ZAbXHy3i3DUFYGKRC9Ti2",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "utbms:Communicate (other outside counsel)"
+  },
+  {
+    "id": "R7a6AnAyIMbylU9ZMRLwNuZ",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R7a6AnAyIMbylU9ZMRLwNuZ",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "oasis:hasActor"
+  },
+  {
+    "id": "R7ikWnJN2d8R9S3CpCT30E",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R7ikWnJN2d8R9S3CpCT30E",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "oasis:hasRole"
+  },
+  {
+    "id": "R7iub53FOISwehZAVPcISSl",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R7iub53FOISwehZAVPcISSl",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:hasDeadline"
+  },
+  {
+    "id": "R7rZ5m2FfgTWxirgewTUJDM",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R7rZ5m2FfgTWxirgewTUJDM",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "utbms:Draft/revise"
+  },
+  {
+    "id": "R7rbNCX8S7kZnvn6AJc71MV",
+    "definition": "The act of legally serving something (e.g., a document) upon another entity. Example: Serving a Complaint upon a Defendant.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R7rbNCX8S7kZnvn6AJc71MV",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:served"
+  },
+  {
+    "id": "R7s5qg2JvWQEFUPaLJSfUsf",
+    "definition": "In legal and business interactions, \"negotiated with\" refers to the act of engaging in discussions and bargaining with a specific party or entity to reach an agreement or resolve a dispute. This term highlights the relational aspect of negotiation, indicating a two-way process involving proposals, counter-proposals, and concessions between distinct parties, such as attorneys, individuals, organizations, or business entities.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R7s5qg2JvWQEFUPaLJSfUsf",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:negotiatedWith"
+  },
+  {
+    "id": "R7xbqZhraT1X45xH64uGCnw",
+    "definition": "In legal and administrative contexts, \"issued to\" refers to the formal granting or providing of a legal status, document, or financial instrument by an authoritative body or entity to a specific recipient. This term indicates that the recipient is the designated holder or beneficiary of the issued item, such as asylum status, a business license, or stock ownership.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R7xbqZhraT1X45xH64uGCnw",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:isIssuedTo"
+  },
+  {
+    "id": "R84mzUh0Z3D44MrLDu0YAMw",
+    "definition": "a LegalRuleML expression for which the Role is responsible (e.g., the expression was created or endorsed by the role).",
+    "kind": "property",
+    "context": "Type: oasis:Expression. Path: oasis:role/for expression",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R84mzUh0Z3D44MrLDu0YAMw",
+      "qualifiedType": "R7iUgtA4q4d8RIm0Q8wQcOL",
+      "containingTypes": [
+        "ROhQrThJyS0l40fB7FDDHU"
+      ],
+      "paths": [
+        "oasis:role/for expression"
+      ]
+    },
+    "label": "for expression"
+  },
+  {
+    "id": "R84xWqLwURw9paxfFdpMlPY",
+    "definition": "\"Is Most Recent\" in legal and administrative contexts refers to the latest version or update of a document, agreement, or legal ruling. This term indicates that the specified item has undergone revisions or updates and that this version supersedes all previous iterations, containing the most current information or terms.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R84xWqLwURw9paxfFdpMlPY",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:isMostRecent"
+  },
+  {
+    "id": "R85ahaTQmVqquzNuoK6Fcr",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R85ahaTQmVqquzNuoK6Fcr",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "DEPRECATED FAVORING OVERRULED sali:disavowed"
+  },
+  {
+    "id": "R86VduVUHypjaeAGBoLfXFB",
+    "definition": "\"Renewed\" refers to the act of extending the validity or duration of an existing agreement, license, or document. This process involves meeting the necessary requirements to continue the legal status, privileges, or rights originally granted, such as extending a visa, license, or lease term.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R86VduVUHypjaeAGBoLfXFB",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:renewed"
+  },
+  {
+    "id": "R87URpvCOv2mK8a5Ivhm5qP",
+    "definition": "In the legal field, \"develop strategy\" refers to the process of creating a planned approach or method to achieve specific objectives in various legal contexts, such as contract negotiations or court hearings. This involves analyzing facts, anticipating challenges, and devising tactics to effectively represent a client's interests or achieve desired outcomes.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R87URpvCOv2mK8a5Ivhm5qP",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:developStrategy"
+  },
+  {
+    "id": "R8CE2qvP7a4lK7h1khGxQk3",
+    "definition": "\"Waiting for\" is the state of anticipating or expecting a subsequent action, response, or document from another party. In legal proceedings and project management, this term often describes a period of inactivity where one party is dependent on the completion of an action or the receipt of information from another party to proceed with their legal tasks or responsibilities.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R8CE2qvP7a4lK7h1khGxQk3",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:waitingFor"
+  },
+  {
+    "id": "R8I1TsGJ5eFwM8qAzethrIm",
+    "definition": "In a legal context, \"interpreted\" refers to the process by which legal professionals, especially judges and lawyers, examine and elucidate the meaning or intention of legal texts, such as statutes, contracts, or judicial decisions. This activity involves applying legal principles and precedents to clarify ambiguities, reconcile conflicts, or discern the underlying purpose of the text.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R8I1TsGJ5eFwM8qAzethrIm",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:interpreted"
+  },
+  {
+    "id": "R8LI2NysCz4Juz9QDWeZJoE",
+    "definition": "\"Has Effective Date\" refers to a specified date when a legal document, contract, or legislative act becomes operative and enforceable. This date marks the beginning of legal obligations, rights, or effects as stipulated in the document or law.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R8LI2NysCz4Juz9QDWeZJoE",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:hasEffectiveDate"
+  },
+  {
+    "id": "R8N2AJIJYBB3hzZL7OeB0CB",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R8N2AJIJYBB3hzZL7OeB0CB",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "oasis:hasCollection"
+  },
+  {
+    "id": "R8RerFcbBaYGo4DFhYqoXBC",
+    "definition": "\"Superseded\" refers to the act of replacing or nullifying a previous legal rule, decision, or practice with a new one that holds precedence. For example, when a statute supersedes a judicial opinion, it means the new law takes precedence over and effectively replaces the principles or rulings established in that opinion.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R8RerFcbBaYGo4DFhYqoXBC",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:superseded"
+  },
+  {
+    "id": "R8S1bzMuLtlMmrancwPOUSo",
+    "definition": "In a legal context, \"found\" refers to the determination or conclusion reached by a decisionmaker (e.g., judge or jury) regarding the existence of facts, the truth of assertions, the credibility of witnesses, or the guilt of a defendant. This term encapsulates the act of making a judgment or decision based on the evaluation of evidence and testimony.",
+    "kind": "property",
+    "context": "Type: Judicial Finding of Fact. Path: Decisionmaker for Legal Disputes/sali:found",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R8S1bzMuLtlMmrancwPOUSo",
+      "qualifiedType": "R7ZrWzdAOf6mXVtcQ49gWat",
+      "containingTypes": [
+        "RDSYPGgBlFz5eWNtwoMA2c5"
+      ],
+      "paths": [
+        "Decisionmaker for Legal Disputes/sali:found"
+      ]
+    },
+    "label": "sali:found"
+  },
+  {
+    "id": "R8ScqoB2b4ln92ntLeQCE3Y",
+    "definition": "In legal terms, \"has obligation\" refers to the duty or responsibility imposed on an individual, entity, or party by law, contract, or agreement. This obligation can be towards another party, as in contractual commitments, or towards the state or society, such as adhering to criminal laws. Fulfillment of these obligations is legally enforceable, and failure to meet them can result in legal consequences. This concept indicates the direction in which the obligation flows.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R8ScqoB2b4ln92ntLeQCE3Y",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:hasObligation"
+  },
+  {
+    "id": "R8fwHitS5ouUpOrAwTcMmIE",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R8fwHitS5ouUpOrAwTcMmIE",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "DEPRECATED FAVORING DENIED sali:declined"
+  },
+  {
+    "id": "R8oVqWGVPjAgl133D0pNL7g",
+    "definition": "In legal terms, \"examined\" refers to the thorough and systematic investigation or inspection of evidence, documents, or facts relevant to a legal case or issue. This process is crucial for lawyers, judges, and legal staff in assessing the validity, relevance, and implications of the materials at hand, often to establish the foundation for arguments or judgments.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R8oVqWGVPjAgl133D0pNL7g",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:examined"
+  },
+  {
+    "id": "R8xpRHcxf8y8ru3RmqO4KMx",
+    "definition": "In the legal and regulatory context, \"audited\" refers to the systematic examination and evaluation of financial records, operational processes, or compliance practices by an independent party. This process is designed to verify accuracy, adherence to standards or regulations, and to assess the effectiveness of internal controls or procedures.",
+    "kind": "property",
+    "context": "Path: Auditor/sali:audited",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R8xpRHcxf8y8ru3RmqO4KMx",
+      "qualifiedType": "",
+      "containingTypes": [
+        "RCgUkOdOjwvB2yJwL59gBUf",
+        "RDCkFrEclhipkoHPgckuFY6"
+      ],
+      "paths": [
+        "Auditor/sali:audited",
+        "Individual Person/sali:audited"
+      ]
+    },
+    "label": "sali:audited"
+  },
+  {
+    "id": "R8zGunm4wCZOVAk8uYZIgMJ",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R8zGunm4wCZOVAk8uYZIgMJ",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "oasis:appliesTemporalCharacteristics"
+  },
+  {
+    "id": "R9HWPnaugvaUXld2x3xH2hX",
+    "definition": "An operator that returns items where the field's value is greater than or equal to the specified value.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R9HWPnaugvaUXld2x3xH2hX",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:greaterThanOrEqualTo"
+  },
+  {
+    "id": "R9KSG54ZD5NJGhEKjpDjZvO",
+    "definition": "\"Represented\" in a legal context refers to the act of acting on behalf of another person or entity in legal matters. This involves a representative, such as a lawyer, advocating, making decisions, or taking actions under the authority and in the interest of the represented party.",
+    "kind": "property",
+    "context": "Type: Legal Services Buyer. Path: Lawyer/sali:represented",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R9KSG54ZD5NJGhEKjpDjZvO",
+      "qualifiedType": "RCYr9dOm44gvlCAHRrOG0GU",
+      "containingTypes": [
+        "RcTA2iQmrtqOnX3WrjJIp8"
+      ],
+      "paths": [
+        "Lawyer/sali:represented"
+      ]
+    },
+    "label": "sali:represented"
+  },
+  {
+    "id": "R9KtZ0zcbQ4oaEL82eUjqtH",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R9KtZ0zcbQ4oaEL82eUjqtH",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "oasis:appliesPenalty"
+  },
+  {
+    "id": "R9OCJDSLZnUbVwWxu2ddA5J",
+    "definition": "In the context of appellate law, \"affirmed\" refers to the decision of an appellate court to uphold the ruling or decision of a lower court. This signifies that, upon review, the appellate court has found no significant legal error in the lower court's handling of the case and agrees with the conclusion reached.",
+    "kind": "property",
+    "context": "Path: Decisionmaker for Legal Disputes/sali:affirmed",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R9OCJDSLZnUbVwWxu2ddA5J",
+      "qualifiedType": "",
+      "containingTypes": [
+        "RDSYPGgBlFz5eWNtwoMA2c5"
+      ],
+      "paths": [
+        "Decisionmaker for Legal Disputes/sali:affirmed"
+      ]
+    },
+    "label": "sali:affirmed"
+  },
+  {
+    "id": "R9OgtSm35ykpUSi7mgiCW",
+    "definition": "\"Authenticated\" in a legal setting refers to the process of verifying the genuineness and validity of a document or signature, typically by an authorized person or entity. This verification establishes the document's legitimacy, ensuring it has not been altered and is what it purports to be, often a prerequisite for legal recognition and enforceability.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R9OgtSm35ykpUSi7mgiCW",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:authenticated"
+  },
+  {
+    "id": "R9RiRk1LnffWe0xUY0IHsmL",
+    "definition": "In the legal framework, \"governed by\" refers to the regulation, control, or direction of legal matters, processes, or entities by specific laws, rules, or principles. This term indicates that a particular area of law or legal procedure is subject to and must comply with established guidelines, standards, or constitutional provisions.",
+    "kind": "property",
+    "context": "Type: Legal Authorities. Path: Document / Artifact/sali:isGovernedBy",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R9RiRk1LnffWe0xUY0IHsmL",
+      "qualifiedType": "RC1CZydjfH8oiM4W3rCkma3",
+      "containingTypes": [
+        "RDt4vQCYDfY0R9fZ5FNnTbj"
+      ],
+      "paths": [
+        "Document / Artifact/sali:isGovernedBy"
+      ]
+    },
+    "label": "sali:isGovernedBy"
+  },
+  {
+    "id": "R9SvQIEfVhvy8uN5GY3fB2B",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R9SvQIEfVhvy8uN5GY3fB2B",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "oasis:toPrescriptiveStatement"
+  },
+  {
+    "id": "R9Urv8oRJAFxynf241PTpBB",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R9Urv8oRJAFxynf241PTpBB",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "oasis:appliesTemporalCharacteristic"
+  },
+  {
+    "id": "R9W9JEOuk0H3iu0X5kmhYoi",
+    "definition": "In legal practice, \"overruled\" refers to the action of a higher court setting aside or nullifying the decision of a lower court or an earlier court. Or it could apply to a judge overruling an evidentiary objection. This denotes a rejection of the previous decision or objection based on legal grounds, signaling a different interpretation or application of the law.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R9W9JEOuk0H3iu0X5kmhYoi",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:overruled"
+  },
+  {
+    "id": "R9Y6ik9lMExYK3Xj2pJuD4V",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R9Y6ik9lMExYK3Xj2pJuD4V",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "hasTemporalCharacteristic"
+  },
+  {
+    "id": "R9ZUmvtgrZzXkfqfKcFobwZ",
+    "definition": "In financial and legal contexts, \"is secured by\" refers to a debt or obligation that is backed by collateral or a specific asset. This means that if the debtor fails to meet their obligations, the creditor has the right to seize the collateral to recover the owed amount. The presence of collateral provides security for the lender and can affect the terms and conditions of the debt.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R9ZUmvtgrZzXkfqfKcFobwZ",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:isSecuredBy"
+  },
+  {
+    "id": "R9aTcuLVmH38aqd3WcPuzCT",
+    "definition": "In the context of an argument, \"supported\" refers to the backing or justification provided for a particular claim or assertion using evidence, logical reasoning, or relevant facts. A well-supported argument is strengthened by its corroborating information, making it more persuasive and credible to its audience.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R9aTcuLVmH38aqd3WcPuzCT",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:supported"
+  },
+  {
+    "id": "R9dR7mByjtP9Tx4NUZI84iO",
+    "definition": "In legal contexts, \"disapproved\" refers to the expression of judicial disagreement or disfavor towards a decision or reasoning of another court, without necessarily overturning or reversing it. This indicates a divergence in legal opinion or interpretation, often noted by higher courts in their rulings or dicta, which can influence future case law without directly changing the immediate case outcome.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R9dR7mByjtP9Tx4NUZI84iO",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:disapproved"
+  },
+  {
+    "id": "R9e8PXI2IEusTTC9xKXN7hA",
+    "definition": "In legal terminology, \"is adverse to\" describes a relationship characterized by opposition, conflict, or differing interests between parties in a legal context. This typically applies to situations where one party's interests, claims, or actions are directly opposed to those of another party, as in litigation, contractual disputes, or criminal proceedings.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R9e8PXI2IEusTTC9xKXN7hA",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:isAdverseTo"
+  },
+  {
+    "id": "R9f0gJuj3yGziHe5HBA6CQY",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R9f0gJuj3yGziHe5HBA6CQY",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "oasis:bearer"
+  },
+  {
+    "id": "R9g1ytIVLnV6isR8zHgHrdH",
+    "definition": "\"Was Filed In\" in legal terms refers to the act of submitting a legal document, application, or motion to a specific court, tribunal, or administrative body. This term denotes the location or entity where the document was officially lodged and is used to specify the jurisdiction or authority handling the matter.",
+    "kind": "property",
+    "context": "Type: Forums and Venues. Path: Document / Artifact/sali:wasFiledIn",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R9g1ytIVLnV6isR8zHgHrdH",
+      "qualifiedType": "RBjHwNNG2ASVmasLFU42otk",
+      "containingTypes": [
+        "RDt4vQCYDfY0R9fZ5FNnTbj"
+      ],
+      "paths": [
+        "Document / Artifact/sali:wasFiledIn"
+      ]
+    },
+    "label": "sali:wasFiledIn"
+  },
+  {
+    "id": "R9iq8MqpS503pOZr7pZiOUb",
+    "definition": "\"Appended to\" in legal documentation refers to the act of adding supplementary material, such as exhibits, amendments, or additional documents, to an existing legal document or record. This process is crucial for incorporating new or relevant information that supports, clarifies, or modifies the original content, ensuring the document's completeness and accuracy.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R9iq8MqpS503pOZr7pZiOUb",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:appendedTo"
+  },
+  {
+    "id": "R9lFQGc7YqHeXhBi38Rnwj4",
+    "definition": "",
+    "kind": "property",
+    "context": "Type: oasis:TemporalCharacteristic. Path: oasis:TemporalCharacteristics/hasTemporalCharacteristics",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R9lFQGc7YqHeXhBi38Rnwj4",
+      "qualifiedType": "RBDCMbVjuJ10m588Ou29eSf",
+      "containingTypes": [
+        "RrPgamntGVCkirompZuSgE"
+      ],
+      "paths": [
+        "oasis:TemporalCharacteristics/hasTemporalCharacteristics"
+      ]
+    },
+    "label": "hasTemporalCharacteristics"
+  },
+  {
+    "id": "R9u6A5ODwWnB3Ll5fenny6E",
+    "definition": "Relationship declaring how one item (e.g., `Tool` like `Westlaw` or `vLex`) might be used for another item (e.g., `Legal Research`).",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R9u6A5ODwWnB3Ll5fenny6E",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:isUsedFor"
+  },
+  {
+    "id": "R9yYkx0gjxfCeiErY01Coeq",
+    "definition": "An operator that returns items where the field's value is less than or equal to the specified value.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "R9yYkx0gjxfCeiErY01Coeq",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:lessThanOrEqualTo"
+  },
+  {
+    "id": "RB0hju1karAVIAsSqkf1Pza",
+    "definition": "To obtain an artifact (e.g., document, evidence) or a legal result (e.g., judgment, sanctions). In legal and administrative contexts, \"obtained\" refers to the successful acquisition or securing of a legal status, permission, or qualification by an individual or entity. This term indicates that the individual or entity has met the necessary criteria or completed the required procedures to gain a particular right, privilege, or certification, such as asylum, a professional license, or licensure to practice law.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RB0hju1karAVIAsSqkf1Pza",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:obtained"
+  },
+  {
+    "id": "RB3D5LuBl4dwJ8i28pdIa3A",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RB3D5LuBl4dwJ8i28pdIa3A",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "utbms:Communicate"
+  },
+  {
+    "id": "RB3G15ZJPz6X2117zd9FBzc",
+    "definition": "Canceled refers to the termination or annulment of a legal or administrative action, such as a registration or a hearing. This can occur due to various reasons, including withdrawal by the applicant, failure to meet legal requirements, or administrative decisions.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RB3G15ZJPz6X2117zd9FBzc",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:canceled"
+  },
+  {
+    "id": "RB7sOdTG7h6T898uKuEAXpP",
+    "definition": "In legal and business terms, \"can accept\" refers to the capacity or legal authority of a party to agree to a proposal, offer, or contract. This involves having the requisite legal competence, authority, and in some cases, the necessary legal capacity, to enter into a binding agreement or to consent to certain terms.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RB7sOdTG7h6T898uKuEAXpP",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:canAccept"
+  },
+  {
+    "id": "RB8dNjfQNfdFxTUkao2ImJ5",
+    "definition": "In legal and business contexts, \"prepared for\" refers to the act of making ready or getting equipped for a specific event, process, or encounter. This includes activities like researching, strategizing, organizing resources, and planning.",
+    "kind": "property",
+    "context": "Type: Event. Path: Actor / Player/sali:preparedFor",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RB8dNjfQNfdFxTUkao2ImJ5",
+      "qualifiedType": "R73hoH1RXYjBTYiGfolpsAF",
+      "containingTypes": [
+        "R8CdMpOM0RmyrgCCvbpiLS0"
+      ],
+      "paths": [
+        "Actor / Player/sali:preparedFor"
+      ]
+    },
+    "label": "sali:preparedFor"
+  },
+  {
+    "id": "RB96nfBIyMVmeVgxZ79G9X7",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RB96nfBIyMVmeVgxZ79G9X7",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "hasRole"
+  },
+  {
+    "id": "RB9FzQWoT4a1hxOZ5QMiwM2",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RB9FzQWoT4a1hxOZ5QMiwM2",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "utbms:Communicate (with client)"
+  },
+  {
+    "id": "RB9WPZAmqztZGzX1qXk6gXv",
+    "definition": "\"Responded To\" in legal contexts refers to the action of replying or reacting to a legal action, request, or communication. This includes formal legal responses such as answering a lawsuit, replying to a legal notice, or reacting to a court's order, and is crucial for the continuation and progression of legal processes.",
+    "kind": "property",
+    "context": "Type: Document / Artifact. Path: Document / Artifact/sali:respondedTo",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RB9WPZAmqztZGzX1qXk6gXv",
+      "qualifiedType": "RDt4vQCYDfY0R9fZ5FNnTbj",
+      "containingTypes": [
+        "RDt4vQCYDfY0R9fZ5FNnTbj"
+      ],
+      "paths": [
+        "Document / Artifact/sali:respondedTo"
+      ]
+    },
+    "label": "sali:respondedTo"
+  },
+  {
+    "id": "RB9zpRJFhAzcELy6OTNxqNT",
+    "definition": "\"Ruled Upon\" in legal contexts refers to the act of making a formal decision or judgment by a judicial authority, such as a judge, on a particular matter or motion presented in court. This involves the application of legal principles and reasoning to reach a conclusion that resolves a legal question or directs the course of legal proceedings.",
+    "kind": "property",
+    "context": "Type: Litigation Document. Path: Decisionmaker for Legal Disputes/sali:ruledUpon",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RB9zpRJFhAzcELy6OTNxqNT",
+      "qualifiedType": "Rjco9ohucVSJ0XxprM5Opb",
+      "containingTypes": [
+        "RDSYPGgBlFz5eWNtwoMA2c5"
+      ],
+      "paths": [
+        "Decisionmaker for Legal Disputes/sali:ruledUpon"
+      ]
+    },
+    "label": "sali:ruledUpon"
+  },
+  {
+    "id": "RBA9fhC1klxcqUb2bMFIIre",
+    "definition": "An operator that returns items where the field's value is less than the given value.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RBA9fhC1klxcqUb2bMFIIre",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:lessThan"
+  },
+  {
+    "id": "RBBJ16zFnIqfmkVet3IuV6Z",
+    "definition": "\"Has Ended Date\" refers to the specific date on which a legal document, contract, or obligation ceases to be in effect. This marks the conclusion of the legal validity or enforceability of the document or agreement, signifying the end of rights and responsibilities under its terms.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RBBJ16zFnIqfmkVet3IuV6Z",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:hasEndedDate"
+  },
+  {
+    "id": "RBD1G5FjdaXj6UM26EWBxJc",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RBD1G5FjdaXj6UM26EWBxJc",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "utbms:activities"
+  },
+  {
+    "id": "RBDO4YSpOqTwGQp3QqhtPmq",
+    "definition": "In legal terms, \"abrogated\" refers to the formal repeal, nullification, or abolition of a law, regulation, legal decision, or agreement. This action signifies the complete removal or invalidation of the legal force of the abrogated item, often due to changes in circumstances, new legislation, or shifts in legal interpretation.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RBDO4YSpOqTwGQp3QqhtPmq",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:abrogated"
+  },
+  {
+    "id": "RBHS8Lk6WR8ctm4HdZNPGd9",
+    "definition": "In a legal framework, \"completed\" refers to the finalization or conclusion of a legal task, process, or document. This term indicates that all necessary actions, procedures, or requirements have been fulfilled, bringing an aspect of the work to a close and often rendering it effective or enforceable.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RBHS8Lk6WR8ctm4HdZNPGd9",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:completed"
+  },
+  {
+    "id": "RBIVZ1dC4MJaMe4K0bHVVXp",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RBIVZ1dC4MJaMe4K0bHVVXp",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "hasActor"
+  },
+  {
+    "id": "RBMCuIWgiYrteeawprjAlsX",
+    "definition": "\"Replaced\" in a legal or administrative context refers to the act of substituting one item, individual, agreement, or legal document with another. This process involves the removal or cessation of the original entity or item's role or function, and its subsequent substitution with a new or updated equivalent.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RBMCuIWgiYrteeawprjAlsX",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:replaced"
+  },
+  {
+    "id": "RBNqARoAvfKJ3sr0sPHzvZI",
+    "definition": "a collection of figures",
+    "kind": "property",
+    "context": "Type: oasis:figure collection. Path: oasis:LegalRuleMLDocument/has figure collection",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RBNqARoAvfKJ3sr0sPHzvZI",
+      "qualifiedType": "Rwb69BL1DbTISxyVYJJApb",
+      "containingTypes": [
+        "R9PfY9lASO3JAZnFZiWzBKN"
+      ],
+      "paths": [
+        "oasis:LegalRuleMLDocument/has figure collection"
+      ]
+    },
+    "label": "has figure collection"
+  },
+  {
+    "id": "RBPsxBT931DDyTjxIBVJgE0",
+    "definition": "In legal and organizational contexts, \"is member of\" signifies the belonging or inclusion of an individual or entity in a specific group, committee, board, or organization. This denotes that the individual or entity has a role, responsibilities, rights, or a position within the collective body, subject to its rules, objectives, and governance structure.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RBPsxBT931DDyTjxIBVJgE0",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:isMemberOf"
+  },
+  {
+    "id": "RBW19bsnBOwINS8K601XYsz",
+    "definition": "In a legal context, \"attended\" refers to the act of being present at a legal event, such as a court hearing, meeting, or negotiation. This presence, whether physical or virtual, signifies participation or observation in legal proceedings or discussions, which is often crucial for understanding, contributing to, or complying with legal processes.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RBW19bsnBOwINS8K601XYsz",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:attended"
+  },
+  {
+    "id": "RBeF5svD5xdsZlF7cggOBUa",
+    "definition": "Operators are search-related logical tools used in databases to refine and direct search queries. They control the relationship between search terms.",
+    "kind": "property",
+    "context": "Type: owl:Thing. Path: owl:Thing/sali:operators",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RBeF5svD5xdsZlF7cggOBUa",
+      "qualifiedType": "owl:Thing",
+      "containingTypes": [
+        "owl:Thing"
+      ],
+      "paths": [
+        "owl:Thing/sali:operators"
+      ]
+    },
+    "label": "sali:operators"
+  },
+  {
+    "id": "RBgYGQPsuNuXWjQrcusV25t",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RBgYGQPsuNuXWjQrcusV25t",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "oasis:deonticRule"
+  },
+  {
+    "id": "RBhFi0XLvhq8d4QdZMZ42x9",
+    "definition": "\"Registered\" refers to the official recording or enrollment of an item, entity, or individual in a formal registry by an authoritative body. This process provides legal recognition and may confer certain rights, responsibilities, or status, such as intellectual property protection for patents or legal authority to practice for attorneys",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RBhFi0XLvhq8d4QdZMZ42x9",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:registered"
+  },
+  {
+    "id": "RBiubEhHTU4zds4FIm3uE3W",
+    "definition": "RIEHL NOTE: This may be deprecated. It's not used, and its purpose is unclear.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RBiubEhHTU4zds4FIm3uE3W",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:includes"
+  },
+  {
+    "id": "RBlvKceLVwnUflJvHuHBpSO",
+    "definition": "In legal contexts, \"denied\" refers to the rejection or refusal of a request, motion, application, or claim by a judicial or administrative authority. This decision indicates that the request does not meet the necessary legal criteria, is unfounded, or is otherwise not suitable for approval or granting under the prevailing legal framework.",
+    "kind": "property",
+    "context": "Path: Decisionmaker for Legal Disputes/sali:denied",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RBlvKceLVwnUflJvHuHBpSO",
+      "qualifiedType": "",
+      "containingTypes": [
+        "RDSYPGgBlFz5eWNtwoMA2c5"
+      ],
+      "paths": [
+        "Decisionmaker for Legal Disputes/sali:denied"
+      ]
+    },
+    "label": "sali:denied"
+  },
+  {
+    "id": "RBnpEtVTcX8UHPGSPPAzf1w",
+    "definition": "An operator that returns items where the specified field's value is greater than the given value.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RBnpEtVTcX8UHPGSPPAzf1w",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:greaterThan"
+  },
+  {
+    "id": "RBoQmbBINbNwazijSzgsexi",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RBoQmbBINbNwazijSzgsexi",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "oasis:applies"
+  },
+  {
+    "id": "RBu87FXpegbtFY5SjoXRe29",
+    "definition": "\"Is Initial\" in a legal or administrative context refers to the first or original version of a document or agreement before any amendments, revisions, or updates. This term denotes the baseline from which any changes are measured, often serving as a reference point in legal analysis or when modifications are made.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RBu87FXpegbtFY5SjoXRe29",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:isInitial"
+  },
+  {
+    "id": "RBvy26hKlSPzCVJMlWTlBQb",
+    "definition": "\"Verified\" in a legal context refers to the process of confirming the accuracy, authenticity, or truthfulness of information, statements, or documents. This involves examining and validating the content to ensure it aligns with factual data, legal standards, or specified criteria, often essential in legal proceedings and documentation.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RBvy26hKlSPzCVJMlWTlBQb",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:verified"
+  },
+  {
+    "id": "RBwcSq7zBAAVljlAwwbMjoq",
+    "definition": "\"Appeared before\" in legal parlance refers to the formal presentation or representation of a party or their legal counsel in front of a judicial body, such as a court or a judge. This term signifies the physical or legal presence required for proceedings, ranging from hearings to trials, where legal matters are argued, evidence is presented, and rulings are made.",
+    "kind": "property",
+    "context": "Type: Forums and Venues. Path: Legal Services Provider/sali:appearedBefore",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RBwcSq7zBAAVljlAwwbMjoq",
+      "qualifiedType": "RBjHwNNG2ASVmasLFU42otk",
+      "containingTypes": [
+        "R9x6yqzHQfo3MF4rxIcPupm",
+        "RCFgxBbypUKKsDDOJ1iOk36"
+      ],
+      "paths": [
+        "Legal Services Provider/sali:appearedBefore",
+        "Litigant/sali:appearedBefore"
+      ]
+    },
+    "label": "sali:appearedBefore"
+  },
+  {
+    "id": "RBzcoqc9gDSOGkNUDhDfDV",
+    "definition": "an Actor that fills the Role.",
+    "kind": "property",
+    "context": "Type: oasis:actor. Path: oasis:role/filled by",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RBzcoqc9gDSOGkNUDhDfDV",
+      "qualifiedType": "RysulJVLLFPkPX8Y2gHIAp",
+      "containingTypes": [
+        "ROhQrThJyS0l40fB7FDDHU"
+      ],
+      "paths": [
+        "oasis:role/filled by"
+      ]
+    },
+    "label": "filled by"
+  },
+  {
+    "id": "RBzfLJrwPMpX5k3ZuyirpzI",
+    "definition": "In legal terminology, \"has element\" refers to the essential components or criteria that must be established to prove a legal claim or defense. Each element is a necessary part of the legal theory that must be demonstrated for the claim to be legally valid. For instance, a breach of contract claim requires proving elements like the existence of a contract, breach of its terms, and resulting damages.",
+    "kind": "property",
+    "context": "Path: Litigation Claims/sali:hasElement",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RBzfLJrwPMpX5k3ZuyirpzI",
+      "qualifiedType": "",
+      "containingTypes": [
+        "R9q7GJc1zsYT0P4Xdp6l9Oz"
+      ],
+      "paths": [
+        "Litigation Claims/sali:hasElement"
+      ]
+    },
+    "label": "sali:hasElement"
+  },
+  {
+    "id": "RBznsAiDL0L6nFkBBcyUPpT",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RBznsAiDL0L6nFkBBcyUPpT",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "hasFunction"
+  },
+  {
+    "id": "RC3qfiYtXVNQmnmcuYjcVIj",
+    "definition": "Default for multiple SALI tags. For example, if a query filters for `A B C`, then implied is the query `A sali:and B sali:and C`.  A logical conjunction operator that combines search terms, returning items that match all of the terms.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RC3qfiYtXVNQmnmcuYjcVIj",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:and"
+  },
+  {
+    "id": "RC4evTXFRfsDXZu7RYlCcC8",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RC4evTXFRfsDXZu7RYlCcC8",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "oasis:auxilaryParty"
+  },
+  {
+    "id": "RCBqIJm4IPngJgyvh49kP62",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RCBqIJm4IPngJgyvh49kP62",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "oasis:metadata-actor"
+  },
+  {
+    "id": "RCDOABUr8ZTMQ7N7Rydeius",
+    "definition": "\"Signed\" in a legal context refers to the act of putting one's signature on a legal document, such as a pleading, contract, or order. This signature signifies the individual's approval, authorization, or acknowledgement of the content of the document, and is often a requisite for the document's legal validity and enforceability.",
+    "kind": "property",
+    "context": "Type: Document / Artifact. Path: Actor / Player/sali:signed",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RCDOABUr8ZTMQ7N7Rydeius",
+      "qualifiedType": "RDt4vQCYDfY0R9fZ5FNnTbj",
+      "containingTypes": [
+        "R8CdMpOM0RmyrgCCvbpiLS0"
+      ],
+      "paths": [
+        "Actor / Player/sali:signed"
+      ]
+    },
+    "label": "sali:signed"
+  },
+  {
+    "id": "RCDx1OyD4xo9Pj6dWOBMStt",
+    "definition": "\"Temporal Changes\" in legal contexts refer to the various time-related aspects and milestones that affect the status, applicability, or relevance of legal documents, agreements, or decisions.",
+    "kind": "property",
+    "context": "Path: Document / Artifact/sali:temporalChanges",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RCDx1OyD4xo9Pj6dWOBMStt",
+      "qualifiedType": "",
+      "containingTypes": [
+        "RDt4vQCYDfY0R9fZ5FNnTbj"
+      ],
+      "paths": [
+        "Document / Artifact/sali:temporalChanges"
+      ]
+    },
+    "label": "sali:temporalChanges"
+  },
+  {
+    "id": "RCFpktWEZOtDt2qAABUgJ8H",
+    "definition": "\"Asserted\" in a legal context refers to the act of confidently stating or declaring a fact, right, or legal position, typically as part of a legal claim or defense. This assertion forms the basis of a party's argument or claim in legal proceedings, setting the stage for the legal debate and burden of proof. Compared with the more-argumentative terms \"opposed\" or \"supported,\" the term \"asserted\" is more neutral.",
+    "kind": "property",
+    "context": "Type: Legal Proposition. Path: Actor / Player/sali:asserted",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RCFpktWEZOtDt2qAABUgJ8H",
+      "qualifiedType": "RNICD9MDcFQJJX6nxX11Vt",
+      "containingTypes": [
+        "R8CdMpOM0RmyrgCCvbpiLS0"
+      ],
+      "paths": [
+        "Actor / Player/sali:asserted"
+      ]
+    },
+    "label": "sali:asserted"
+  },
+  {
+    "id": "RCFxbmwYw4z5dXO2SvKw1nI",
+    "definition": "In legal practice, \"dismissed\" refers to the action taken by a court or judicial panel to terminate a case, claim, or appeal. This decision can be based on procedural grounds, lack of jurisdiction, non-compliance with legal requirements, or other reasons that render the case unsuitable for continuation.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RCFxbmwYw4z5dXO2SvKw1nI",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:dismissed"
+  },
+  {
+    "id": "RCJqHaoTwWRH377I9gMIP7z",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RCJqHaoTwWRH377I9gMIP7z",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "oasis:hasFigure"
+  },
+  {
+    "id": "RCP3eyKInCMJp5Fv01RmL3u",
+    "definition": "Defense of Deposition refers to the strategic and legal actions taken by a party's attorney to protect their client during a deposition. The attorney seeks to guide the deponent in providing accurate but limited information, objecting to inappropriate questions, and ensuring that the deposition serves the best interests of the client.",
+    "kind": "property",
+    "context": "Type: Deposition. Path: Actor / Player/sali:isDefending",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RCP3eyKInCMJp5Fv01RmL3u",
+      "qualifiedType": "RCnTNVCQ1VndGxskbMoaLr8",
+      "containingTypes": [
+        "R8CdMpOM0RmyrgCCvbpiLS0"
+      ],
+      "paths": [
+        "Actor / Player/sali:isDefending"
+      ]
+    },
+    "label": "sali:isDefending"
+  },
+  {
+    "id": "RCR0ohH8RV8nUH2c7aS9ERM",
+    "definition": "Operator that returns items that are similar to the search term, potentially including synonyms, fuzzy matches, and semantically related terms.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RCR0ohH8RV8nUH2c7aS9ERM",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:similar"
+  },
+  {
+    "id": "RCRhWf5uwQ9R136KcsD0Sdd",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RCRhWf5uwQ9R136KcsD0Sdd",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "utbms:Review/analyze"
+  },
+  {
+    "id": "RCTNn1zYwKrZiAMp1rQkjx2",
+    "definition": "In the legal arena, \"decided\" refers to the process of reaching a conclusion or verdict in a legal matter or legal document. This term encompasses various outcomes such as acceptance, affirmation, denial, or dismissal, representing the authoritative resolution or determination made by a court or tribunal.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RCTNn1zYwKrZiAMp1rQkjx2",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:decided"
+  },
+  {
+    "id": "RCadgGcfBZxaL64cSvVk2dq",
+    "definition": "In legal practice, \"vacated\" refers to the annulment or setting aside of a court decision, order, or judgment by a judicial authority. This term implies that the previous decision is rendered null and void, often due to procedural errors, legal inconsistencies, or new evidence that fundamentally alters the case's dynamics.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RCadgGcfBZxaL64cSvVk2dq",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:vacated"
+  },
+  {
+    "id": "RCagJhRyGTd2hJN5QTrg7Ru",
+    "definition": "\"Approved\" in a legal context signifies the formal acceptance or endorsement of a document, action, or decision by an authorized individual or body. This approval usually indicates compliance with legal standards or requirements and often signifies the finalization of a legal process, agreement, or decision.",
+    "kind": "property",
+    "context": "Path: Litigant/sali:approved",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RCagJhRyGTd2hJN5QTrg7Ru",
+      "qualifiedType": "",
+      "containingTypes": [
+        "RCFgxBbypUKKsDDOJ1iOk36",
+        "RDCkFrEclhipkoHPgckuFY6",
+        "RDSYPGgBlFz5eWNtwoMA2c5"
+      ],
+      "paths": [
+        "Litigant/sali:approved",
+        "Individual Person/sali:approved",
+        "Decisionmaker for Legal Disputes/sali:approved"
+      ]
+    },
+    "label": "sali:approved"
+  },
+  {
+    "id": "RCcfFsMP7IYtjlfdSBJmKNF",
+    "definition": "Operator that returns variations of a word based on its stem (e.g., query for the stem \"run\" would result in \"runs\", \"running\", \"runner\").",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RCcfFsMP7IYtjlfdSBJmKNF",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:stemming"
+  },
+  {
+    "id": "RCdPQDV9TEe33ydDVVkGQyf",
+    "definition": "\"Testified\" in a legal context refers to the act of giving evidence or a statement under oath in a court of law or a legal proceeding. This process is vital for presenting factual information and personal accounts to the court, helping in the establishment or disputation of facts critical to the resolution of legal disputes.",
+    "kind": "property",
+    "context": "Path: Witness/sali:testified",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RCdPQDV9TEe33ydDVVkGQyf",
+      "qualifiedType": "",
+      "containingTypes": [
+        "R9tZFXPrXQJWHbqSgtCQxJF",
+        "RCFgxBbypUKKsDDOJ1iOk36",
+        "RDCkFrEclhipkoHPgckuFY6"
+      ],
+      "paths": [
+        "Witness/sali:testified",
+        "Litigant/sali:testified",
+        "Individual Person/sali:testified"
+      ]
+    },
+    "label": "sali:testified"
+  },
+  {
+    "id": "RCeIFhdEEtecwLgAYEoAxPX",
+    "definition": "In legal contexts, \"advised\" refers to the provision of professional legal counsel or recommendations to clients, based on the interpretation of the law and its application to specific circumstances. This process is critical in guiding clients through legal complexities, ensuring informed decision-making and compliance with legal norms and obligations.",
+    "kind": "property",
+    "context": "Type: Role in Matter. Path: Legal Services Provider/sali:advised",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RCeIFhdEEtecwLgAYEoAxPX",
+      "qualifiedType": "RCEDL3kMYgjFUEOhOyGp3IE",
+      "containingTypes": [
+        "R9x6yqzHQfo3MF4rxIcPupm",
+        "RCEDL3kMYgjFUEOhOyGp3IE"
+      ],
+      "paths": [
+        "Legal Services Provider/sali:advised",
+        "Role in Matter/sali:advised"
+      ]
+    },
+    "label": "sali:advised"
+  },
+  {
+    "id": "RCfGltyATZDch3La86F79hq",
+    "definition": "In the legal sphere, \"granted\" refers to the approval or acceptance of a request, motion, or appeal by a judicial authority. This term indicates that the court has agreed to the request, whether it's for procedural actions like a motion in a trial, or substantive issues like granting a writ of certiorari in appellate courts.",
+    "kind": "property",
+    "context": "Path: Decisionmaker for Legal Disputes/sali:granted",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RCfGltyATZDch3La86F79hq",
+      "qualifiedType": "",
+      "containingTypes": [
+        "RDSYPGgBlFz5eWNtwoMA2c5"
+      ],
+      "paths": [
+        "Decisionmaker for Legal Disputes/sali:granted"
+      ]
+    },
+    "label": "sali:granted"
+  },
+  {
+    "id": "RChkN47HjKv8H0ovpaNILyM",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RChkN47HjKv8H0ovpaNILyM",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "oasis:hasAgent"
+  },
+  {
+    "id": "RCmX2a3aVJOIgpjsiRggnxX",
+    "definition": "In legal contexts, \"presented\" refers to the act of formally introducing or submitting evidence, arguments, or information in a judicial or legal setting. This encompasses the delivery of material in a structured and often persuasive manner, essential for informing the decision-making process or supporting a legal claim or defense.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RCmX2a3aVJOIgpjsiRggnxX",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:presented"
+  },
+  {
+    "id": "RCrkDVNXup86PCJ1li7GrFx",
+    "definition": "Departure from a location, by a person or object, which can have litigation, immigration, tax, and other regulatory effects.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RCrkDVNXup86PCJ1li7GrFx",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:departed"
+  },
+  {
+    "id": "RCtXcXKz9zo5jk9QW5UpTyg",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RCtXcXKz9zo5jk9QW5UpTyg",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "oasis:hasMember"
+  },
+  {
+    "id": "RCuyvwwZzhCRHWEZZVIlpHF",
+    "definition": "In economic and legal contexts, \"is currency for\" denotes that a specific form of money is officially recognized and used as the medium of exchange within a particular country or region. For example, the U.S. Dollar is the standard unit for pricing and transactions in the United States, and that currency holds legal backing from its government.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RCuyvwwZzhCRHWEZZVIlpHF",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:isCurrencyFor"
+  },
+  {
+    "id": "RCx3rNyJdykIdu45Cr4ajaK",
+    "definition": "\"Appeals to\" in a legal setting refers to the process of challenging and seeking review of a lower court's decision by a higher court. This action is initiated by the party dissatisfied with the trial court's judgment, aiming for a reassessment of the legal and factual determinations made, based on the assertion of errors in the application of law or procedural missteps. It also relates to where a case heard by a trial court \"appeals to\" the appellate court (e.g., SDNY appeals to Second Circuit).",
+    "kind": "property",
+    "context": "Path: Forums and Venues/sali:appealsTo",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RCx3rNyJdykIdu45Cr4ajaK",
+      "qualifiedType": "",
+      "containingTypes": [
+        "RBjHwNNG2ASVmasLFU42otk",
+        "RCEDL3kMYgjFUEOhOyGp3IE",
+        "RCFgxBbypUKKsDDOJ1iOk36"
+      ],
+      "paths": [
+        "Forums and Venues/sali:appealsTo",
+        "Role in Matter/sali:appealsTo",
+        "Litigant/sali:appealsTo"
+      ]
+    },
+    "label": "sali:appealsTo"
+  },
+  {
+    "id": "RCxZMkiQ7r63J4irBj8tKJv",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RCxZMkiQ7r63J4irBj8tKJv",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "utbms:Plan and prepare for"
+  },
+  {
+    "id": "RD0XCn6jU6kWpRwSH8lzFGA",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RD0XCn6jU6kWpRwSH8lzFGA",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "utbms:Communicate (other external)"
+  },
+  {
+    "id": "RDC4DqaMFIcuowN8mPKfzE5",
+    "definition": "Specifies a proximity search operator, used to find items that are close to each other (within a certain distance) in a text",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RDC4DqaMFIcuowN8mPKfzE5",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:near"
+  },
+  {
+    "id": "RDGdDmBhMZICUDoXt6HEEbr",
+    "definition": "RIEHL NOTE: This was originally conceived as a `New York Courts sali:hasType Dispute Forum` but that will likely be deprecated in favor of having Courts be Individuals (not Classes).",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RDGdDmBhMZICUDoXt6HEEbr",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:hastype"
+  },
+  {
+    "id": "RDGeYzs7plsJOebCI0Ne8kD",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RDGeYzs7plsJOebCI0Ne8kD",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "oasis:appliesModality"
+  },
+  {
+    "id": "RDHwdM2A0beLXWa3uCOuj18",
+    "definition": "In a legal setting, \"applied\" refers to the act of implementing or utilizing legal principles, caselaw, statutes, or rules in the decision-making process. This involves interpreting the relevant law and integrating it into the resolution of a case, whether by a judge, arbitrator, or jury.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RDHwdM2A0beLXWa3uCOuj18",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:applied"
+  },
+  {
+    "id": "RDKLC9VaaCYFPmyFrTjNTd5",
+    "definition": "Indicates an operator that searches for items containing a specific substring or sequence.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RDKLC9VaaCYFPmyFrTjNTd5",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:contains"
+  },
+  {
+    "id": "RDNZZOyU2yb5Q9xbxIWXd62",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RDNZZOyU2yb5Q9xbxIWXd62",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "ZZZ:DEPRECATED PROPERTIES"
+  },
+  {
+    "id": "RDNoruauHZ4Tn1JNgobdmol",
+    "definition": "(Hearing) sali:concerning (Motion) sali:concerning (Summary Judgment)",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RDNoruauHZ4Tn1JNgobdmol",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:concerning"
+  },
+  {
+    "id": "RDSBgWxWYHvX1IXdqrnXOT",
+    "definition": "In legal terms, \"upheld\" refers to the decision of a court, especially an appellate court, to confirm and maintain the ruling or decision of a lower court. This indicates that, upon review, the appellate court found the original decision to be correct and in accordance with the law, warranting no change or reversal.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RDSBgWxWYHvX1IXdqrnXOT",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "DEPRECATED FAVORING AFFIRMED sali:upheld"
+  },
+  {
+    "id": "RDVFemXaqT513UrGRVhWDSH",
+    "definition": "In the context of legal ontologies and processes, \"has next\" refers to the sequential relationship where a specific legal event or task is followed by another predetermined event or task. This concept denotes the procedural order or chronology within legal proceedings. For example, \"jury selection has next trial\" implies that the jury selection phase in a trial precedes the actual commencement of the trial proceedings.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RDVFemXaqT513UrGRVhWDSH",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:hasNext"
+  },
+  {
+    "id": "RDVP2bwCYtRO8GBcq3zcaWa",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RDVP2bwCYtRO8GBcq3zcaWa",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "oasis:hasStatusDevelopment"
+  },
+  {
+    "id": "RDc1B2GDj6ckfXBkRRSJXfH",
+    "definition": "Mapping between Thomson Reuters concepts (i.e., labels, identifiers) and SALI concepts.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RDc1B2GDj6ckfXBkRRSJXfH",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "TR:SALI"
+  },
+  {
+    "id": "RDcFjKHk0LjerTTIG0CYTXv",
+    "definition": "",
+    "kind": "property",
+    "context": "Type: Time. Path: oasis:TemporalCharacteristic/oasis:atTime",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RDcFjKHk0LjerTTIG0CYTXv",
+      "qualifiedType": "R9PQzGkaFkFgcMvZOKrmbqT",
+      "containingTypes": [
+        "RBDCMbVjuJ10m588Ou29eSf"
+      ],
+      "paths": [
+        "oasis:TemporalCharacteristic/oasis:atTime"
+      ]
+    },
+    "label": "oasis:atTime"
+  },
+  {
+    "id": "RDexpiWmmK9xFb7iMaBJpcD",
+    "definition": "In legal contexts, \"reverted\" refers to the act of returning to a previous state, condition, or set of circumstances, often as a result of a judicial decision or the operation of law. This term is typically used when rights, property, or legal status are restored to their former condition, either due to contractual stipulations, legal provisions, or court orders.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RDexpiWmmK9xFb7iMaBJpcD",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:reverted"
+  },
+  {
+    "id": "RDg3svGlPQWSeM8eDKzJTSf",
+    "definition": "In legal and professional contexts, \"has expense\" refers to the incurrence of costs or financial outlays associated with performing certain actions or fulfilling duties. This includes expenditures such as travel costs for depositions, purchasing materials for expert analysis, or other necessary expenses incurred in the course of legal representation or consultation.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RDg3svGlPQWSeM8eDKzJTSf",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:hasExpense"
+  },
+  {
+    "id": "RDkNxLSVfcWlNUKatMJwnMt",
+    "definition": "In legal procedures, \"filed\" refers to the formal submission of documents, such as lawsuits, motions, or applications, to a court, agency, or other official body. This act initiates or progresses legal proceedings and is a critical step in ensuring that legal matters are officially recorded, recognized, and acted upon according to relevant laws and regulations.",
+    "kind": "property",
+    "context": "Type: Document / Artifact. Path: Legal Services Provider/sali:filed",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RDkNxLSVfcWlNUKatMJwnMt",
+      "qualifiedType": "RDt4vQCYDfY0R9fZ5FNnTbj",
+      "containingTypes": [
+        "R9x6yqzHQfo3MF4rxIcPupm",
+        "RCFgxBbypUKKsDDOJ1iOk36"
+      ],
+      "paths": [
+        "Legal Services Provider/sali:filed",
+        "Litigant/sali:filed"
+      ]
+    },
+    "label": "sali:filed"
+  },
+  {
+    "id": "RDl0w1bStTabxjJhVmoyAO8",
+    "definition": "\"Is Subsequent\" in legal and procedural contexts refers to something that follows or comes after something else, particularly in a sequence of events, documents, or legal actions. This term is used to describe a version, action, or decision that occurs or is produced after a preceding one, indicating its place in a chronological or logical order.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RDl0w1bStTabxjJhVmoyAO8",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:isSubsequent"
+  },
+  {
+    "id": "RDxHHUOM1v4NOmByelkNw11",
+    "definition": "\"Has Signed Date\" refers to the specific date on which a contract, agreement, judicial opinion, or other legal document was signed. This date is often marks the commencement of rights, responsibilities, and terms outlined in the document.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RDxHHUOM1v4NOmByelkNw11",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:hasSignedDate"
+  },
+  {
+    "id": "RDyfwuKf33mCj2gfpqW702n",
+    "definition": "A logical operator that combines search terms to retrieve items that match any of the terms.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RDyfwuKf33mCj2gfpqW702n",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:or"
+  },
+  {
+    "id": "RH73qlQGajAwUFNMEkH9T2",
+    "definition": "A category of operators that use two operands, such as the comparison of numerical values (e.g., GreaterThan, LessThan, EqualTo, NotEqualTo).",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RH73qlQGajAwUFNMEkH9T2",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:binaryOperators"
+  },
+  {
+    "id": "RHY2uPq1euk703pZQLNwMA",
+    "definition": "",
+    "kind": "property",
+    "context": "Path: Decisionmaker for Legal Disputes/DEPRECATED FAVORING DISMISSED \nsali:disposedOf",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RHY2uPq1euk703pZQLNwMA",
+      "qualifiedType": "",
+      "containingTypes": [
+        "RDSYPGgBlFz5eWNtwoMA2c5"
+      ],
+      "paths": [
+        "Decisionmaker for Legal Disputes/DEPRECATED FAVORING DISMISSED \nsali:disposedOf"
+      ]
+    },
+    "label": "DEPRECATED FAVORING DISMISSED \nsali:disposedOf"
+  },
+  {
+    "id": "RHfRMWirAE49F9Widnyd7V",
+    "definition": "In the legal realm, \"direct examined\" refers to the initial questioning of a witness by the party that called them to testify in a trial or hearing. This process is fundamental for establishing the facts of a case as presented by the witness, and it focuses on eliciting favorable, relevant testimony in a narrative form, typically without leading questions.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RHfRMWirAE49F9Widnyd7V",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:directExamined"
+  },
+  {
+    "id": "RHtKJmN0SXcOrZPEc1oJHF",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RHtKJmN0SXcOrZPEc1oJHF",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "utbms:Communicate (in firm)"
+  },
+  {
+    "id": "RI8E8tMRzJgno8mZ763EPv",
+    "definition": "An operator that returns items where the field's value does not match the given value.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RI8E8tMRzJgno8mZ763EPv",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:notEqual"
+  },
+  {
+    "id": "RMQvvbEUbz97RKKfKnpOTl",
+    "definition": "\"Requested\" in legal terms refers to the act of formally asking for something within a legal context, such as information, action, or a particular legal remedy. This typically involves a formal application or petition to a court, agency, or another party, outlining the specifics of what is being sought and the grounds for the request.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RMQvvbEUbz97RKKfKnpOTl",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:requested"
+  },
+  {
+    "id": "RN3mWlXZUAt07dYsu6tls2",
+    "definition": "\"Seeks to Achieve\" refers to the act of pursuing a specific legal outcome or objective. This involves drafting, arguing, and advocating for legal legal goals (e.g., preliminary injunction, securing indemnification).",
+    "kind": "property",
+    "context": "Type: Objectives. Path: Document / Artifact/sali:seeksToAchieve",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RN3mWlXZUAt07dYsu6tls2",
+      "qualifiedType": "RlNFgB3TQfMzV26V4V7u4E",
+      "containingTypes": [
+        "RDt4vQCYDfY0R9fZ5FNnTbj"
+      ],
+      "paths": [
+        "Document / Artifact/sali:seeksToAchieve"
+      ]
+    },
+    "label": "sali:seeksToAchieve"
+  },
+  {
+    "id": "RQibzWMnQMD73BO19CWUPt",
+    "definition": "\"Sent\" in a legal context refers to the act of dispatching or transmitting a communication or document from one party to another.",
+    "kind": "property",
+    "context": "Type: Document / Artifact. Path: Actor / Player/sali:sent",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RQibzWMnQMD73BO19CWUPt",
+      "qualifiedType": "RDt4vQCYDfY0R9fZ5FNnTbj",
+      "containingTypes": [
+        "R8CdMpOM0RmyrgCCvbpiLS0"
+      ],
+      "paths": [
+        "Actor / Player/sali:sent"
+      ]
+    },
+    "label": "sali:sent"
+  },
+  {
+    "id": "RRmQYyvtQ35FVexIVWZnyn",
+    "definition": "\"Cross examined\" in legal contexts denotes the rigorous questioning of a witness by the opposing party, often following their direct examination by the party who called them. This process is a critical aspect of the adversarial system, aimed at challenging the credibility, reliability, and consistency of the witness's testimony, often through pointed, leading questions.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RRmQYyvtQ35FVexIVWZnyn",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:crossExamined"
+  },
+  {
+    "id": "RSUYYgxaSZBNickjaRAqzJ",
+    "definition": "In the legislative and legal context, \"codified\" refers to the process by which laws, rules, or regulations are systematically collected, arranged, and published in a formal legal code. This act of codification transforms various statutes, ordinances, and legal principles into an organized and accessible format, often to provide clarity, consistency, and ease of reference.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RSUYYgxaSZBNickjaRAqzJ",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:codified"
+  },
+  {
+    "id": "RSvfP5xuO21mAI4NS6EbLP",
+    "definition": "In legal analysis, \"distinguished\" refers to the process of demonstrating how a current case or situation differs from a previous case, legal proposition, or fact pattern. This is often done by judges or arbitrators to justify a different legal outcome or application of law, despite apparent similarities to earlier precedents or scenarios.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RSvfP5xuO21mAI4NS6EbLP",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:distinguished"
+  },
+  {
+    "id": "RTVHIHUY48KidG92GXtTlH",
+    "definition": "In corporate law and business, \"has subsidiary\" refers to the relationship where a parent company owns and controls a separate and distinct company, known as a subsidiary. This denotes that the subsidiary operates as an independent entity but is under the significant influence or control of the parent corporation, both in management and often in financial matters.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RTVHIHUY48KidG92GXtTlH",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:hasSubsidiary"
+  },
+  {
+    "id": "RUBi4AYhUtpu5FhXaia36Q",
+    "definition": "In legal terms, \"notarized\" refers to the process where a document is officially certified by a notary public, a licensed official who verifies the identity of the signatories and their understanding and willingness to sign the document. This process lends authenticity and legal weight to the document, often required for legal formalities such as property deeds, wills, and contracts.",
+    "kind": "property",
+    "context": "Type: Document / Artifact. Path: Individual Person/sali:notarized",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RUBi4AYhUtpu5FhXaia36Q",
+      "qualifiedType": "RDt4vQCYDfY0R9fZ5FNnTbj",
+      "containingTypes": [
+        "RDCkFrEclhipkoHPgckuFY6",
+        "RL7sqh8NY6UuTxs6rerO5U"
+      ],
+      "paths": [
+        "Individual Person/sali:notarized",
+        "Notary Public/sali:notarized"
+      ]
+    },
+    "label": "sali:notarized"
+  },
+  {
+    "id": "RUmf4RiyCyjE8hwApkfp6o",
+    "definition": "\"Researched\" in a legal context refers to the systematic investigation or study of legal documents, case law, statutes, and other legal sources to gather information, understand legal precedents, and develop legal arguments. This process is fundamental for lawyers, legal scholars, and other professionals to build a thorough understanding of legal issues, cases, and the legal framework.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RUmf4RiyCyjE8hwApkfp6o",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:researched"
+  },
+  {
+    "id": "RVcCszu01sLSiXW2CvBBE7",
+    "definition": "\"Reviewed\" in a legal setting refers to the examination and evaluation of legal documents, motions, or evidence. This process, often undertaken by judges, lawyers, or legal officials, involves a thorough analysis to understand the content, assess its relevance and validity, and determine its impact on a legal matter or decision.",
+    "kind": "property",
+    "context": "Path: Decisionmaker for Legal Disputes/sali:reviewed",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RVcCszu01sLSiXW2CvBBE7",
+      "qualifiedType": "",
+      "containingTypes": [
+        "RDSYPGgBlFz5eWNtwoMA2c5"
+      ],
+      "paths": [
+        "Decisionmaker for Legal Disputes/sali:reviewed"
+      ]
+    },
+    "label": "sali:reviewed"
+  },
+  {
+    "id": "RWd966Up5VVRxKPkv1PPBZ",
+    "definition": "In a legal context, \"certified\" refers to the formal declaration or confirmation by a competent authority that a document, process, or individual meets established standards or criteria. This certification process is crucial for establishing the authenticity, accuracy, or qualification of the subject matter, often required for legal compliance, recognition, or enforcement.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RWd966Up5VVRxKPkv1PPBZ",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:certified"
+  },
+  {
+    "id": "RXvlgtHqXTWS2UvbLmm6JD",
+    "definition": "Who has the benefit of an item? EXAMPLE: Whom does Contractual Directionality benefit? Example:  Party A indemnifying Party B benefits Party B. Example: Party A receiving Party B's goods benefits Party A.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RXvlgtHqXTWS2UvbLmm6JD",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:hasBenefit"
+  },
+  {
+    "id": "RZSnKehA643O8824iC320g",
+    "definition": "\"Worked For\" refers to the employment or professional relationship where an individual, such as a lawyer or paralegal, is engaged in duties or services for an entity like a court, a judge, or a law firm. This term encompasses the scope of professional activities undertaken by the individual under the employment or direction of the specified legal entity or employer.",
+    "kind": "property",
+    "context": "Type: Legal Entity. Path: Actor / Player/sali:workedFor",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RZSnKehA643O8824iC320g",
+      "qualifiedType": "R7L5eLIzH0CpOUE74uJvSjL",
+      "containingTypes": [
+        "R8CdMpOM0RmyrgCCvbpiLS0"
+      ],
+      "paths": [
+        "Actor / Player/sali:workedFor"
+      ]
+    },
+    "label": "sali:workedFor"
+  },
+  {
+    "id": "Rc2xL6UfK0qZytPCyBeduO",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "Rc2xL6UfK0qZytPCyBeduO",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "oasis:hasRoles"
+  },
+  {
+    "id": "RdAgrsvdn5d59nUUq1iU9D",
+    "definition": "\"Took\" in various legal contexts encompasses the action of acquiring, obtaining, or accepting something. That can include taking property, solemnly accepting something (e.g., oath), or taking evidence (e.g., testimony).",
+    "kind": "property",
+    "context": "Type: Deposition. Path: Actor / Player/sali:took",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RdAgrsvdn5d59nUUq1iU9D",
+      "qualifiedType": "RCnTNVCQ1VndGxskbMoaLr8",
+      "containingTypes": [
+        "R8CdMpOM0RmyrgCCvbpiLS0"
+      ],
+      "paths": [
+        "Actor / Player/sali:took"
+      ]
+    },
+    "label": "sali:took"
+  },
+  {
+    "id": "RdpSPh3bFHYrQ3vYPDwJYB",
+    "definition": "In legal contexts, \"cited\" refers to the act of referencing or quoting authoritative sources such as caselaw, statutes, documents, or prior testimony to support arguments, claims, or positions. This practice is common in legal reasoning and advocacy, providing evidential or jurisprudential backing to the points being made.",
+    "kind": "property",
+    "context": "Type: Citation to Caselaw. Path: Actor / Player/sali:cited",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RdpSPh3bFHYrQ3vYPDwJYB",
+      "qualifiedType": "RCde1yp5z3QI9MoNV8BBZCj",
+      "containingTypes": [
+        "R8CdMpOM0RmyrgCCvbpiLS0"
+      ],
+      "paths": [
+        "Actor / Player/sali:cited"
+      ]
+    },
+    "label": "sali:cited"
+  },
+  {
+    "id": "RebIkaU3BW0LoMNlSf8DQ3",
+    "definition": "In legal terminology, \"remit\" refers to the act of a higher court sending a case back to a lower court for further action, reconsideration, or a new trial. This typically occurs after an appellate review, where the appellate court has identified specific issues that require additional examination or resolution by the lower court.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RebIkaU3BW0LoMNlSf8DQ3",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "DEPRECATED FAVORING REMANDED sali:remitted"
+  },
+  {
+    "id": "RfM1fbV2yfBPHRkAlT1o3o",
+    "definition": "To destroy an artifact. Example: Party destroyed evidence. Example: Provider destroyed a Buyer's (e.g., a client's) closed and dormant file. Example: Party destroyed data according to its Document Retention Policy.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RfM1fbV2yfBPHRkAlT1o3o",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:destroyed"
+  },
+  {
+    "id": "Ri6OrmVAB1fhqFK0qdbch",
+    "definition": "In the legal realm, \"discontinued\" refers to the cessation or termination of a legal action, process, or proceeding before its natural conclusion. This typically occurs when the party initiating the action decides to halt proceedings, which can be due to various reasons such as a settlement, a change in circumstances, or a reassessment of the likelihood of success.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "Ri6OrmVAB1fhqFK0qdbch",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:discontinued"
+  },
+  {
+    "id": "RlWWALyEkmi7ifaz2MpmoR",
+    "definition": "\"Remanded\" in legal practice refers to the decision of a higher court to send a case back to a lower court for additional action, further proceedings, or a new decision. This often occurs when an appellate court finds that the lower court made a procedural error, or when additional fact-finding or legal analysis is necessary.",
+    "kind": "property",
+    "context": "Path: Decisionmaker for Legal Disputes/sali:remanded",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RlWWALyEkmi7ifaz2MpmoR",
+      "qualifiedType": "",
+      "containingTypes": [
+        "RDSYPGgBlFz5eWNtwoMA2c5"
+      ],
+      "paths": [
+        "Decisionmaker for Legal Disputes/sali:remanded"
+      ]
+    },
+    "label": "sali:remanded"
+  },
+  {
+    "id": "RmEof79RS5Y9fhzwIXRGAW",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RmEof79RS5Y9fhzwIXRGAW",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "oasis:hasTime"
+  },
+  {
+    "id": "Rrs38f6iVq0CeArcJaGhwR",
+    "definition": "Arrival at a location, by a person or object, which can have litigation, immigration, tax, and other regulatory effects.",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "Rrs38f6iVq0CeArcJaGhwR",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:arrived"
+  },
+  {
+    "id": "Rtcn744oelK5y1pAR0epCQ",
+    "definition": "In legal proceedings, \"rejected\" refers to the decision of an authority (judicial, arbitral, administrative) to not accept an argument, testimony, evidence, document, or claim presented. This implies that the presented material is deemed unpersuasive, insufficient, irrelevant, or inadmissible under legal standards or specific case requirements.",
+    "kind": "property",
+    "context": "Type: Legal Proposition. Path: Decisionmaker for Legal Disputes/sali:rejected",
+    "metadata": {
+      "namespace": "_",
+      "localName": "Rtcn744oelK5y1pAR0epCQ",
+      "qualifiedType": "RNICD9MDcFQJJX6nxX11Vt",
+      "containingTypes": [
+        "RDSYPGgBlFz5eWNtwoMA2c5"
+      ],
+      "paths": [
+        "Decisionmaker for Legal Disputes/sali:rejected"
+      ]
+    },
+    "label": "sali:rejected"
+  },
+  {
+    "id": "RvsDUAn0QArabNSac4wW2P",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RvsDUAn0QArabNSac4wW2P",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "hasTimes"
+  },
+  {
+    "id": "RwdlnXbLIUXj4VeNyet8FP",
+    "definition": "a collection of Agents",
+    "kind": "property",
+    "context": "Type: oasis:agent collection. Path: oasis:LegalRuleMLDocument/has agent collection",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RwdlnXbLIUXj4VeNyet8FP",
+      "qualifiedType": "RlNd4fuEGnhNmnebjdyb9h",
+      "containingTypes": [
+        "R9PfY9lASO3JAZnFZiWzBKN"
+      ],
+      "paths": [
+        "oasis:LegalRuleMLDocument/has agent collection"
+      ]
+    },
+    "label": "has agent collection"
+  },
+  {
+    "id": "Rzg9RcXQ0FUTW9tMLOUG0X",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "Rzg9RcXQ0FUTW9tMLOUG0X",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "utbms:Appear for/attend"
+  },
+  {
+    "id": "RznfymBGs7WesrwWNzQLov",
+    "definition": "\"Participated in\" within a legal framework refers to active involvement in a legal proceeding or activity, such as a hearing, deposition, or negotiation. This term encompasses not just physical presence but also engagement in the process, contributing through actions like presenting arguments, giving testimony, or collaborating in discussions.",
+    "kind": "property",
+    "context": "Type: Event. Path: Actor / Player/sali:participatedIn",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RznfymBGs7WesrwWNzQLov",
+      "qualifiedType": "R73hoH1RXYjBTYiGfolpsAF",
+      "containingTypes": [
+        "R8CdMpOM0RmyrgCCvbpiLS0"
+      ],
+      "paths": [
+        "Actor / Player/sali:participatedIn"
+      ]
+    },
+    "label": "sali:participatedIn"
+  },
+  {
+    "id": "RBKUbRPj3oOZAzEtzwOVzFJ",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RBKUbRPj3oOZAzEtzwOVzFJ",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "sali:hasState"
+  },
+  {
+    "id": "RZYTCnMD4vWEBSyyYsCA2I",
+    "definition": "",
+    "kind": "property",
+    "context": "",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RZYTCnMD4vWEBSyyYsCA2I",
+      "qualifiedType": "",
+      "containingTypes": [],
+      "paths": []
+    },
+    "label": "e"
+  },
+  {
+    "id": "RiefshPtNgMXvUilErGDTO",
+    "definition": "",
+    "kind": "property",
+    "context": "Path: Actor / Player/sali:hasRole",
+    "metadata": {
+      "namespace": "_",
+      "localName": "RiefshPtNgMXvUilErGDTO",
+      "qualifiedType": "",
+      "containingTypes": [
+        "R8CdMpOM0RmyrgCCvbpiLS0"
+      ],
+      "paths": [
+        "Actor / Player/sali:hasRole"
+      ]
+    },
+    "label": "sali:hasRole"
+  }
+]
