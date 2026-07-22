@@ -310,8 +310,8 @@ def _run_pipeline_stages_1_4(run_id: str, run_dir: Path, cwd: str, env: dict) ->
     input_type = inputs.get("input_type", "owl")
     package_path = inputs.get("input_package_path", "")
     if input_type == "csv":
-        source = inputs.get("source", "source")
-        ns_slug = source.lower().replace(" ", "-").replace("_", "-")
+        from ontology_mapper.pipeline_config import resolve_csv_namespace
+        ns, ns_uri = resolve_csv_namespace(inputs)
         pkg_dir = Path(cwd) / package_path
         input_dir = pkg_dir / "input"
 
@@ -330,8 +330,8 @@ def _run_pipeline_stages_1_4(run_id: str, run_dir: Path, cwd: str, env: dict) ->
             csv_path = f"{package_path}/input/INPUT.csv"  # let om-ingest-csv emit the error
         if not _run_cmd(run_id, "2", [
             "om-ingest-csv", csv_path,
-            "--namespace", ns_slug,
-            "--namespace-uri", f"urn:{ns_slug}-model",
+            "--namespace", ns,
+            "--namespace-uri", ns_uri,
             "--run-dir", rd,
         ], cwd, env):
             return False

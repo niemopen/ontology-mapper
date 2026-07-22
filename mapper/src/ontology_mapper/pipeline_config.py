@@ -68,3 +68,28 @@ def load_config(state_file=None, run_dir=None):
             print(f"  Warning: Could not load threshold overrides from {state_path}: {e}")
 
     return config
+
+
+# ---------------------------------------------------------------------------
+# CSV source namespace resolution
+# ---------------------------------------------------------------------------
+
+def resolve_csv_namespace(inputs):
+    """Resolve the (prefix, uri) namespace for a CSV-ingested source.
+
+    Both the automated runner (``run_pipeline.py``) and the web backend
+    (``routes/runs.py``) ingest CSV packages via ``om-ingest-csv``. They must
+    derive the SAME namespace so a given source produces the same concept IRIs
+    regardless of which entry point ran it.
+
+    Precedence:
+      1. Explicit ``inputs["namespace"]`` / ``inputs["namespace_uri"]`` when set.
+      2. Derived from ``inputs["source"]``: prefix = slug(source),
+         uri = ``urn:{slug}-model``.
+      3. Fallback when no source is given: ``("src", "urn:src-model")``.
+    """
+    source = (inputs.get("source") or "").strip()
+    slug = source.lower().replace(" ", "-").replace("_", "-")
+    prefix = inputs.get("namespace") or (slug or "src")
+    uri = inputs.get("namespace_uri") or (f"urn:{slug}-model" if slug else "urn:src-model")
+    return prefix, uri
