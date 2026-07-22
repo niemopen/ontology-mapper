@@ -14,10 +14,10 @@ build/
 # Agent session temp files
 agent_sessions_tmp/
 
-# Vector store — BGE embedding model weights + FAISS indexes.
-# Heavy (~2.7 GB) and rebuildable. The model auto-downloads via
-# sentence-transformers on first use; the indexes are rebuilt by
-# scripts/build_indexes.py (one-time post-clone setup).
+# Vector store — BGE embedding model weights only (~1.3 GB). The model
+# auto-downloads via sentence-transformers on first use, so it is not
+# committed. The FAISS indexes under specs/vector/indexes/ DO ship with
+# the repo (see README) so a fresh clone can run without a rebuild.
 src/ontology_mapper/specs/vector/model/
 
 # Reference catalogs, summaries, type directories, NDR specs, and the
