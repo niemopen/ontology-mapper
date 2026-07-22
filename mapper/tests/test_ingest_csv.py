@@ -164,6 +164,21 @@ class TestParseCsv:
         assert submission["object_refs"] == []
         assert [a["name"] for a in submission["attributes"]] == ["MessageID"]
 
+    def test_bom_prefixed_csv_parses(self, tmp_path):
+        # Files exported from Excel / Windows tools carry a UTF-8 BOM; parse_csv
+        # opens with utf-8-sig so the BOM does not corrupt the first header cell.
+        csv_path = tmp_path / "INPUT.csv"
+        rows = [
+            ["Model Class", "Model Attribute", "Model Type", "Model Multiplicity", "Model Definition"],
+            ["Person", "", "", "", "A human being."],
+            ["Person", "name", "string", "1", "The name."],
+        ]
+        with open(csv_path, "w", newline="", encoding="utf-8-sig") as f:
+            csv.writer(f).writerows(rows)
+        classes = parse_csv(csv_path)
+        assert "Person" in classes
+        assert [a["name"] for a in classes["Person"]["attributes"]] == ["name"]
+
 
 # ─── build_concept_inventory ─────────────────────────────────────────────
 
