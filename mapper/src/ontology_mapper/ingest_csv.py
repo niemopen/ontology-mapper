@@ -92,6 +92,13 @@ def parse_csv(csv_path):
                     classes[cls_name]["definition"] = defn
                 continue
 
+            # Skip BoUML annotation / association-marker rows. The author writes
+            # the UML relationship note in angle brackets (e.g. "<directional
+            # aggregation>" or "Arrestee (<unidirectional association>)") to mark
+            # a row that is not a data attribute; ingest ignores it.
+            if re.search(r"<[^>]*>", attr_name):
+                continue
+
             # Parenthesized reference → object property (e.g., "(Charges)")
             paren_match = re.match(r"^\((.+)\)$", attr_name)
             if paren_match:
