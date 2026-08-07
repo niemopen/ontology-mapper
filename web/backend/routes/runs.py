@@ -11,6 +11,8 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse, StreamingResponse
 
+from ontology_mapper.pipeline_context import slugify_ncname
+
 from auth import require_auth, get_org_slug
 from config import settings
 from models import CreateRunRequest, RunSummary
@@ -310,8 +312,10 @@ def _run_pipeline_stages_1_4(run_id: str, run_dir: Path, cwd: str, env: dict) ->
     input_type = inputs.get("input_type", "owl")
     package_path = inputs.get("input_package_path", "")
     if input_type == "csv":
-        from ontology_mapper.pipeline_config import resolve_csv_namespace
-        ns, ns_uri = resolve_csv_namespace(inputs)
+        source = inputs.get("source", "source")
+        # Underscores collapse to '-' first so the slug matches the dashed
+        # namespace convention this route has always used.
+        ns_slug = slugify_ncname(source.replace("_", "-"), fallback="source").lower()
         pkg_dir = Path(cwd) / package_path
         input_dir = pkg_dir / "input"
 

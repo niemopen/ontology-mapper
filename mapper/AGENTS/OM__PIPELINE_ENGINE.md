@@ -73,6 +73,14 @@ from the resolved inputs. Created via `load_context(run_dir)` which reads
 `.mapper-state.json` and validates that `target_ontology` and
 `target_version` are present.
 
+`inputs.organization` and `inputs.source` are user-supplied display strings
+and may contain spaces or punctuation. `organization_slug` / `source_slug`
+(via `slugify_ncname()`) give the NCName-safe forms, and every identifier
+property already derives from them — Turtle prefixes, namespace IRIs, CMF
+`xs:ID`/`xs:IDREF` values, and artifact file names. Only `description` and
+`label_prefix` (prose) and `agency_package_name` (an on-disk directory the
+user created) use the raw values.
+
 ### Configuration
 
 `pipeline_config.py` holds threshold defaults (currently
@@ -117,6 +125,9 @@ In addition to the hard rules in `AGENTS.md`:
   `.mapper-state.json`, not from CLI args (except `--run-dir`).
 - **PipelineContext for all derived names.** Do not construct namespace URIs,
   file prefixes, or package names with f-strings — use `PipelineContext`.
+- **Never interpolate raw `source`/`organization` into an identifier.** Use
+  the `*_slug` properties (or `slugify_ncname()` outside the context) for
+  anything that must be an NCName, an IRI segment, or a file name.
 - **Stage boundaries are strict.** A stage tool reads the previous stage's
   output and writes its own. Do not skip stages or combine them.
 - **build_mapping_matrix.py is a pure transformer.** It reshapes the
