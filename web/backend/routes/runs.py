@@ -11,6 +11,8 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse, StreamingResponse
 
+from ontology_mapper.pipeline_context import slugify_ncname
+
 from auth import require_auth, get_org_slug
 from config import settings
 from models import CreateRunRequest, RunSummary
@@ -306,9 +308,40 @@ def _run_pipeline_stages_1_4(run_id: str, run_dir: Path, cwd: str, env: dict) ->
     _pipeline_status[run_id]["stage"] = "2"
     _record_stage_start(run_dir, "2")
     state = _read_state(run_dir)
-    package_path = (state.get("inputs", {}) if state else {}).get("inputPackagePath", "")
-    if not _run_cmd(run_id, "2", ["om-extract", "--run-dir", rd, "--package", package_path], cwd, env):
-        return False
+    inputs = state.get("inputs", {}) if state else {}
+    input_type = inputs.get("input_type", "owl")
+    package_path = inputs.get("input_package_path", "")
+    if input_type == "csv":
+        source = inputs.get("source", "source")
+        # Underscores collapse to '-' first so the slug matches the dashed
+        # namespace convention this route has always used.
+        ns_slug = slugify_ncname(source.replace("_", "-"), fallback="source").lower()
+        pkg_dir = Path(cwd) / package_path
+        input_dir = pkg_dir / "input"
+
+        # Resolve CSV path: prefer input/INPUT.csv, then any CSV in input/, then any CSV at the package root
+        input_csvs = sorted(input_dir.glob("*.csv")) if input_dir.is_dir() else []
+        root_csvs = sorted(pkg_dir.glob("*.csv"))
+        preferred = input_dir / "INPUT.csv"
+
+        if preferred.exists():
+            csv_path = f"{package_path}/input/INPUT.csv"
+        elif input_csvs:
+            csv_path = f"{package_path}/input/{input_csvs[0].name}"
+        elif root_csvs:
+            csv_path = f"{package_path}/{root_csvs[0].name}"
+        else:
+            csv_path = f"{package_path}/input/INPUT.csv"  # let om-ingest-csv emit the error
+        if not _run_cmd(run_id, "2", [
+            "om-ingest-csv", csv_path,
+            "--namespace", ns,
+            "--namespace-uri", ns_uri,
+            "--run-dir", rd,
+        ], cwd, env):
+            return False
+    else:
+        if not _run_cmd(run_id, "2", ["om-extract", "--run-dir", rd, "--package", package_path], cwd, env):
+            return False
     if not _mark_complete(run_id, "2", run_dir, cwd, env):
         return False
 

@@ -8,11 +8,31 @@ a single rename propagates everywhere.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
 from ontology_mapper.run_dir_utils import load_state
+
+_NCNAME_INVALID = re.compile(r"[^A-Za-z0-9_.-]+")
+_NCNAME_BAD_START = re.compile(r"^[^A-Za-z_]+")
+
+
+def slugify_ncname(value: str, fallback: str = "x") -> str:
+    """Reduce an arbitrary label to a valid XML NCName.
+
+    An NCName allows letters, digits, '.', '-' and '_', and may not begin
+    with a digit, '.' or '-'.  Runs of anything else collapse to a single
+    '-'.  Every generated identifier goes through this: Turtle prefixes,
+    namespace IRI path segments, CMF xs:ID/xs:IDREF values, and artifact
+    file names.  A source named "NIEM Hate" would otherwise emit
+    ``@prefix NIEM Hate-edge:`` and fail both Turtle parsing and CMF
+    schema validation.
+    """
+    slug = _NCNAME_INVALID.sub("-", (value or "").strip())
+    slug = _NCNAME_BAD_START.sub("", slug).strip("-")
+    return slug or fallback
 
 
 @dataclass(frozen=True)
@@ -27,14 +47,31 @@ class PipelineContext:
     target_version: str
     input_package_path: str = ""
 
+    # ── Identifier-safe forms ────────────────────────────────────────
+    # `organization` and `source` are user-supplied display strings and may
+    # contain spaces or punctuation.  Anything that becomes a prefix, IRI,
+    # xs:ID or file name uses the slug; labels and prose use the raw value.
+
+    @property
+    def organization_slug(self) -> str:
+        """NCName-safe form of `organization`: e.g. 'Redvale PD' -> 'Redvale-PD'"""
+        return slugify_ncname(self.organization, fallback="org")
+
+    @property
+    def source_slug(self) -> str:
+        """NCName-safe form of `source`: e.g. 'NIEM Hate' -> 'NIEM-Hate'"""
+        return slugify_ncname(self.source, fallback="source")
+
     # ── Package names ────────────────────────────────────────────────
 
     @property
     def edge_package_name(self) -> str:
-        return f"{self.organization}_{self.source}_edge_package"
+        return f"{self.organization_slug}_{self.source_slug}_edge_package"
 
     @property
     def agency_package_name(self) -> str:
+        # Not slugged: this names a directory that already exists on disk,
+        # so it has to reproduce the raw name the user created.
         if self.input_package_path:
             return Path(self.input_package_path).name
         return f"{self.organization}_{self.source}_agency_package"
@@ -47,11 +84,11 @@ class PipelineContext:
 
     @property
     def extension_namespace(self) -> str:
-        return f"https://data.{self.organization}.gov/ontology/{self.source}/ext/"
+        return f"https://data.{self.organization_slug}.gov/ontology/{self.source_slug}/ext/"
 
     @property
     def edge_namespace(self) -> str:
-        return f"https://data.{self.organization}.gov/ontology/{self.source}/edge/"
+        return f"https://data.{self.organization_slug}.gov/ontology/{self.source_slug}/edge/"
 
     # ── Namespace URIs (hash-terminated, for OWL/TTL serialization) ──
     # TODO: Reconcile protocol/domain mismatch between slash and hash
@@ -59,18 +96,18 @@ class PipelineContext:
 
     @property
     def edge_ns_hash(self) -> str:
-        return f"http://{self.organization}.gov/{self.source}/edge#"
+        return f"http://{self.organization_slug}.gov/{self.source_slug}/edge#"
 
     @property
     def ext_ns_hash(self) -> str:
-        return f"http://{self.organization}.gov/{self.source}/ext#"
+        return f"http://{self.organization_slug}.gov/{self.source_slug}/ext#"
 
     # ── File naming ──────────────────────────────────────────────────
 
     @property
     def file_prefix(self) -> str:
         """e.g. 'dbpi-edge'"""
-        return f"{self.source}-edge"
+        return f"{self.source_slug}-edge"
 
     def ontology_filename(self, suffix: str) -> str:
         """e.g. ontology_filename('core') -> 'dbpi-edge-core.ttl'"""
@@ -79,19 +116,19 @@ class PipelineContext:
     @property
     def cmf_model_stem(self) -> str:
         """e.g. 'dbpi-model'"""
-        return f"{self.source}-model"
+        return f"{self.source_slug}-model"
 
     @property
     def trig_filename(self) -> str:
         """e.g. 'dbpi-edge.trig'"""
-        return f"{self.source}-edge.trig"
+        return f"{self.source_slug}-edge.trig"
 
     # ── Display ──────────────────────────────────────────────────────
 
     @property
     def edge_prefix(self) -> str:
         """Turtle prefix for edge namespace: e.g. 'dbpi-edge:'"""
-        return f"{self.source}-edge:"
+        return f"{self.source_slug}-edge:"
 
     @property
     def label_prefix(self) -> str:

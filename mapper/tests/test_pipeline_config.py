@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from ontology_mapper.pipeline_config import DEFAULTS, load_config
+from ontology_mapper.pipeline_config import DEFAULTS, load_config, resolve_csv_namespace
 
 
 def test_defaults_returned_when_no_args(monkeypatch):
@@ -79,3 +79,32 @@ def test_empty_thresholds_returns_defaults(tmp_path):
 
     result = load_config(state_file=state_file)
     assert result == DEFAULTS
+
+
+class TestResolveCsvNamespace:
+    """resolve_csv_namespace derives ONE (prefix, uri) for both CSV entry
+    points (runner run_pipeline.py and web routes/runs.py), so a given source
+    yields the same concept IRIs regardless of which one ran it."""
+
+    def test_derived_from_source(self):
+        assert resolve_csv_namespace({"source": "dbpi"}) == ("dbpi", "urn:dbpi-model")
+
+    def test_source_is_slugified(self):
+        # lowercased; spaces and underscores become hyphens
+        assert resolve_csv_namespace({"source": "NIBRS Hate_Crime"}) == (
+            "nibrs-hate-crime", "urn:nibrs-hate-crime-model")
+
+    def test_explicit_namespace_and_uri_win(self):
+        assert resolve_csv_namespace({
+            "source": "dbpi", "namespace": "court", "namespace_uri": "urn:court",
+        }) == ("court", "urn:court")
+
+    def test_explicit_prefix_with_source_derived_uri(self):
+        assert resolve_csv_namespace({"source": "dbpi", "namespace": "court"}) == (
+            "court", "urn:dbpi-model")
+
+    def test_no_source_falls_back(self):
+        assert resolve_csv_namespace({}) == ("src", "urn:src-model")
+
+    def test_blank_source_falls_back(self):
+        assert resolve_csv_namespace({"source": "   "}) == ("src", "urn:src-model")

@@ -110,6 +110,22 @@ class TestTypeValidation:
         errors = validate_response(resp, _type_file())
         assert len(errors) == 3
 
+    def test_html_entity_in_source_is_unescaped(self):
+        # An LLM may HTML-escape the source qname; validate_response unescapes
+        # it before comparing so a real match still succeeds.
+        resp = _make_type_response(source="dbpi:Address&amp;Co")
+        errors = validate_response(resp, _type_file(qname="dbpi:Address&Co"))
+        assert errors == []
+        assert resp["sourceConcept"] == "dbpi:Address&Co"
+
+    def test_html_entity_unescaped_but_still_mismatched(self):
+        # Unescaping is applied even when the result still does not match; the
+        # mismatch is still reported (unescape is not a free pass).
+        resp = _make_type_response(source="dbpi:Other&amp;Co")
+        errors = validate_response(resp, _type_file(qname="dbpi:Address"))
+        assert any("sourceConcept mismatch" in e for e in errors)
+        assert resp["sourceConcept"] == "dbpi:Other&Co"
+
 
 # ---------------------------------------------------------------------------
 # Property validation tests

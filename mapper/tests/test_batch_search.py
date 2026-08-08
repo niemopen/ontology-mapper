@@ -93,6 +93,15 @@ class TestSanitizeFilename:
     def test_empty(self):
         assert sanitize_filename("") == ""
 
+    def test_windows_illegal_chars_replaced(self):
+        # < > : " / \ | ? * all map to underscore so a qname that leaks a
+        # BoUML placeholder still yields a valid Windows filename stem.
+        assert sanitize_filename("court:<unidirectional association>") == (
+            "court__unidirectional association_")
+
+    def test_all_illegal_chars(self):
+        assert sanitize_filename('a<b>c:d"e/f\\g|h?i*j') == "a_b_c_d_e_f_g_h_i_j"
+
 
 # ---------------------------------------------------------------------------
 # TestPropertyQname

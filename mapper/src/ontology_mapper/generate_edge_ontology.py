@@ -276,7 +276,9 @@ def main():
 
     def build_prefixes():
         lines = [
-            f"@prefix {EDGE_PREFIX:<11s}<{EDGE_NS}> .",
+            # Pad to 10 and add an explicit separator: a prefix longer than the
+            # padding width must still be separated from the IRI.
+            f"@prefix {EDGE_PREFIX:<10s} <{EDGE_NS}> .",
             f"@prefix ext:       <{EXT_NS}> .",
             "@prefix owl:       <http://www.w3.org/2002/07/owl#> .",
             "@prefix rdfs:      <http://www.w3.org/2000/01/rdf-schema#> .",
@@ -291,7 +293,7 @@ def main():
         for aug in inv.get("augmentingNamespaces", []):
             prefix = aug["prefix"]
             ns = aug["namespace"]
-            lines.append(f"@prefix {prefix + ':':<11s}<{ns}> .")
+            lines.append(f"@prefix {prefix + ':':<10s} <{ns}> .")
             declared.add(prefix)
         # Scan mapping matrix for target ontology prefixes not yet declared
         # (class targets AND reused property qualified names)
@@ -312,7 +314,7 @@ def main():
                     prefix = qname.split(":")[0]
                     if prefix not in declared and prefix in target_ns_map:
                         ns_uri = target_ns_map[prefix]
-                        lines.append(f"@prefix {prefix + ':':<11s}<{ns_uri}> .")
+                        lines.append(f"@prefix {prefix + ':':<10s} <{ns_uri}> .")
                         declared.add(prefix)
         lines.append("")
         return "\n".join(lines)

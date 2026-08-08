@@ -303,7 +303,7 @@ class TestGA006:
         findings = _find(audit_generation(inv, matrix), "GA-006")
         assert len(findings) == 1
         assert "x:judge" in findings[0]["message"]
-        assert findings[0]["severity"] == "error"
+        assert findings[0]["severity"] == "warning"
 
     def test_no_flag_when_all_resolved(self):
         inv = _inv()

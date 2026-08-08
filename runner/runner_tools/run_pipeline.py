@@ -617,10 +617,10 @@ def run_stage_2(run_dir: Path, input_package_path: str, timers: list[StageTimer]
                           "--package", input_package_path])
         else:
             # CSV path: requires namespace info from state
+            from ontology_mapper.pipeline_config import resolve_csv_namespace
             inputs = state.get("inputs", {})
             csv_path = inputs.get("csv_path", input_package_path)
-            ns = inputs.get("namespace", "src")
-            ns_uri = inputs.get("namespace_uri", "http://example.org/source#")
+            ns, ns_uri = resolve_csv_namespace(inputs)
             run_cmd("2", ["om-ingest-csv", csv_path,
                           "--run-dir", str(run_dir),
                           "--namespace", ns, "--namespace-uri", ns_uri])

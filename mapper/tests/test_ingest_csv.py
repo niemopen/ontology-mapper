@@ -73,6 +73,22 @@ def csv_with_typo_ref(tmp_path):
     return csv_path
 
 
+@pytest.fixture
+def csv_with_placeholder_association(tmp_path):
+    """CSV with BoUML-style placeholder association rows that should be ignored."""
+    csv_path = tmp_path / "INPUT.csv"
+    rows = [
+        ["Model Class", "Model Attribute", "Model Type", "Model Multiplicity", "Model Definition"],
+        ["Submission", "", "", "", ""],
+        ["Submission", "<directional aggregation>", "", "0..1", ""],
+        ["Submission", "MessageID", "string", "0..1", "A message identifier"],
+    ]
+    with open(csv_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerows(rows)
+    return csv_path
+
+
 # ─── parse_multiplicity ─────────────────────────────────────────────────
 
 class TestParseMultiplicity:
@@ -141,6 +157,27 @@ class TestParseCsv:
         case_num = next(a for a in classes["Case"]["attributes"] if a["name"] == "CaseNumber")
         assert "Element#" not in case_num["definition"]
         assert "I am a clerk" in case_num["definition"]
+
+    def test_ignores_placeholder_association_rows(self, csv_with_placeholder_association):
+        classes = parse_csv(csv_with_placeholder_association)
+        submission = classes["Submission"]
+        assert submission["object_refs"] == []
+        assert [a["name"] for a in submission["attributes"]] == ["MessageID"]
+
+    def test_bom_prefixed_csv_parses(self, tmp_path):
+        # Files exported from Excel / Windows tools carry a UTF-8 BOM; parse_csv
+        # opens with utf-8-sig so the BOM does not corrupt the first header cell.
+        csv_path = tmp_path / "INPUT.csv"
+        rows = [
+            ["Model Class", "Model Attribute", "Model Type", "Model Multiplicity", "Model Definition"],
+            ["Person", "", "", "", "A human being."],
+            ["Person", "name", "string", "1", "The name."],
+        ]
+        with open(csv_path, "w", newline="", encoding="utf-8-sig") as f:
+            csv.writer(f).writerows(rows)
+        classes = parse_csv(csv_path)
+        assert "Person" in classes
+        assert [a["name"] for a in classes["Person"]["attributes"]] == ["name"]
 
 
 # ─── build_concept_inventory ─────────────────────────────────────────────

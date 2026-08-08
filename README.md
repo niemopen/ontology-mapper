@@ -44,9 +44,9 @@ pip install -e "mapper[validation,vector,dev]"
 pip install -e runner
 pip install -r web/backend/requirements.txt
 
-# 3. Build vector indexes (first-time setup)
+# 3. (Optional) Rebuild vector indexes — they already ship with the repo.
 #    Downloads the BGE-large-en embedding model from HuggingFace
-#    (~1.3 GB, into the user HF cache) on first run, then builds one
+#    (~1.3 GB, into the user HF cache) if not cached, then rebuilds one
 #    FAISS index per target ontology. Takes a few minutes.
 python scripts/build_indexes.py
 
@@ -54,9 +54,11 @@ python scripts/build_indexes.py
 python scripts/smoke.py
 ```
 
-`scripts/build_indexes.py` is a one-time post-clone step. The vector
-model and indexes are gitignored because they're large and rebuildable;
-the reference catalogs they're built from DO ship with the repo.
+The FAISS vector **indexes ship with the repo**, so a fresh clone can run
+without rebuilding them. Only the embedding **model** (~1.3 GB) is gitignored;
+it auto-downloads from HuggingFace on first use. Run `scripts/build_indexes.py`
+only to rebuild the indexes (for example after changing a reference catalog) —
+it is no longer a required post-clone step.
 
 `scripts/smoke.py` runs a one-shot installation check: Python version,
 required imports, CLI entry points, reference catalogs, vector indexes,

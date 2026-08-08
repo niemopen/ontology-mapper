@@ -66,7 +66,7 @@ def parse_csv(csv_path):
         classes: dict of {class_name: {definition, attributes: [...], object_refs: [...]}}
     """
     classes = {}
-    with open(csv_path, encoding="utf-8") as f:
+    with open(csv_path, encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
         for row in reader:
             cls_name = row.get("Model Class", "").strip()
@@ -90,6 +90,13 @@ def parse_csv(csv_path):
                 # Class-level row — capture definition if present
                 if defn:
                     classes[cls_name]["definition"] = defn
+                continue
+
+            # Skip BoUML annotation / association-marker rows. The author writes
+            # the UML relationship note in angle brackets (e.g. "<directional
+            # aggregation>" or "Arrestee (<unidirectional association>)") to mark
+            # a row that is not a data attribute; ingest ignores it.
+            if re.search(r"<[^>]*>", attr_name):
                 continue
 
             # Parenthesized reference → object property (e.g., "(Charges)")
