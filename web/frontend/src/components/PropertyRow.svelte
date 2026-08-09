@@ -8,6 +8,7 @@
    *   onResolve(sourceProperty, action, targetProperty) - callback
    */
   import TypeaheadSearch from "./TypeaheadSearch.svelte";
+  import DefinitionPair from "./DefinitionPair.svelte";
 
   export let property;
   export let runId;
@@ -106,6 +107,20 @@
       >
         <p class:line-clamp-2={!rationaleExpanded}>{property.rationale}</p>
       </button>
+    {/if}
+
+    {#if !resolving}
+      <DefinitionPair
+        sourceLabel={property.sourceProperty}
+        sourceDefinition={property.sourceDefinition}
+        targetLabel={property.targetPropertyLabel || property.targetProperty}
+        targetDefinition={property.targetDefinition}
+        targetNote={property.action === "human-must-decide"
+          ? "[no target selected]"
+          : property.action === "create-property"
+            ? "[new property]"
+            : "[no data]"}
+      />
     {/if}
 
     <!-- Resolve UI -->

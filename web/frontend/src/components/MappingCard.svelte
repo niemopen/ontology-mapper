@@ -11,6 +11,7 @@
    */
   import PropertyRow from "./PropertyRow.svelte";
   import TypeaheadSearch from "./TypeaheadSearch.svelte";
+  import DefinitionPair from "./DefinitionPair.svelte";
 
   export let mapping;
   export let runId;
@@ -201,6 +202,19 @@
           <p class="text-sm text-slate-700">{mapping.rationale}</p>
         </div>
       {/if}
+
+      <!-- Definitions from the source and target ontologies -->
+      <DefinitionPair
+        sourceLabel={mapping.sourceConcept}
+        sourceDefinition={mapping.sourceDefinition}
+        targetLabel={mapping.targetTypeLabel || mapping.targetType}
+        targetDefinition={mapping.targetDefinition}
+        targetNote={mapping.targetType === "[undecided]"
+          ? "[no target selected]"
+          : !mapping.targetType
+            ? "[new type]"
+            : "[no data]"}
+      />
 
       <!-- Action-specific fields -->
       {#if action === "extend"}
