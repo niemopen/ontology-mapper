@@ -21,6 +21,10 @@
   let selectedTarget = "";
   let selectedConfidence = "confident";
 
+  /** "[undecided]" marks a target the evaluator could not choose — not a target. */
+  const UNDECIDED = "[undecided]";
+  const isRealTarget = (t) => Boolean(t) && t !== UNDECIDED;
+
   $: actionColor = {
     "reuse-property": "bg-emerald-100 text-emerald-800",
     "create-property": "bg-blue-100 text-blue-800",
@@ -40,7 +44,10 @@
   function startResolve() {
     resolving = true;
     selectedAction = property.action === "human-must-decide" ? "reuse-property" : property.action;
-    selectedTarget = property.targetProperty || "";
+    // "[undecided]" is the pipeline's not-yet-chosen sentinel, not a target.
+    // Pre-filling it would leave the Apply button enabled and submit the
+    // sentinel as though it were a real property.
+    selectedTarget = isRealTarget(property.targetProperty) ? property.targetProperty : "";
     selectedConfidence = property.confidence || "confident";
   }
 
@@ -54,7 +61,8 @@
   }
 
   function acceptProperty(confidence) {
-    onResolve(property.sourceProperty, property.action, property.targetProperty || null, confidence);
+    const target = isRealTarget(property.targetProperty) ? property.targetProperty : null;
+    onResolve(property.sourceProperty, property.action, target, confidence);
   }
 
   function handleTypeaheadSelect(item) {
@@ -91,7 +99,7 @@
       </span>
     </div>
 
-    {#if property.targetProperty}
+    {#if isRealTarget(property.targetProperty)}
       <div class="mt-0.5 flex items-center gap-1">
         <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
