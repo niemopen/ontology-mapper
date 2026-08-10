@@ -108,3 +108,16 @@ class TestResolveCsvNamespace:
 
     def test_blank_source_falls_back(self):
         assert resolve_csv_namespace({"source": "   "}) == ("src", "urn:src-model")
+
+    def test_derived_prefix_is_a_valid_ncname(self):
+        # The prefix becomes a Turtle prefix and a CMF xs:ID. An NCName may not
+        # begin with a digit, and characters outside [A-Za-z0-9_.-] are invalid.
+        assert resolve_csv_namespace({"source": "2026 Hate Crime"}) == (
+            "hate-crime", "urn:hate-crime-model")
+        # Each run of invalid characters collapses to one '-', so bracketing
+        # punctuation yields doubled separators. Valid, if not pretty.
+        assert resolve_csv_namespace({"source": "NIBRS (Hate) Crime!"}) == (
+            "nibrs--hate--crime", "urn:nibrs--hate--crime-model")
+
+    def test_ncname_unsalvageable_source_falls_back(self):
+        assert resolve_csv_namespace({"source": "!!!"}) == ("src", "urn:src-model")

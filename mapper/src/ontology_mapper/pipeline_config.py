@@ -88,8 +88,17 @@ def resolve_csv_namespace(inputs):
          uri = ``urn:{slug}-model``.
       3. Fallback when no source is given: ``("src", "urn:src-model")``.
     """
+    # Imported here rather than at module scope: pipeline_context pulls in
+    # run_dir_utils, and this module is imported by tools that only want
+    # thresholds.
+    from ontology_mapper.pipeline_context import slugify_ncname
+
     source = (inputs.get("source") or "").strip()
     slug = source.lower().replace(" ", "-").replace("_", "-")
+    # The derived prefix becomes a Turtle prefix and a CMF xs:ID, so it has to
+    # be a valid NCName. Filtering here rather than at one call site keeps both
+    # entry points on the same value.
+    slug = slugify_ncname(slug, fallback="") if slug else ""
     prefix = inputs.get("namespace") or (slug or "src")
     uri = inputs.get("namespace_uri") or (f"urn:{slug}-model" if slug else "urn:src-model")
     return prefix, uri
