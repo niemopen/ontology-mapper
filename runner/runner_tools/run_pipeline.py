@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from runner_tools.verify_stage_outputs import verify
+from ontology_mapper.build_mapping_matrix import refuse_to_discard_review
 from runner_tools._present_and_apply_human_review import (
     load_inputs as review_load_inputs,
     get_pending_items,
@@ -114,7 +115,7 @@ def verify_stage(run_dir: Path, stage: str) -> dict:
 
     if summary["fail"] > 0:
         failed = [c for c in result["checks"] if c["status"] == "fail" and c["severity"] == "error"]
-        details = "\n".join(f"  - [{c['checkId']}] {c['message']}" for c in failed)
+        details = "\n".join(f"  - [{c['name']}] {c['detail']}" for c in failed)
         raise VerificationError(stage, f"{summary['fail']} error(s):\n{details}")
 
     return result
@@ -861,6 +862,11 @@ def run_pipeline(
         if not rd.exists():
             raise StageError("init", f"Run directory not found: {run_dir}")
         state = load_state(rd)
+        if from_stage <= 4:
+            try:
+                refuse_to_discard_review(rd / "mapping-matrix.json")
+            except SystemExit as exc:
+                raise StageError(str(from_stage), str(exc)) from exc
         input_package_path = state.get("inputs", {}).get("input_package_path", "")
         print(f"\n  Resuming pipeline: {rd.name}")
         print(f"  From stage: {from_stage}")

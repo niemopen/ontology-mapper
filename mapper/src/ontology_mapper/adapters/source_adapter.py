@@ -14,6 +14,7 @@ Usage:
 
 import json
 from pathlib import Path
+from ontology_mapper.generation_utils import infer_domains_from_shapes, shape_property_is_evaluated
 
 from ontology_mapper.vector_index import OntologyEntry
 
@@ -87,6 +88,7 @@ def extract_properties(run_dir) -> list[OntologyEntry]:
     inv = _load_inventory(run_dir)
     entries = []
     seen = set()
+    shape_domains = infer_domains_from_shapes([], inv.get("shaclShapes", []))
 
     for key in ("objectProperties", "datatypeProperties"):
         for prop in inv.get(key, []):
@@ -96,7 +98,7 @@ def extract_properties(run_dir) -> list[OntologyEntry]:
             seen.add(qname)
 
             comment = prop.get("comment", "")
-            domain = prop.get("domain", [])
+            domain = sorted(set(prop.get("domain", [])) | shape_domains.get(qname, set()))
             range_ = prop.get("range", [])
             prop_type = "object" if key == "objectProperties" else "datatype"
 
@@ -129,23 +131,22 @@ def extract_properties(run_dir) -> list[OntologyEntry]:
 
     # Also extract SHACL shape properties not covered above
     for shape in inv.get("shaclShapes", []):
-        target_class = shape.get("targetClass", "")
+        if not shape_property_is_evaluated(shape):
+            continue
         for sp in shape.get("properties", []):
             path = sp.get("path", "")
-            if not path or path in seen:
+            if not path or path in seen or not shape_property_is_evaluated(sp):
                 continue
             seen.add(path)
 
             sh_datatype = sp.get("datatype", "")
             sh_class = sp.get("class", "")
-            domain = [target_class] if target_class else []
-            paths = [f"{target_class}/{path}"] if target_class else []
+            domain = sorted(shape_domains.get(path, set()))
+            paths = [f"{target}/{path}" for target in domain]
 
             context_parts = []
             if paths:
                 context_parts.append(f"Path: {paths[0]}")
-            elif target_class:
-                context_parts.append(f"Domain: {target_class}")
             if sh_datatype:
                 context_parts.append(f"Range: {sh_datatype}")
             elif sh_class:

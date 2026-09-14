@@ -22,7 +22,7 @@ import json
 import shutil
 import sys
 from pathlib import Path
-from datetime import datetime, timezone
+from ontology_mapper.run_dir_utils import utc_stamp
 
 from ontology_mapper.pipeline_context import load_context
 
@@ -65,7 +65,7 @@ def build_extension_justifications(matrix, target_ontology, target_version):
     if not extensions:
         return "# Extension Justifications\n\nNo extensions required.\n"
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = utc_stamp()
     lines = [
         "# Extension Justifications",
         f"",
@@ -145,7 +145,7 @@ def build_package_manifest(ctx, matrix):
         "targetDomains": [],
         "targetGraphPlatforms": ["neo4j", "rdf"],
         "generatedBy": "ontology-mapper",
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "generatedAt": utc_stamp(),
         "extensionNamespace": ctx.extension_namespace,
         "edgeNamespace": ctx.edge_namespace,
         "stats": {

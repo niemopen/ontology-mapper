@@ -9,6 +9,9 @@ Writes separate files for types and properties:
 - ``{run_dir}/search-results/types/{sanitized_qname}.json``
 - ``{run_dir}/search-results/properties/{sanitized_prop_qname}.json``
 
+Shared property QNames use parent-qualified filenames when needed; existing
+evaluated filenames are retained on resume. Document fields carry identity.
+
 Each file contains the source item, ranked candidates (filtered by score),
 and an evaluation slot.  The evaluator processes each file independently,
 then ``om-collect-alignments`` reassembles per-concept evaluations and
@@ -19,6 +22,7 @@ Usage:
 """
 
 import json
+import hashlib
 import re
 from pathlib import Path
 
@@ -101,13 +105,22 @@ def disambiguate_ids(candidates: list[dict]) -> list[dict]:
     return result
 
 
-def _property_qname(concept_qname: str, prop_name: str) -> str:
-    """Build a property qname from the parent concept's prefix.
+def _property_qname(concept_qname: str, prop: dict) -> str:
+    """The property's qname: the one the source ontology declared.
 
-    ``("dbpi:AddressType", "streetName")`` -> ``"dbpi:streetName"``
+    ``source-concepts.json`` carries it (``build_strategy_reports``). Only a
+    file written before that field existed falls back to manufacturing one
+    from the parent concept's prefix — which is right for a property in the
+    source namespace and WRONG for one owned by an augmenting namespace
+    (``fin:fiscalYearCode`` on ``dbpi:Fee`` became ``dbpi:fiscalYearCode``,
+    and every downstream stage inherited the wrong identity).
     """
+    qname = prop.get("qname")
+    if qname:
+        return qname
     prefix = concept_qname.split(":")[0] if ":" in concept_qname else ""
-    return f"{prefix}:{prop_name}" if prefix else prop_name
+    name = prop.get("name", "")
+    return f"{prefix}:{name}" if prefix else name
 
 
 # ---------------------------------------------------------------------------
@@ -163,7 +176,7 @@ def search_all_properties(
     for c in concepts:
         concept_def = c.get("definition", "")
         for prop in c.get("properties", []):
-            pq = _property_qname(c["qname"], prop["name"])
+            pq = _property_qname(c["qname"], prop)
             keys.append((c["qname"], pq))
             entries.append(OntologyEntry(
                 id=pq,
@@ -274,6 +287,19 @@ def write_search_results(
     types_dir.mkdir(parents=True, exist_ok=True)
     props_dir.mkdir(parents=True, exist_ok=True)
 
+    # Keep legacy evaluated filenames, but identify a property occurrence by
+    # both its parent and its QName. One shared property may have different
+    # decisions on different types.
+    occurrence_paths = {}
+    used_names = set()
+    for path in sorted(props_dir.glob("*.json")):
+        used_names.add(path.name.casefold())
+        try:
+            source = json.loads(path.read_text(encoding="utf-8")).get("source", {})
+            occurrence_paths[(source.get("parentType"), source.get("qname"))] = path
+        except (ValueError, AttributeError):
+            continue
+
     counts = {
         "types_written": 0, "types_skipped": 0,
         "props_written": 0, "props_skipped": 0,
@@ -282,7 +308,6 @@ def write_search_results(
 
     for concept in concepts:
         qname = concept["qname"]
-        prefix = qname.split(":")[0] if ":" in qname else ""
 
         # --- Type file ---
         raw_tc = type_results.get(qname, [])
@@ -299,7 +324,7 @@ def write_search_results(
         concept_def = concept.get("definition", "")
         prop_cands = property_results.get(qname, {})
         for prop in concept.get("properties", []):
-            pq = f"{prefix}:{prop['name']}" if prefix else prop["name"]
+            pq = _property_qname(qname, prop)
             raw_pc = prop_cands.get(pq, [])
             pc = filter_candidates(raw_pc, min_score_ratio)
             counts["candidates_filtered"] += len(raw_pc) - len(pc)
@@ -313,7 +338,16 @@ def write_search_results(
                 prop_range=prop.get("range", []),
                 candidates=disambiguate_ids(strip_scores(pc)),
             )
-            filepath = props_dir / (sanitize_filename(pq) + ".json")
+            identity = (qname, pq)
+            filepath = occurrence_paths.get(identity)
+            if filepath is None:
+                filename = sanitize_filename(pq) + ".json"
+                if filename.casefold() in used_names:
+                    digest = hashlib.sha256(json.dumps(identity).encode("utf-8")).hexdigest()[:16]
+                    filename = f"{sanitize_filename(qname)}--{sanitize_filename(pq)}--{digest}.json"
+                filepath = props_dir / filename
+                occurrence_paths[identity] = filepath
+                used_names.add(filename.casefold())
             if _write_file(filepath, doc):
                 counts["props_written"] += 1
             else:

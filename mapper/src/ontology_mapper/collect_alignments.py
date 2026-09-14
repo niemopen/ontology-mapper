@@ -19,7 +19,7 @@ import hashlib
 import json
 import sys
 from collections import defaultdict
-from datetime import datetime, timezone
+from ontology_mapper.run_dir_utils import utc_stamp
 from pathlib import Path
 
 from ontology_mapper.pipeline_context import load_context
@@ -228,7 +228,7 @@ def assemble_alignment_report(
 
     report = {
         "stage": "3",
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "generatedAt": utc_stamp(),
         "targetOntology": target_ontology,
         "targetVersion": target_version,
         "matchingMethod": "semantic",

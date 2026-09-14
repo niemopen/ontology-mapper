@@ -5,7 +5,7 @@ import hashlib
 import json
 import sys
 from pathlib import Path
-from datetime import datetime, timezone
+from ontology_mapper.run_dir_utils import utc_stamp
 
 from ontology_mapper.pipeline_context import load_context
 
@@ -351,7 +351,7 @@ def main():
         # Load edge ontology
         data_g = Graph()
         for f in (PKG / "ontology").glob("*.ttl"):
-            if "combined" not in f.name and "all" not in f.name:
+            if not f.stem.endswith(("-combined", "-all")):
                 data_g.parse(str(f), format="turtle")
 
         # Load valid test fixture as data
@@ -577,7 +577,7 @@ def main():
     all_passed = all(c["status"] == "pass" for c in checks)
     report = {
         "stage": "7",
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "generatedAt": utc_stamp(),
         "allPassed": all_passed,
         "checkCount": len(checks),
         "passCount": sum(1 for c in checks if c["status"] == "pass"),
@@ -590,7 +590,8 @@ def main():
 
     print(f"\n  {'ALL CHECKS PASSED' if all_passed else 'SOME CHECKS FAILED'}")
     print(f"  Report: {out_path}")
+    return 0 if all_passed else 1
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

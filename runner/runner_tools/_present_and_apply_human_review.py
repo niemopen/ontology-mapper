@@ -12,7 +12,7 @@ are available for manual use outside the automated runner.
 
 import json
 from pathlib import Path
-from datetime import datetime, timezone
+from ontology_mapper.run_dir_utils import utc_stamp
 
 from ontology_mapper.run_dir_utils import resolve_run_dir
 
@@ -403,7 +403,7 @@ def save_decisions(run_dir, decisions):
                    sourceConcept, action. Optional: targetType, notes.
     """
     path = run_dir / DECISIONS_FILENAME
-    now = datetime.now(timezone.utc).isoformat()
+    now = utc_stamp()
 
     # Add reviewedAt to each new decision
     for d in decisions:
@@ -541,7 +541,7 @@ def save_matrix(run_dir, matrix, dec_log, applied_decisions):
 
     # Recompute summary and finalize
     recompute_summary(matrix)
-    matrix["humanReviewApplied"] = datetime.now(timezone.utc).isoformat()
+    matrix["humanReviewApplied"] = utc_stamp()
     matrix["mappings"] = sorted(matrix["mappings"], key=lambda m: m["sourceConcept"])
 
     # Write files

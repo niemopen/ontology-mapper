@@ -11,7 +11,40 @@ Concurrent pipeline sessions must each target a specific run.
 import json
 import os
 import re
+from datetime import datetime, timezone
 from pathlib import Path
+
+
+def utc_stamp():
+    """UTC timestamp with trailing Z (AGENTS.md hard rule #4) — the single
+    home for the shared-timestamp format; producers call this, never inline
+    their own strftime."""
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def parse_stamp(text):
+    """Read a shared timestamp back — the other half of `utc_stamp()`.
+
+    `datetime.fromisoformat` did not accept a trailing `Z` until Python
+    3.11, and this project supports 3.10 (`requires-python = ">=3.10"`),
+    so every value `utc_stamp()` writes would raise there. Callers wrapped
+    that in `except ValueError: pass`, which turned it into a silently
+    absent duration rather than an error. The difference belongs in one
+    place, next to the writer it mirrors.
+
+    A stamp carrying no offset at all is read as UTC, so a legacy value
+    cannot raise `TypeError` when compared with an aware one.
+
+    Returns None when the value is not a timestamp.
+    """
+    if not isinstance(text, str) or not text:
+        return None
+    normalised = text[:-1] + "+00:00" if text.endswith("Z") else text
+    try:
+        parsed = datetime.fromisoformat(normalised)
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
 
 STATE_FILENAME = ".mapper-state.json"
 RUNS_ROOT = Path(os.environ.get("OM_RUNS_DIR", ".mapper-runs"))

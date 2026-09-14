@@ -2,6 +2,29 @@
 
 import json
 import pytest
+from datetime import datetime
+
+
+def test_timestamp_writer_and_legacy_parser(monkeypatch):
+    import ontology_mapper.run_dir_utils as utils
+
+    stamp = utils.utc_stamp()
+    assert stamp.endswith("Z") and "+00:00" not in stamp
+    expected = utils.parse_stamp("2026-09-14T12:00:00Z")
+    for value in ("2026-09-14T12:00:00+00:00", "2026-09-14T05:00:00-07:00", "2026-09-14T12:00:00"):
+        assert utils.parse_stamp(value) == expected
+    for value in (None, "", "invalid", 1):
+        assert utils.parse_stamp(value) is None
+
+    class LegacyDatetime:
+        @staticmethod
+        def fromisoformat(value):
+            # Python 3.10's parser does not accept Z.
+            assert not value.endswith("Z")
+            return datetime.fromisoformat(value)
+
+    monkeypatch.setattr(utils, "datetime", LegacyDatetime)
+    assert utils.parse_stamp("2026-09-14T12:00:00Z") == expected
 from pathlib import Path
 
 from ontology_mapper.run_dir_utils import (

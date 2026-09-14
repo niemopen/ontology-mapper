@@ -26,6 +26,34 @@ from runner_tools.run_pipeline import (
 )
 
 
+@pytest.mark.parametrize("from_stage", range(1, 7))
+@pytest.mark.parametrize("evidence", ["accepted", "marker", "fresh"])
+def test_resume_protects_review_before_any_stage(tmp_path, monkeypatch, from_stage, evidence):
+    import runner_tools.run_pipeline as runner
+
+    (tmp_path / ".mapper-state.json").write_text('{"inputs": {}}', encoding="utf-8")
+    matrix = {"mappings": [{"reviewStatus": "accepted" if evidence == "accepted"
+                            else "pending-review"}]}
+    if evidence == "marker":
+        matrix["humanReviewApplied"] = "2026-09-10T12:00:00Z"
+    path = tmp_path / "mapping-matrix.json"
+    path.write_text(json.dumps(matrix), encoding="utf-8")
+    before = path.read_bytes()
+    calls = []
+    for stage in range(1, 9):
+        monkeypatch.setattr(runner, f"run_stage_{stage}",
+                            lambda *args, s=stage: calls.append(s))
+    monkeypatch.setattr(runner, "print_summary", lambda *args: None)
+    if from_stage <= 4 and evidence != "fresh":
+        with pytest.raises(StageError, match="already carries"):
+            runner.run_pipeline(run_dir=str(tmp_path), from_stage=from_stage)
+        assert calls == []
+    else:
+        runner.run_pipeline(run_dir=str(tmp_path), from_stage=from_stage)
+        assert calls == list(range(from_stage, 9))
+    assert path.read_bytes() == before
+
+
 # ---------------------------------------------------------------------------
 # StageTimer
 # ---------------------------------------------------------------------------
@@ -72,7 +100,7 @@ class TestVerifyStage:
     def test_passes_clean(self, mock_verify):
         mock_verify.return_value = {
             "stage": "1",
-            "checks": [{"status": "pass", "severity": "error", "checkId": "1", "message": "ok"}],
+            "checks": [{"status": "pass", "severity": "error", "name": "1", "detail": "ok"}],
             "summary": {"total": 1, "pass": 1, "fail": 0, "warn": 0},
         }
         result = verify_stage(Path("/fake"), "1")
@@ -82,7 +110,7 @@ class TestVerifyStage:
     def test_raises_on_error_failures(self, mock_verify):
         mock_verify.return_value = {
             "stage": "1",
-            "checks": [{"status": "fail", "severity": "error", "checkId": "1", "message": "missing file"}],
+            "checks": [{"status": "fail", "severity": "error", "name": "1", "detail": "missing file"}],
             "summary": {"total": 1, "pass": 0, "fail": 1, "warn": 0},
         }
         with pytest.raises(VerificationError, match="missing file"):
@@ -93,8 +121,8 @@ class TestVerifyStage:
         mock_verify.return_value = {
             "stage": "1",
             "checks": [
-                {"status": "pass", "severity": "error", "checkId": "1", "message": "ok"},
-                {"status": "fail", "severity": "warning", "checkId": "2", "message": "minor"},
+                {"status": "pass", "severity": "error", "name": "1", "detail": "ok"},
+                {"status": "fail", "severity": "warning", "name": "2", "detail": "minor"},
             ],
             "summary": {"total": 2, "pass": 1, "fail": 0, "warn": 1},
         }

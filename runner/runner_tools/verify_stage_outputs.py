@@ -18,9 +18,9 @@ As a module:
 import json
 import sys
 from pathlib import Path
-from datetime import datetime, timezone
 
 from ontology_mapper.pipeline_context import PipelineContext
+from ontology_mapper.run_dir_utils import utc_stamp
 
 
 VALID_STAGES = ["1", "2", "3", "4", "5", "6a", "6b", "6c", "7", "8"]
@@ -464,8 +464,7 @@ def _verify_stage_7(run_dir, state):
         checks.append(_check("validation_all_pass",
                              len(failures) == 0,
                              f"{len(failures)} checks failed"
-                             if failures else f"All {len(vr_checks)} checks passed",
-                             severity="warning"))
+                             if failures else f"No FAIL among {len(vr_checks)} checks"))
     return checks
 
 
@@ -557,7 +556,7 @@ def verify(run_dir, stage):
     return {
         "stage": stage_label,
         "runDir": str(run_dir),
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": utc_stamp(),
         "checks": checks,
         "summary": {"total": len(checks), "pass": passed, "fail": failed, "warn": warned},
     }

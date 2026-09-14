@@ -7,7 +7,7 @@ measurements, and codebook version context so a receiving system can evaluate
 whether prior rotations are still valid.
 """
 
-from datetime import datetime, timezone
+from ontology_mapper.run_dir_utils import utc_stamp
 
 
 def build_coherence_manifest(matrix, entropy_summary=None, residual_entropy=None):
@@ -25,7 +25,7 @@ def build_coherence_manifest(matrix, entropy_summary=None, residual_entropy=None
 
     return {
         "schemaVersion": "1.0",
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "generatedAt": utc_stamp(),
         "generatedBy": "ontology-mapper",
         "targetOntology": matrix.get("targetOntology", ""),
         "targetVersion": matrix.get("targetVersion", ""),

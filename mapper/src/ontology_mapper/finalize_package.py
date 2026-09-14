@@ -19,9 +19,9 @@ Usage:
 import json
 import sys
 from pathlib import Path
-from datetime import datetime, timezone
 
 from ontology_mapper.pipeline_context import load_context
+from ontology_mapper.run_dir_utils import parse_stamp, utc_stamp
 
 
 def _count_actions(mappings):
@@ -42,14 +42,14 @@ def _load_stage_timings(state):
         started = entry.get("started_at")
         completed = entry.get("completed_at")
         duration = None
-        if started and completed:
-            try:
-                from datetime import datetime as dt
-                t0 = dt.fromisoformat(started)
-                t1 = dt.fromisoformat(completed)
-                duration = round((t1 - t0).total_seconds(), 1)
-            except (ValueError, TypeError):
-                pass
+        t0 = parse_stamp(started)
+        t1 = parse_stamp(completed)
+        if t0 and t1:
+            elapsed = round((t1 - t0).total_seconds(), 1)
+            # A negative elapsed time means the two stamps disagree rather
+            # than that the stage ran backwards; report it as unknown and
+            # leave the raw stamps below for whoever reconciles them.
+            duration = elapsed if elapsed >= 0 else None
         timings.append({
             "stage": stage_num,
             "name": entry.get("notes", ""),
@@ -67,13 +67,12 @@ def _total_duration(timings):
     ends = [t["completedAt"] for t in timings if t["completedAt"]]
     if not starts or not ends:
         return None
-    try:
-        from datetime import datetime as dt
-        first = min(dt.fromisoformat(s) for s in starts)
-        last = max(dt.fromisoformat(e) for e in ends)
-        return round((last - first).total_seconds(), 1)
-    except (ValueError, TypeError):
+    parsed_starts = [t for t in (parse_stamp(s) for s in starts) if t]
+    parsed_ends = [t for t in (parse_stamp(e) for e in ends) if t]
+    if not parsed_starts or not parsed_ends:
         return None
+    total = round((max(parsed_ends) - min(parsed_starts)).total_seconds(), 1)
+    return total if total >= 0 else None
 
 
 def build_version_manifest(ctx, matrix, state=None):
@@ -81,7 +80,7 @@ def build_version_manifest(ctx, matrix, state=None):
     mappings = matrix.get("mappings", [])
     action_counts = _count_actions(mappings)
     source_name = ctx.agency_package_name
-    now = datetime.now(timezone.utc).isoformat()
+    now = utc_stamp()
 
     manifest = {
         "currentVersion": "1.0.0",
@@ -117,7 +116,7 @@ def build_version_manifest(ctx, matrix, state=None):
 def build_lineage_manifest(ctx, matrix):
     """Build governance/lineage-manifest.json tracking provenance."""
     artifacts = []
-    now = datetime.now(timezone.utc).isoformat()
+    now = utc_stamp()
 
     # Collect target ontology references from the mapping matrix
     target_refs = set()
@@ -206,7 +205,7 @@ def build_change_impact(matrix, validation_report, generation_audit):
     lines = [
         "# Change Impact Analysis",
         "",
-        f"Generated: {datetime.now(timezone.utc).isoformat()}",
+        f"Generated: {utc_stamp()}",
         "",
         "## Summary",
         "",
@@ -296,7 +295,7 @@ def reconcile_manifest(pkg, matrix):
         "actionCounts": action_counts,
     }
     manifest["version"] = "1.0.0"
-    manifest["finalizedAt"] = datetime.now(timezone.utc).isoformat()
+    manifest["finalizedAt"] = utc_stamp()
 
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return True

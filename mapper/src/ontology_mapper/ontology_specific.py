@@ -19,6 +19,18 @@ via resolve_alignment().
 import json
 
 
+def extension_conformance_target(target_ontology: str, target_version: str) -> str:
+    """NDR 6.0 rule 8-13: the conformance target for extension namespaces.
+
+    https://docs.oasis-open.org/niemopen/ndr/v6.0/ndr-v6.0.html
+    Unknown targets/versions assert no conformance policy.
+    """
+    if target_ontology.lower() == "niem" and target_version == "6.0":
+        return ("https://docs.oasis-open.org/niemopen/ns/specification/"
+                "NDR/6.0/#ExtensionSchemaDocument")
+    return ""
+
+
 # Action determination — NIEM
 # ---------------------------------------------------------------------------
 def _classify_niem_properties(properties, target_type_properties):

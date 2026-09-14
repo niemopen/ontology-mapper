@@ -260,3 +260,58 @@ class TestReconcileManifest:
 
     def test_returns_false_when_no_manifest(self, tmp_path):
         assert reconcile_manifest(tmp_path, _make_matrix([])) is False
+
+
+class TestStageTimingParsing:
+    """Durations must survive the `Z` format the pipeline actually writes.
+
+    The suite passed while `_load_stage_timings` used a bare
+    `datetime.fromisoformat`, which rejects a trailing `Z` before Python
+    3.11 and had its `ValueError` swallowed — so on a supported
+    interpreter every duration in `version-manifest.json` was silently
+    `null` and no test noticed.
+    """
+
+    @staticmethod
+    def _state(started, completed):
+        return {"stages": {"3": {"started_at": started, "completed_at": completed,
+                                 "status": "completed", "notes": "align"}}}
+
+    def test_z_form_yields_a_real_duration(self):
+        from ontology_mapper.finalize_package import _load_stage_timings
+
+        timings = _load_stage_timings(
+            self._state("2026-05-14T19:50:00Z", "2026-05-14T19:52:30Z"))
+        assert timings[0]["durationSeconds"] == 150.0
+
+    def test_mixed_z_and_offset_forms_agree(self):
+        """Legacy state files carry the `+00:00` form the web backend wrote."""
+        from ontology_mapper.finalize_package import _load_stage_timings
+
+        timings = _load_stage_timings(
+            self._state("2026-05-14T19:50:00+00:00", "2026-05-14T19:52:30Z"))
+        assert timings[0]["durationSeconds"] == 150.0
+
+    def test_out_of_order_stamps_are_unknown_not_negative(self):
+        from ontology_mapper.finalize_package import _load_stage_timings
+
+        timings = _load_stage_timings(
+            self._state("2026-05-14T19:52:30Z", "2026-05-14T19:50:00Z"))
+        assert timings[0]["durationSeconds"] is None
+
+    def test_total_duration_spans_the_run(self):
+        from ontology_mapper.finalize_package import _load_stage_timings, _total_duration
+
+        state = {"stages": {
+            "1": {"started_at": "2026-05-14T19:00:00Z",
+                  "completed_at": "2026-05-14T19:00:10Z", "status": "completed"},
+            "7": {"started_at": "2026-05-14T19:05:00Z",
+                  "completed_at": "2026-05-14T19:06:00Z", "status": "completed"},
+        }}
+        assert _total_duration(_load_stage_timings(state)) == 360.0
+
+    def test_unparseable_stamp_is_unknown(self):
+        from ontology_mapper.finalize_package import _load_stage_timings
+
+        timings = _load_stage_timings(self._state("not-a-time", "2026-05-14T19:52:30Z"))
+        assert timings[0]["durationSeconds"] is None

@@ -13,13 +13,14 @@ import json
 import sys
 from pathlib import Path
 from datetime import datetime, timezone
+from rdflib import URIRef
 
 from ontology_mapper.pipeline_context import load_context
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-from ontology_mapper.generation_utils import XSD
+from ontology_mapper.generation_utils import XSD, shape_target_classes, source_prefix
 SKOS_CONCEPT = "http://www.w3.org/2004/02/skos/core#Concept"
 OWL_CLASS = "http://www.w3.org/2002/07/owl#Class"
 
@@ -27,6 +28,7 @@ OWL_CLASS = "http://www.w3.org/2002/07/owl#Class"
 # ---------------------------------------------------------------------------
 # Pure helpers — extracted to generation_utils.py, re-exported for compatibility
 # ---------------------------------------------------------------------------
+from ontology_mapper.run_dir_utils import utc_stamp
 from ontology_mapper.generation_utils import (
     local_name,
     edge_class_name,
@@ -35,6 +37,9 @@ from ontology_mapper.generation_utils import (
     infer_domains_from_shapes,
     assign_properties_to_classes,
     detect_consolidations,
+    property_mapping_index,
+    accepted_reuse_target,
+    shape_property_is_evaluated,
 )
 
 
@@ -60,7 +65,21 @@ def load_stage_data(ctx):
     # (e.g. SALI-Folio uses bare hash identifiers like "Ri4VCm5wJTuwU7RBeBEFfi")
     target_type_uris = {t["qname"]: t["uri"] for t in catalog.get("types", []) if t.get("uri")}
 
-    return inv, matrix, target_ns_map, target_type_uris
+    # Ground reuse restrictions in the target catalog's declarations.
+    target_property_types = {}
+    target_property_uris = {}
+    for namespace in (catalog.get("propertyIndex") or {}).values():
+        for decl in namespace.get("properties", []):
+            qualified, typed = decl.get("qualifiedProperty"), decl.get("qualifiedType")
+            if qualified and typed:
+                target_property_types[qualified] = typed
+            # A catalog whose property ids are bare (SALI-Folio ships 177)
+            # cannot be written into Turtle as a name; its URI can.
+            if qualified and decl.get("uri"):
+                target_property_uris[qualified] = decl["uri"]
+
+    return (inv, matrix, target_ns_map, target_type_uris, target_property_types,
+            target_property_uris)
 
 
 # ---------------------------------------------------------------------------
@@ -74,7 +93,8 @@ def main():
     args = parser.parse_args()
 
     ctx = load_context(args.run_dir, args.package_dir)
-    inv, matrix, target_ns_map, target_type_uris = load_stage_data(ctx)
+    (inv, matrix, target_ns_map, target_type_uris, target_property_types,
+     target_property_uris) = load_stage_data(ctx)
 
     # Convenience locals from context
     EDGE_NS = ctx.edge_ns_hash
@@ -87,9 +107,9 @@ def main():
     PKG = ctx.pkg_dir
 
 
-    # Detect source ontology prefix
-    _sample_class = inv["classes"][0] if inv["classes"] else None
-    SOURCE_PREFIX = (_sample_class["qname"].split(":")[0] + ":") if _sample_class else ""
+    # Detect source ontology prefix (one home: generation_utils.source_prefix)
+    _source = source_prefix(inv)
+    SOURCE_PREFIX = f"{_source}:" if _source else ""
 
     # Build lookups
     mapping_by_concept = {m["sourceConcept"]: m for m in matrix["mappings"]}
@@ -112,6 +132,32 @@ def main():
         if uri:
             return f"<{uri}>"
         return target_to_qname(target_type)
+
+    dropped_target_terms = []
+
+    def target_term_ref(term, uris):
+        """Render a TARGET term as something Turtle can actually parse, or
+        None when nothing grounded can be written.
+
+        A qname whose prefix the
+        emitted header binds is written as-is. A bare identifier — SALI-Folio
+        ships 177 such property ids, and every type id too — is written as
+        its `<uri>` from the catalog. Anything else is DROPPED and recorded,
+        because emitting the bare name produces a document that does not
+        parse while the emitter still exits 0.
+        """
+        if not term:
+            return None
+        if term.startswith(("http://", "https://", "urn:")):
+            return URIRef(term).n3()
+        if term in uris:
+            return URIRef(uris[term]).n3()
+        if ":" in term:
+            return term if term.split(":")[0] in bound_prefixes else None
+        uri = uris.get(term)
+        if uri:
+            return f"<{uri}>"
+        return None
 
     def classify_concept(qname):
         m = mapping_by_concept.get(qname)
@@ -158,18 +204,24 @@ def main():
             return EDGE_PREFIX
         return "ext:"
 
-    # Build property mapping lookup: (class_qname, prop_local_name) -> propertyMapping
-    # This lets emit_class_block and emit_shape_block resolve reuse-property decisions
-    _prop_mapping_lookup = {}
-    for m in matrix["mappings"]:
-        cls_qname = m["sourceConcept"]
-        for pm in (m.get("propertyMappings") or []):
-            _prop_mapping_lookup[(cls_qname, pm["sourceProperty"])] = pm
+    # Property mapping lookup, keyed by the property's QNAME — the identity
+    # the matrix records. Built by the shared
+    # generation_utils home so this emitter and the CMF emitter cannot drift.
+    _prop_mapping_lookup = property_mapping_index(matrix, inv)
 
     def _is_reuse_property(cls_qname, prop_qname):
-        """Check if a property has a reuse-property mapping (already exists on target)."""
-        pm = _prop_mapping_lookup.get((cls_qname, local_name(prop_qname)))
-        return pm is not None and pm.get("action") == "reuse-property"
+        """Is this property carried by the target because an ACCEPTED
+        decision put it there?
+
+        One predicate, shared with `resolve_property_ref`.
+        Testing `action == "reuse-property"` alone withheld a property from
+        the emitted ontology whenever the decision was still
+        `pending-review` or carried `[undecided]` — while the shapes went on
+        referencing it and the CMF went on declaring it, so the package's own
+        `sh:path` pointed at a term no ontology file declared.
+        """
+        return accepted_reuse_target(
+            _prop_mapping_lookup.get((cls_qname, prop_qname))) is not None
 
     def resolve_property_ref(prop_qname, cls_qname, cls_action):
         """Resolve the emitted property reference, checking for reuse-property mappings.
@@ -179,19 +231,27 @@ def main():
         edge/ext prefixed local name.
         """
         prop_local = local_name(prop_qname)
-        pm = _prop_mapping_lookup.get((cls_qname, prop_local))
-        if (pm and pm["action"] == "reuse-property"
-                and pm.get("targetProperty")
-                and pm.get("reviewStatus") == "accepted"):
-            target_prop = pm["targetProperty"]
-            # Ensure it's qualified (has a prefix)
+        pm = _prop_mapping_lookup.get((cls_qname, prop_qname))
+        target_prop = accepted_reuse_target(pm)
+        if target_prop:
+            rendered = target_term_ref(target_prop, target_property_uris)
+            if rendered:
+                return rendered
+            # An unprefixed target property may be a LOCAL NAME the class's
+            # target namespace qualifies, or a bare catalog id (SALI). Try
+            # the class's prefix first, then the catalog's URI.
             if ":" not in target_prop:
                 cls_mapping = mapping_by_concept.get(cls_qname, {})
                 target_type = cls_mapping.get("targetType", "")
                 if ":" in target_type:
-                    prefix = target_type.split(":")[0]
-                    return f"{prefix}:{target_prop}"
-            return target_prop
+                    qualified = f"{target_type.split(':')[0]}:{target_prop}"
+                    rendered = target_term_ref(qualified, target_property_uris)
+                    if rendered:
+                        return rendered
+            # The source declaration was withheld by the accepted reuse
+            # decision. Falling back to it would leave a dangling sh:path.
+            dropped_target_terms.append(f"{cls_qname}/{prop_qname} -> {target_prop}")
+            return None
 
         if not prop_qname.startswith(SOURCE_PREFIX):
             return prop_qname
@@ -263,6 +323,77 @@ def main():
                 dt.append((p["qname"], p))
         return sorted(obj, key=lambda x: x[0]), sorted(dt, key=lambda x: x[0])
 
+    def reuse_restrictions(cls_qname):
+        """The accepted `reuse-property` decisions of this class, as
+        `owl:Restriction` superclass axioms.
+
+        The decision belongs in the emitted ontology: without it an
+        OWL-only consumer cannot tell "decided reuse" from "decided
+        nothing", and whether the decision is visible would otherwise
+        depend on the accident of the source shipping a SHACL shape for
+        that class. A restriction is the OWL-correct way to say "this type
+        uses that property": it is an anonymous superclass, so it asserts
+        nothing about the target property globally — unlike `rdfs:domain`,
+        which is why the property itself is never re-declared here.
+
+        Only grounded fillers are emitted. `owl:allValuesFrom` carries the
+        target property's own declared type when the catalog gives one; a
+        property the catalog leaves untyped (an abstract substitution head)
+        yields a nonrestrictive minimum cardinality of zero, which records
+        the reference without inventing a range. No existential filler is
+        emitted: `owl:someValuesFrom` would assert a value must exist,
+        which no accepted decision says.
+        """
+        seen = set()
+        out = []
+        obj, dt = props_for_class(cls_qname)
+        for pq, _ in obj + dt:
+            target = accepted_reuse_target(_prop_mapping_lookup.get((cls_qname, pq)))
+            if not target or target in seen:
+                continue
+            seen.add(target)
+            ref = resolve_property_ref(pq, cls_qname, mapping_by_concept[cls_qname]["action"])
+            if ref is None:
+                # Not writable as a Turtle reference; the decision is still
+                # carried by the CMF and the matrix.
+                dropped_target_terms.append(f"{cls_qname} restriction -> {target}")
+                continue
+            filler = target_property_types.get(target)
+            filler_ref = target_term_ref(filler, target_type_uris) if filler else None
+            out.append((ref, filler_ref))
+        return sorted(out)
+
+    def emit_reuse_restrictions(cls_qname, type_ref):
+        lines = []
+        for prop_ref, filler in reuse_restrictions(cls_qname):
+            # minCardinality 0 is nonrestrictive: record the accepted property
+            # without inventing a range or requiring a value. A bare
+            # owl:onProperty node is not a complete OWL restriction.
+            constraint = (f"owl:allValuesFrom {filler}" if filler
+                          else 'owl:minCardinality "0"^^xsd:nonNegativeInteger')
+            lines.append(f"{type_ref} rdfs:subClassOf [ a owl:Restriction ; "
+                         f"owl:onProperty {prop_ref} ; {constraint} ] .")
+        return lines
+
+    def declared_props_for_class(cls_qname):
+        """The properties this class DECLARES: everything it carries, minus
+        the ones an accepted `reuse-property` decision placed on the target.
+
+        A reused property is owned by the target ontology. Declaring it here
+        would re-declare a NIEM-owned term, and `rdfs:domain` is a global
+        assertion in OWL — `nc:ActivityDueDate rdfs:domain edge:FooType`
+        narrows that NIEM property to the edge type everywhere it is used,
+        and the accompanying `rdfs:range`/`rdfs:label` overwrite its NIEM
+        ones. The edge type reaches the property through `rdfs:subClassOf`
+        the target type; the decision is carried by the SHACL shape's
+        `sh:path` and the CMF's `HasProperty` reference. The augment path
+        has always filtered this way — reuse and extend now do the same
+        (all class actions use the same predicate).
+        """
+        obj, dt = props_for_class(cls_qname)
+        return ([(pq, p) for pq, p in obj if not _is_reuse_property(cls_qname, pq)],
+                [(pq, p) for pq, p in dt if not _is_reuse_property(cls_qname, pq)])
+
     # Detect consolidations and shared targets
     consolidations = detect_consolidations(matrix, class_by_qname)
 
@@ -309,6 +440,12 @@ def main():
                 target_prop = pm.get("targetProperty")
                 if target_prop:
                     qnames_to_check.append(target_prop)
+                    # Reuse emits `owl:allValuesFrom <the property's declared
+                    # type>`, which may live in a namespace no decision
+                    # names directly (a code-list namespace, say).
+                    filler = target_property_types.get(target_prop)
+                    if filler:
+                        qnames_to_check.append(filler)
             for qname in qnames_to_check:
                 if ":" in qname:
                     prefix = qname.split(":")[0]
@@ -317,8 +454,14 @@ def main():
                         lines.append(f"@prefix {prefix + ':':<10s} <{ns_uri}> .")
                         declared.add(prefix)
         lines.append("")
+        bound_prefixes.update(declared)
         return "\n".join(lines)
 
+    # Prefixes the emitted header actually binds. A qname whose prefix is
+    # not here cannot be written into the TTL (the catalog's namespace map
+    # omits some code-list namespaces), so drop such a filler rather
+    # than emitting an unparseable document.
+    bound_prefixes = set()
     PREFIXES = build_prefixes()
 
     def emit_class_block(cls_qname, target_type, label, comment, prefix, obj_props, dt_props):
@@ -339,6 +482,7 @@ def main():
             safe_comment = comment.replace('"', '\\"').replace('\n', ' ')
             lines.append(f'    rdfs:comment "{safe_comment}" ;')
         lines.append(f'    dcterms:source "{SOURCE}" .')
+        lines.extend(emit_reuse_restrictions(cls_qname, type_name))
         lines.append("")
 
         for pqname, prop in dt_props:
@@ -349,7 +493,8 @@ def main():
             plabel = prop.get("label", prop_local)
             lines.append(f"{prop_ref}")
             lines.append(f"    a owl:DatatypeProperty ;")
-            lines.append(f"    rdfs:domain {type_name} ;")
+            if cls_qname in prop.get("domain", []):
+                lines.append(f"    rdfs:domain {type_name} ;")
             lines.append(f"    rdfs:range {xsd_type} ;")
             lines.append(f'    rdfs:label "{plabel}" .')
             lines.append("")
@@ -367,7 +512,8 @@ def main():
                 range_ref = "owl:Thing"
             lines.append(f"{prop_ref}")
             lines.append(f"    a owl:ObjectProperty ;")
-            lines.append(f"    rdfs:domain {type_name} ;")
+            if cls_qname in prop.get("domain", []):
+                lines.append(f"    rdfs:domain {type_name} ;")
             lines.append(f"    rdfs:range {range_ref} ;")
             lines.append(f'    rdfs:label "{plabel}" .')
             lines.append("")
@@ -383,6 +529,7 @@ def main():
         """
         lines = []
         lines.append(f"\n# ── Augmentation of {augmented_type} (from {local_name(cls_qname)}) ──")
+        lines.extend(emit_reuse_restrictions(cls_qname, _target_to_qname(augmented_type)))
 
         for pqname, prop in dt_props:
             prop_local = local_name(pqname)
@@ -392,7 +539,8 @@ def main():
             plabel = prop.get("label", prop_local)
             lines.append(f"{prop_ref}")
             lines.append(f"    a owl:DatatypeProperty ;")
-            lines.append(f"    rdfs:domain {augmented_type} ;")
+            if cls_qname in prop.get("domain", []):
+                lines.append(f"    rdfs:domain {_target_to_qname(augmented_type)} ;")
             lines.append(f"    rdfs:range {xsd_type} ;")
             lines.append(f'    rdfs:label "{plabel}" .')
             lines.append("")
@@ -410,7 +558,8 @@ def main():
                 range_ref = "owl:Thing"
             lines.append(f"{prop_ref}")
             lines.append(f"    a owl:ObjectProperty ;")
-            lines.append(f"    rdfs:domain {augmented_type} ;")
+            if cls_qname in prop.get("domain", []):
+                lines.append(f"    rdfs:domain {_target_to_qname(augmented_type)} ;")
             lines.append(f"    rdfs:range {range_ref} ;")
             lines.append(f'    rdfs:label "{plabel}" .')
             lines.append("")
@@ -418,6 +567,12 @@ def main():
         return "\n".join(lines)
 
     def emit_global_properties(unassigned_obj, unassigned_dt, prefix):
+        # No reuse-property resolution here, by construction rather than by
+        # omission: a property reaches this block only when it belongs to no
+        # active class (no rdfs:domain, no SHACL path), and a propertyMapping
+        # exists only under a class entry whose property list is derived from
+        # exactly those two relations (build_strategy_reports.build_class_properties).
+        # Therefore these properties have no per-class reuse decision.
         lines = []
         if not unassigned_obj and not unassigned_dt:
             return ""
@@ -444,7 +599,7 @@ def main():
                 continue
             prop = obj_by_qname[pqname]
             prop_local = local_name(pqname)
-            prop_ref = prefix + prop_local
+            prop_ref = pqname if not pqname.startswith(SOURCE_PREFIX) else prefix + prop_local
             plabel = prop.get("label", prop_local)
             range_vals = prop["range"]
             if range_vals:
@@ -460,8 +615,15 @@ def main():
             lines.append("")
         return "\n".join(lines)
 
-    def emit_shape_block(source_shape, prefix):
-        target_src = source_shape["targetClass"]
+    def emit_shape_block(source_shape, prefix, target_src=None):
+        if not shape_property_is_evaluated(source_shape):
+            return ""
+        # A NodeShape may target several classes; the caller passes which
+        # one this block is for. Defaulting keeps the two-argument form
+        # working for a shape with a single target.
+        if target_src is None:
+            targets = shape_target_classes(source_shape)
+            target_src = targets[0] if targets else ""
         action, target = classify_concept(target_src)
         if action == "reuse" and target:
             target_type = _target_to_qname(target)
@@ -485,21 +647,39 @@ def main():
         lines.append(f"    a sh:NodeShape ;")
         lines.append(f"    sh:targetClass {target_type} ;")
         lines.append(f'    rdfs:label "{local_name(target_src)} Shape" ;')
+        severity = source_shape.get("severity")
+        if severity:
+            severity_iri = severity if ":" in severity else "http://www.w3.org/ns/shacl#" + severity
+            lines.append(f"    sh:severity {URIRef(severity_iri).n3()} ;")
 
-        for i, prop in enumerate(source_shape["properties"]):
+        # A property shape whose sh:path is a path EXPRESSION names no
+        # property, so there is nothing to emit a constraint on. Filtering
+        # first keeps the last-entry terminator correct.
+        emittable = []
+        for prop in source_shape["properties"]:
+            if prop.get("path") and shape_property_is_evaluated(prop):
+                path_ref = resolve_property_ref(prop["path"], target_src, action)
+                if path_ref is not None:
+                    emittable.append((prop, path_ref))
+        if not emittable:
+            lines[-1] = lines[-1].removesuffix(" ;") + " ."
+        for i, (prop, path_ref) in enumerate(emittable):
             path_local = local_name(prop["path"])
-            path_ref = resolve_property_ref(prop["path"], target_src, action)
             min_count = prop.get("minCount")
             if is_shared and min_count and min_count > 0:
                 min_count = 0
             max_count = prop.get("maxCount")
             dt = prop.get("datatype")
             cls = prop.get("class")
-            is_last = (i == len(source_shape["properties"]) - 1)
+            is_last = (i == len(emittable) - 1)
             terminator = " ." if is_last else " ;"
             constraint_parts = []
             constraint_parts.append(f"        sh:path {path_ref}")
             constraint_parts.append(f'        sh:name "{path_local}"')
+            severity = prop.get("severity")
+            if severity:
+                severity_iri = severity if ":" in severity else "http://www.w3.org/ns/shacl#" + severity
+                constraint_parts.append(f"        sh:severity {URIRef(severity_iri).n3()}")
             if dt:
                 constraint_parts.append(f"        sh:datatype {xsd_qname(dt)}")
             elif cls:
@@ -533,7 +713,7 @@ def main():
 
     core_body = []
     for cls_qname, target, label, comment in sorted(reuse_classes, key=lambda x: x[0]):
-        obj, dt = props_for_class(cls_qname)
+        obj, dt = declared_props_for_class(cls_qname)
         core_body.append(emit_class_block(cls_qname, target, label, comment, EDGE_PREFIX, obj, dt))
 
     core_globals = emit_global_properties(
@@ -556,15 +736,13 @@ def main():
 
     ext_body = []
     for cls_qname, target, label, comment in sorted(extend_classes, key=lambda x: x[0]):
-        obj, dt = props_for_class(cls_qname)
+        obj, dt = declared_props_for_class(cls_qname)
         ext_body.append(emit_class_block(cls_qname, target, label, comment, "ext:", obj, dt))
 
     # Augment: emit new properties directly on the augmented type (NIEM pattern —
     # augmentation types are transparent in OWL/RDF, no class declaration needed)
     for cls_qname, target, label, comment, augmented_type in sorted(augment_classes, key=lambda x: x[0]):
-        obj, dt = props_for_class(cls_qname)
-        obj_filtered = [(pq, p) for pq, p in obj if not _is_reuse_property(cls_qname, pq)]
-        dt_filtered = [(pq, p) for pq, p in dt if not _is_reuse_property(cls_qname, pq)]
+        obj_filtered, dt_filtered = declared_props_for_class(cls_qname)
         ext_body.append(emit_augmentation_props(cls_qname, augmented_type, obj_filtered, dt_filtered))
 
     ext_ttl = ext_header + "\n".join(ext_body) + "\n"
@@ -609,9 +787,10 @@ def main():
 
     shapes_body = []
     for shape in inv["shaclShapes"]:
-        block = emit_shape_block(shape, EDGE_PREFIX)
-        if block:
-            shapes_body.append(block)
+        for shape_target in shape_target_classes(shape):
+            block = emit_shape_block(shape, EDGE_PREFIX, shape_target)
+            if block:
+                shapes_body.append(block)
 
     shapes_ttl = shapes_header + "\n".join(shapes_body) + "\n"
 
@@ -677,7 +856,7 @@ def main():
 
     # vocab/codelist-mappings.json
     codelist_mappings = {
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "generatedAt": utc_stamp(),
         "description": f"Maps internal {SOURCE} codelist schemes to target ontology equivalents where applicable.",
         "schemes": []
     }
@@ -755,6 +934,8 @@ def main():
         print(f"  Augmentations: {len(augment_classes)} classes, {aug_obj} new object props, {aug_dt} new datatype props")
     print(f"  Global properties: {len(obj_unassigned)} object, {len(dt_unassigned)} datatype (no domain assigned)")
     print(f"  SHACL shapes: {len(shapes_body)}")
+    for term in sorted(set(dropped_target_terms)):
+        print(f"  WARNING: target term not emitted (no bound prefix or catalog URI): {term}")
     print(f"  Shared targets (relaxed minCount): {sorted(shared_targets)}")
     print(f"  Codelists: {len(inv['codelistSchemes'])} schemes, {total_concepts} concepts")
     if consolidations:

@@ -323,3 +323,40 @@ class TestCheckInputsForStage:
         state.inputs["source"] = "dbpi"
         state.inputs["input_package_path"] = "sources/redvale_dbpi_agency_package"
         assert check_inputs_for_stage(state, "2") is True
+
+
+import argparse
+from ontology_mapper import pipeline
+
+
+def test_rerun_ingest_writes_only_to_explicit_copy(tmp_path, monkeypatch):
+    live_root = tmp_path / "live"
+    monkeypatch.setattr(pipeline, "RUNS_ROOT", live_root)
+    source = tmp_path / "source" / "input"
+    source.mkdir(parents=True)
+    (source / "sample.csv").write_text("name\nSample\n", encoding="utf-8")
+    state = pipeline.PipelineState.new("example")
+    state.inputs = {"organization": "example", "source": "sample",
+                    "input_package_path": str(source.parent),
+                    "target_ontology": "example", "target_version": "1"}
+    live = live_root / state.run_id
+    live.mkdir(parents=True)
+    inventory = live / "source-inventory.json"
+    inventory.write_text("untouched", encoding="utf-8")
+    copy = tmp_path / "scratch-copy"
+    state_path = copy / ".mapper-state.json"
+    state.save(state_path)
+    original_keys = set(json.loads(state_path.read_text()))
+
+    assert pipeline.cmd_rerun(argparse.Namespace(run_dir=str(copy), stage="1")) == 0
+    assert inventory.read_text() == "untouched"
+    assert json.loads((copy / "source-inventory.json").read_text())["total_files"] == 1
+    saved = json.loads(state_path.read_text())
+    assert saved["stages"]["1"]["artifacts"] == [str(copy / "source-inventory.json")]
+    assert set(saved) == original_keys
+
+
+def test_new_state_uses_configured_runs_root(tmp_path, monkeypatch):
+    monkeypatch.setattr(pipeline, "RUNS_ROOT", tmp_path)
+    state = pipeline.PipelineState.new()
+    assert pipeline._get_run_dir(state) == tmp_path / state.run_id

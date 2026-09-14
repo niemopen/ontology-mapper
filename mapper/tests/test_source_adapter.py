@@ -6,6 +6,21 @@ synthetic concept-inventory data written to tmp_path.
 """
 
 import json
+
+
+def test_all_active_shape_targets_are_kept(tmp_path):
+    from ontology_mapper.adapters.source_adapter import extract_properties
+
+    inv = {"shaclShapes": [
+        {"targetClasses": ["src:A", "src:B"], "properties": [{"path": "src:p"}]},
+        {"targetClass": "src:C", "properties": [{"path": "src:p"}]},
+        {"targetClass": "src:D", "deactivated": True, "properties": [{"path": "src:q"}]},
+    ]}
+    (tmp_path / "concept-inventory.json").write_text(json.dumps(inv), encoding="utf-8")
+    [entry] = extract_properties(tmp_path)
+    assert entry.id == "src:p"
+    assert entry.metadata["domain"] == ["src:A", "src:B", "src:C"]
+    assert entry.metadata["paths"] == ["src:A/src:p", "src:B/src:p", "src:C/src:p"]
 import pytest
 
 from ontology_mapper.adapters.source_adapter import (

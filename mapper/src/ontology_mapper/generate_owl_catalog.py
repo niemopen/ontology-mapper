@@ -26,6 +26,7 @@ import json
 import sys
 from collections import defaultdict
 from datetime import datetime, timezone
+from ontology_mapper.run_dir_utils import utc_stamp
 from pathlib import Path
 
 from rdflib import Graph, Namespace, URIRef, Literal
@@ -468,7 +469,7 @@ def build_catalog(classes: dict, properties: list[dict],
             f"{datetime.now(timezone.utc).strftime('%Y-%m-%d')}. "
             f"Source: {', '.join(Path(f).name for f in source_files)}."
         ),
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "generatedAt": utc_stamp(),
         "sources": source_files,
         "actions": {
             "reuse": "The source concept maps directly to an existing type. Use the target type as-is.",
@@ -610,7 +611,7 @@ def generate(input_paths: list[str], name: str, version: str,
     summary_data = {
         "version": version,
         "description": f"{name} catalog summary",
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "generatedAt": utc_stamp(),
         "stats": {
             "namespaces": len(summary),
             "types": sum(len(ns["types"]) for ns in summary.values()),

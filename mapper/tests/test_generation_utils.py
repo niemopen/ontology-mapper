@@ -10,7 +10,109 @@ from ontology_mapper.generation_utils import (
     infer_domains_from_shapes,
     assign_properties_to_classes,
     detect_consolidations,
+    property_mapping_index,
+    accepted_reuse_target,
+    source_prefix,
 )
+
+
+def test_shape_domains_preserve_all_active_named_targets():
+    shapes = [
+        {"targetClasses": ["src:A", "src:B"], "targetClass": "src:A", "properties": [
+            {"path": "src:p", "minCount": 0, "maxCount": 0, "severity": "Info"},
+            {"path": None, "pathKind": "expression"},
+            {"path": "src:disabled", "deactivated": True}]},
+        {"targetClass": "src:C", "deactivated": True, "properties": [{"path": "src:p"}]},
+    ]
+    assert infer_domains_from_shapes([], shapes) == {"src:p": {"src:A", "src:B"}}
+
+
+# ---------------------------------------------------------------------------
+# property_mapping_index / accepted_reuse_target — M5d
+# ---------------------------------------------------------------------------
+def _matrix(*property_mappings_by_concept):
+    return {"mappings": [{"sourceConcept": concept, "propertyMappings": pms}
+                         for concept, pms in property_mappings_by_concept]}
+
+
+def _pm(source_property, action="reuse-property", target="nc:Target",
+        review="accepted"):
+    return {"sourceProperty": source_property, "action": action,
+            "targetProperty": target, "reviewStatus": review}
+
+
+def _inventory(*qnames):
+    return {"objectProperties": [],
+            "datatypeProperties": [{"qname": q} for q in qnames]}
+
+
+class TestPropertyMappingIndex:
+    """The emitters build this index by qname and used to read it by local
+    name, so every lookup missed on a real matrix and every accepted
+    reuse-property decision was silently dropped."""
+
+    def test_keys_by_qualified_name(self):
+        index = property_mapping_index(_matrix(("s:Foo", [_pm("s:bar")])))
+        assert set(index) == {("s:Foo", "s:bar")}
+
+    def test_no_inventory_keeps_the_recorded_name(self):
+        index = property_mapping_index(_matrix(("s:Foo", [_pm("bar")])))
+        assert set(index) == {("s:Foo", "bar")}
+
+    def test_resolves_a_misqualified_name_to_the_inventory_qname(self):
+        """The redvale shape: the matrix says `dbpi:fiscalYearCode`, the
+        source ontology says `fin:fiscalYearCode`."""
+        index = property_mapping_index(
+            _matrix(("dbpi:Fee", [_pm("dbpi:fiscalYearCode")])),
+            _inventory("fin:fiscalYearCode", "dbpi:amount"))
+        assert set(index) == {("dbpi:Fee", "fin:fiscalYearCode")}
+
+    def test_exact_qname_is_never_overridden(self):
+        index = property_mapping_index(
+            _matrix(("s:Foo", [_pm("gis:code")])),
+            _inventory("gis:code", "fin:code"))
+        assert set(index) == {("s:Foo", "gis:code")}
+
+    def test_ambiguous_local_name_is_not_guessed(self):
+        """Two candidates: the decision stays unapplied rather than being
+        attached to the wrong property."""
+        index = property_mapping_index(
+            _matrix(("s:Foo", [_pm("s:code")])),
+            _inventory("gis:code", "fin:code"))
+        assert set(index) == {("s:Foo", "s:code")}  # unresolved, not guessed
+
+    def test_bare_name_resolves_when_unique(self):
+        index = property_mapping_index(
+            _matrix(("s:Foo", [_pm("bar")])), _inventory("s:bar"))
+        assert set(index) == {("s:Foo", "s:bar")}
+
+    def test_entries_without_property_mappings_are_skipped(self):
+        assert property_mapping_index({"mappings": [{"sourceConcept": "s:Foo"}]}) == {}
+        assert property_mapping_index({}) == {}
+
+
+class TestAcceptedReuseTarget:
+    def test_accepted_reuse_returns_the_target(self):
+        assert accepted_reuse_target(_pm("s:bar")) == "nc:Target"
+
+    @pytest.mark.parametrize("pm", [
+        None,
+        _pm("s:bar", action="create-property"),
+        _pm("s:bar", review="pending-review"),
+        _pm("s:bar", target=None),
+        _pm("s:bar", target="[undecided]"),
+    ])
+    def test_anything_else_is_none(self, pm):
+        assert accepted_reuse_target(pm) is None
+
+
+class TestSourcePrefix:
+    def test_from_first_class(self):
+        assert source_prefix({"classes": [{"qname": "dbpi:Fee"}]}) == "dbpi"
+
+    def test_empty_inventory(self):
+        assert source_prefix({}) == ""
+        assert source_prefix({"classes": []}) == ""
 
 
 # ---------------------------------------------------------------------------
@@ -216,3 +318,11 @@ class TestDetectConsolidations:
         ])
         result = detect_consolidations(matrix, classes)
         assert result == []
+
+
+def test_shape_severity_does_not_change_evaluation():
+    from ontology_mapper.generation_utils import shape_property_is_evaluated
+
+    for severity in ("Violation", "Warning", "Info", "https://example.org/#Custom"):
+        assert shape_property_is_evaluated({"severity": severity})
+        assert not shape_property_is_evaluated({"severity": severity, "deactivated": True})

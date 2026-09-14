@@ -23,6 +23,19 @@ def _write_state(run_dir, stages=None, inputs=None):
     _write_json(run_dir / ".mapper-state.json", state)
 
 
+@pytest.mark.parametrize("status", ["pass", "FAIL"])
+def test_stage_7_validation_fail_is_blocking(tmp_path, status):
+    from runner_tools.run_pipeline import verify_stage, VerificationError
+
+    _write_json(tmp_path / "validation-report.json", {"checks": [{"status": status}]})
+    _write_json(tmp_path / "feedback-report.json", {"stage": "7"})
+    if status == "FAIL":
+        with pytest.raises(VerificationError):
+            verify_stage(tmp_path, "7")
+    else:
+        verify_stage(tmp_path, "7")
+
+
 # ---------------------------------------------------------------------------
 # _check / _file_check helpers
 # ---------------------------------------------------------------------------

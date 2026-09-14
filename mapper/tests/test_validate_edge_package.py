@@ -2,6 +2,36 @@
 """Tests for validate_edge_package.py — cross-reference validation helpers."""
 
 import pytest
+import json
+import subprocess
+import sys
+
+
+@pytest.mark.parametrize("defect", [None, "syntax", "shacl"])
+def test_cli_reports_failure_and_exit_status(tmp_path, defect):
+    """Real CLI, real parsing/validation, and synthetic files only."""
+    pkg = tmp_path / "edge-package"
+    for directory in ("ontology", "shapes", "kg/import"):
+        (pkg / directory).mkdir(parents=True, exist_ok=True)
+    (tmp_path / ".mapper-state.json").write_text(json.dumps({"inputs": {
+        "organization": "test", "source": "sample", "target_ontology": "example", "target_version": "1"}}))
+    (tmp_path / "concept-inventory.json").write_text('{"classes": []}')
+    (tmp_path / "mapping-matrix.json").write_text('{"mappings": []}')
+    (tmp_path / "decision-log.json").write_text('{"decisions": []}')
+    (pkg / "kg/schema.cypher").write_text("RETURN 1;")
+    (pkg / "kg/import/internal-to-edge.json").write_text('{"transforms": []}')
+    (pkg / "kg/import/loader-config.json").write_text('{}')
+    (pkg / "ontology/smallclaims-core.ttl").write_text(
+        "not turtle" if defect == "syntax" else "<urn:item> a <urn:Example> .")
+    (pkg / "shapes/sample.ttl").write_text(
+        '@prefix sh: <http://www.w3.org/ns/shacl#> . '
+        '<urn:S> a sh:NodeShape; sh:targetClass <urn:Example>; '
+        f'sh:property [sh:path <urn:value>; sh:minCount {1 if defect == "shacl" else 0}] .')
+    result = subprocess.run([sys.executable, "-m", "ontology_mapper.validate_edge_package", "--run-dir", str(tmp_path)],
+                            capture_output=True, text=True)
+    report = json.loads((tmp_path / "validation-report.json").read_text())
+    assert report["allPassed"] is (defect is None)
+    assert result.returncode == (0 if defect is None else 1), result.stdout + result.stderr
 
 from ontology_mapper.validate_edge_package import (
     check_cmf_consistency,

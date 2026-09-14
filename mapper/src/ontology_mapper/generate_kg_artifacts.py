@@ -23,7 +23,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from datetime import datetime, timezone
+from ontology_mapper.run_dir_utils import utc_stamp
 
 from ontology_mapper.pipeline_context import load_context
 from ontology_mapper.generation_utils import local_name, XSD
@@ -215,7 +215,7 @@ def build_relationships(active_classes):
 # ---------------------------------------------------------------------------
 def generate_schema_cypher(active_classes, relationships, source):
     """Generate kg/neo4j/schema.cypher — constraints, indexes, relationship docs."""
-    now = datetime.now(timezone.utc).isoformat()
+    now = utc_stamp()
     lines = [
         f"// {'=' * 65}",
         f"// {source.upper()} Edge Ontology — Neo4j Schema DDL",
@@ -279,7 +279,7 @@ def generate_schema_cypher(active_classes, relationships, source):
 
 def generate_seed_cypher(active_classes, relationships, seed_data_path, source):
     """Generate kg/neo4j/seed.cypher — sample data from source seed TTL."""
-    now = datetime.now(timezone.utc).isoformat()
+    now = utc_stamp()
 
     header = [
         f"// {'=' * 65}",
@@ -456,7 +456,7 @@ def _cypher_escape(s):
 
 def generate_query_templates(active_classes, relationships, source):
     """Generate reusable Cypher query templates. Returns {name: content}."""
-    now = datetime.now(timezone.utc).isoformat()
+    now = utc_stamp()
     templates = {}
 
     # 1. find-by-identifier — generic
@@ -538,7 +538,7 @@ def _kebab(name):
 # ---------------------------------------------------------------------------
 def generate_trig(ctx):
     """Generate kg/rdf/{source}-edge.trig — named graph wrapping the edge ontology."""
-    now = datetime.now(timezone.utc).isoformat()
+    now = utc_stamp()
     edge_ns = ctx.edge_ns_hash
 
     # Read the core and extensions TTL
@@ -596,7 +596,7 @@ def generate_trig(ctx):
 
 def generate_sparql_templates(ctx):
     """Generate SPARQL query templates. Returns {name: content}."""
-    now = datetime.now(timezone.utc).isoformat()
+    now = utc_stamp()
     edge_ns = ctx.edge_ns_hash
     templates = {}
 

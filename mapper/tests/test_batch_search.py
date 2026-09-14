@@ -25,6 +25,42 @@ from ontology_mapper.batch_search import (
 from ontology_mapper.vector_index import OntologyEntry
 
 
+@pytest.mark.parametrize("legacy", [False, True])
+def test_shared_cross_namespace_property_keeps_both_parents_and_resumes(tmp_path, legacy):
+    from ontology_mapper.collect_alignments import load_search_results, reassemble_evaluations
+
+    concepts = [{"qname": parent, "definition": "", "properties": [
+        {"name": "flag", "qname": "other:flag"}]} for parent in ("src:A", "src:B")]
+    results = {c["qname"]: {"other:flag": [PROP_CANDIDATE]} for c in concepts}
+    if legacy:
+        directory = tmp_path / "search-results" / "properties"
+        directory.mkdir(parents=True)
+        doc = build_property_file("src:A", "", "flag", "other:flag", "", [], [])
+        doc.update(status="evaluated", evaluation={"sourceProperty": "other:flag", "targetProperty": "nc:Saved"})
+        (directory / "other_flag.json").write_text(json.dumps(doc), encoding="utf-8")
+
+    write_search_results(tmp_path, concepts, {}, results)
+    types, props = load_search_results(tmp_path)
+    assert {(p["source"]["parentType"], p["source"]["qname"]) for _, p in props} == {
+        ("src:A", "other:flag"), ("src:B", "other:flag")}
+    for filename, doc in types:
+        doc.update(status="evaluated", evaluation={"sourceConcept": doc["source"]["qname"]})
+        (tmp_path / "search-results" / "types" / filename).write_text(json.dumps(doc), encoding="utf-8")
+    for filename, doc in props:
+        if doc["status"] != "evaluated":
+            assert doc["candidates"][0]["id"] == "nc:StreetFullText"
+            doc.update(status="evaluated", evaluation={"sourceProperty": "other:flag", "targetProperty": "nc:Chosen"})
+        (tmp_path / "search-results" / "properties" / filename).write_text(json.dumps(doc), encoding="utf-8")
+    before = {p.name: p.read_bytes() for p in (tmp_path / "search-results" / "properties").glob("*.json")}
+    counts = write_search_results(tmp_path, list(reversed(concepts)), {}, results)
+    assert counts["props_skipped"] == 2
+    assert before == {p.name: p.read_bytes() for p in (tmp_path / "search-results" / "properties").glob("*.json")}
+    combined = reassemble_evaluations(*load_search_results(tmp_path))
+    assert all(len(e["properties"]) == 1 for e in combined)
+    if legacy:
+        assert next(e for e in combined if e["sourceConcept"] == "src:A")["properties"][0]["targetProperty"] == "nc:Saved"
+
+
 # ---------------------------------------------------------------------------
 # Sample data
 # ---------------------------------------------------------------------------
@@ -108,11 +144,21 @@ class TestSanitizeFilename:
 # ---------------------------------------------------------------------------
 
 class TestPropertyQname:
-    def test_normal(self):
-        assert _property_qname("dbpi:AddressType", "streetName") == "dbpi:streetName"
+    """M5d: the source ontology's own qname is the property's identity."""
+
+    def test_carried_qname_wins(self):
+        prop = {"name": "fiscalYearCode", "qname": "fin:fiscalYearCode"}
+        assert _property_qname("dbpi:Fee", prop) == "fin:fiscalYearCode"
+
+    def test_carried_qname_used_even_when_it_matches_the_concept_prefix(self):
+        prop = {"name": "streetName", "qname": "dbpi:streetName"}
+        assert _property_qname("dbpi:AddressType", prop) == "dbpi:streetName"
+
+    def test_falls_back_for_files_written_before_the_qname_field(self):
+        assert _property_qname("dbpi:AddressType", {"name": "streetName"}) == "dbpi:streetName"
 
     def test_no_prefix(self):
-        assert _property_qname("AddressType", "streetName") == "streetName"
+        assert _property_qname("AddressType", {"name": "streetName"}) == "streetName"
 
 
 # ---------------------------------------------------------------------------
@@ -364,7 +410,8 @@ class TestWriteSearchResults:
         props_dir = tmp_path / "search-results" / "properties"
         props_dir.mkdir(parents=True)
 
-        evaluated = {"status": "evaluated", "evaluation": {"some": "data"}}
+        evaluated = {"status": "evaluated", "evaluation": {"some": "data"},
+                     "source": {"qname": "dbpi:streetName", "parentType": "dbpi:AddressType"}}
         (props_dir / "dbpi_streetName.json").write_text(
             json.dumps(evaluated), encoding="utf-8"
         )

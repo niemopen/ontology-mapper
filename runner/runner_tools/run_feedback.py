@@ -22,7 +22,7 @@ Usage (as CLI):
 
 import argparse
 import json
-from datetime import datetime, timezone
+from ontology_mapper.run_dir_utils import utc_stamp
 from pathlib import Path
 
 
@@ -53,7 +53,7 @@ def log_observation(run_dir, stage, obs_type, component, description,
         feedback = {"observations": []}
 
     feedback["observations"].append({
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": utc_stamp(),
         "stage": str(stage),
         "type": obs_type,
         "component": component,

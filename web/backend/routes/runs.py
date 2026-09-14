@@ -16,6 +16,7 @@ from ontology_mapper.pipeline_config import resolve_csv_namespace
 from auth import require_auth, get_org_slug
 from config import settings
 from models import CreateRunRequest, RunSummary
+from ontology_mapper.build_mapping_matrix import refuse_to_discard_review
 
 router = APIRouter(tags=["runs"])
 
@@ -266,19 +267,19 @@ def _run_cmd(run_id: str, stage: str, cmd: list[str], cwd: str, env: dict) -> bo
 
 def _record_stage_start(run_dir: Path, stage: str):
     """Write started_at into the state file so mark-complete preserves it."""
-    from datetime import datetime, timezone
+    from ontology_mapper.run_dir_utils import utc_stamp
     state = _read_state(run_dir)
     if not state:
         return
     stages = state.setdefault("stages", {})
     entry = stages.get(stage)
     if entry:
-        entry["started_at"] = datetime.now(timezone.utc).isoformat()
+        entry["started_at"] = utc_stamp()
     else:
         stages[stage] = {
             "stage": stage,
             "status": "running",
-            "started_at": datetime.now(timezone.utc).isoformat(),
+            "started_at": utc_stamp(),
             "completed_at": None,
             "error": None,
             "artifacts": [],
@@ -458,6 +459,14 @@ async def execute_pipeline(
     run_dir = _find_run_dir(org, run_id)
     if run_id in _pipeline_status and _pipeline_status[run_id].get("status") == "running":
         raise HTTPException(status_code=409, detail="Pipeline already running")
+    try:
+        refuse_to_discard_review(run_dir / "mapping-matrix.json")
+    except SystemExit as exc:
+        raise HTTPException(
+            status_code=409,
+            detail="Saved review decisions would be overwritten. Continue the review, "
+                   "or reset it before executing stages 1-4 again.",
+        ) from exc
     thread = threading.Thread(
         target=_run_pipeline_background,
         args=(run_id, run_dir, _org_runs_dir(org)),
@@ -485,6 +494,14 @@ async def continue_pipeline(
     stage_5 = state.get("stages", {}).get("5", {})
     if stage_5.get("status") != "completed":
         raise HTTPException(status_code=409, detail="Stage 5 (review) must be completed first")
+
+    # A reset or target change can reopen review after the stage was completed.
+    from routes.review import _load_matrix
+    from runner_tools._present_and_apply_human_review import check_stage_5_exit
+
+    can_continue, blockers = check_stage_5_exit(_load_matrix(run_dir))
+    if not can_continue:
+        raise HTTPException(status_code=409, detail={"blockers": blockers})
 
     thread = threading.Thread(
         target=_run_pipeline_background,

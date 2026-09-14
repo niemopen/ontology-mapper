@@ -24,7 +24,13 @@ from ontology_mapper.generation_utils import (
     infer_domains_from_shapes,
     assign_properties_to_classes,
     detect_consolidations,
+    property_mapping_index,
+    property_qname_resolver,
+    accepted_reuse_target,
+    shape_target_classes,
+    shape_property_is_evaluated,
 )
+from ontology_mapper.ontology_specific import extension_conformance_target
 
 
 # XSD IRI prefix → CMF datatype ref
@@ -101,11 +107,11 @@ class MatrixToCmfBuilder:
         sample = inventory["classes"][0] if inventory["classes"] else None
         self._source_prefix = (sample["qname"].split(":")[0] + ":") if sample else ""
 
-        # Property mapping lookup: (class_qname, prop_local) → propertyMapping
-        self._prop_mapping = {}
-        for m in matrix["mappings"]:
-            for pm in m.get("propertyMappings") or []:
-                self._prop_mapping[(m["sourceConcept"], pm["sourceProperty"])] = pm
+        # Property mapping lookup, keyed by the property's QNAME — the
+        # identity the matrix records. Shared home with the OWL emitter so
+        # the two cannot drift (generation_utils.property_mapping_index).
+        self._prop_mapping = property_mapping_index(matrix, inventory)
+        self._resolve_prop_qname = property_qname_resolver(inventory)
 
         # Edge/ext prefix for CMF ids (strip trailing ':' and '-edge:')
         self._edge_prefix = ctx.edge_prefix.rstrip(":")  # e.g. "dbpi-edge"
@@ -120,13 +126,16 @@ class MatrixToCmfBuilder:
         # SHACL cardinality lookup: (class_qname, prop_path) → {minCount, maxCount}
         self._shacl_cardinality = {}
         for shape in inventory.get("shaclShapes", []):
-            cls = shape["targetClass"]
-            for prop in shape.get("properties", []):
-                key = (cls, prop["path"])
-                self._shacl_cardinality[key] = {
-                    "minCount": prop.get("minCount"),
-                    "maxCount": prop.get("maxCount"),
-                }
+            if not shape_property_is_evaluated(shape):
+                continue
+            for cls in shape_target_classes(shape):
+                for prop in shape.get("properties", []):
+                    if not prop.get("path") or not shape_property_is_evaluated(prop):
+                        continue        # a SHACL path expression names no property
+                    self._shacl_cardinality[(cls, prop["path"])] = {
+                        "minCount": prop.get("minCount"),
+                        "maxCount": prop.get("maxCount"),
+                    }
 
     def build(self) -> CmfModel:
         """Build the complete CmfModel."""
@@ -173,6 +182,9 @@ class MatrixToCmfBuilder:
 
     def _build_namespaces(self, model: CmfModel):
         """Create CmfNamespace entries for edge, ext, and target namespaces."""
+        conformance = extension_conformance_target(
+            self.ctx.target_ontology, self.ctx.target_version)
+
         # Edge namespace (always present)
         model.namespaces.append(CmfNamespace(
             ns_id=self._edge_prefix,
@@ -180,16 +192,21 @@ class MatrixToCmfBuilder:
             prefix=self._edge_prefix,
             documentation=f"Edge ontology for {self.ctx.source}",
             category="EXTENSION",
+            conformance_target=conformance,
         ))
 
-        # Extension namespace (only if extend-action classes exist)
-        if self._extend:
+        # Extension namespace. Declared for augment classes too, not only
+        # extend ones: `_property_prefix` returns the EXT prefix for EVERY
+        # non-reuse action, so an augment-only run emitted properties into
+        # a namespace the model never declared.
+        if self._extend or self._augment:
             model.namespaces.append(CmfNamespace(
                 ns_id=self._ext_prefix,
                 uri=self.ctx.ext_ns_hash.rstrip("#"),
                 prefix=self._ext_prefix,
                 documentation=f"Extension types for {self.ctx.source}",
                 category="EXTENSION",
+                conformance_target=conformance,
             ))
 
         # Target namespaces referenced by reuse/augment mappings
@@ -201,13 +218,20 @@ class MatrixToCmfBuilder:
             self._add_target_ns(model, augmented, seen_prefixes)
         for qname, base, _, _ in self._extend:
             self._add_target_ns(model, base, seen_prefixes)
+        for mapping in self.matrix["mappings"]:
+            for pm in mapping.get("propertyMappings") or []:
+                self._add_target_ns(model, accepted_reuse_target(pm), seen_prefixes)
 
         # Source namespace for cross-namespace properties
+        source_ns_map = {prefix.rstrip(":"): uri
+                         for uri, prefix in self.inventory.get("namespaceMap", {}).items()}
+        source_ns_map.update({n["prefix"].rstrip(":"): n["namespace"]
+                              for n in self.inventory.get("augmentingNamespaces", [])})
         for prop in self.inventory["objectProperties"] + self.inventory["datatypeProperties"]:
             if not prop["qname"].startswith(self._source_prefix):
                 prefix = _qname_prefix(prop["qname"])
                 if prefix and prefix not in seen_prefixes:
-                    uri = self.target_ns_map.get(prefix, f"urn:unknown:{prefix}")
+                    uri = source_ns_map.get(prefix) or self.target_ns_map.get(prefix, f"urn:unknown:{prefix}")
                     model.namespaces.append(CmfNamespace(
                         ns_id=prefix, uri=uri, prefix=prefix,
                         category="EXTERNAL",
@@ -318,6 +342,19 @@ class MatrixToCmfBuilder:
                 self._emit_property(model, cmf_cls, cls_qname, action,
                                     pq, prop_data, is_object=False, emitted=emitted_props)
 
+    def _property_prefix(self, cls_action: str, prop_qname: str) -> str:
+        """The CMF namespace a created property is emitted under.
+
+        The augmentation records must name exactly the ids
+        `_emit_property` declares. The augment branch previously built its
+        refs with the EDGE prefix while the declaration side uses EXT for
+        every non-reuse action, so every augment record pointed at an id
+        the model does not contain.
+        """
+        if not prop_qname.startswith(self._source_prefix):
+            return _qname_prefix(prop_qname)
+        return self._edge_prefix if cls_action == "reuse" else self._ext_prefix
+
     def _emit_property(self, model: CmfModel, cmf_cls: CmfClass,
                        cls_qname: str, cls_action: str,
                        prop_qname: str, prop_data: dict,
@@ -326,29 +363,20 @@ class MatrixToCmfBuilder:
         prop_local = local_name(prop_qname)
 
         # Check for reuse-property mapping
-        pm = self._prop_mapping.get((cls_qname, prop_local))
-        if pm and pm.get("action") == "reuse-property":
-            if pm.get("targetProperty") and pm.get("reviewStatus") == "accepted":
-                # Property already exists on target — just reference it
-                target_prop = pm["targetProperty"]
-                target_id = self._qname_to_cmf_id(target_prop)
-                min_occ, max_occ = self._get_cardinality(cls_qname, prop_qname)
-                cmf_cls.properties.append(CmfHasProperty(
-                    property_ref=target_id,
-                    is_object=is_object,
-                    min_occurs=min_occ,
-                    max_occurs=max_occ,
-                ))
-                return
+        target_prop = accepted_reuse_target(self._prop_mapping.get((cls_qname, prop_qname)))
+        if target_prop:
+            # Property already exists on target — just reference it
+            target_id = self._qname_to_cmf_id(target_prop)
+            min_occ, max_occ = self._get_cardinality(cls_qname, prop_qname)
+            cmf_cls.properties.append(CmfHasProperty(
+                property_ref=target_id,
+                is_object=is_object,
+                min_occurs=min_occ,
+                max_occurs=max_occ,
+            ))
+            return
 
-        # Determine the CMF property prefix based on action
-        if not prop_qname.startswith(self._source_prefix):
-            prop_prefix = _qname_prefix(prop_qname)
-        elif cls_action == "reuse":
-            prop_prefix = self._edge_prefix
-        else:
-            prop_prefix = self._ext_prefix
-
+        prop_prefix = self._property_prefix(cls_action, prop_qname)
         prop_name = prop_local
         prop_id = _cmf_id(prop_prefix, prop_name)
 
@@ -445,6 +473,25 @@ class MatrixToCmfBuilder:
         edge_ns = self._find_namespace(model, self._edge_prefix)
         if not edge_ns:
             return
+        declared = {p.prop_id for p in model.properties}
+        # Only identical records are redundant. Different occurrences
+        # carry different source assertions and must not be selected by
+        # inventory order or silently merged into a new policy.
+        recorded = {(a.class_ref, a.property_ref, a.is_object, a.min_occurs, a.max_occurs)
+                    for a in edge_ns.augmentations}
+
+        def record(class_ref, property_ref, is_object, min_occurs, max_occurs):
+            key = (class_ref, property_ref, is_object, min_occurs, max_occurs)
+            if key in recorded:
+                return
+            recorded.add(key)
+            edge_ns.augmentations.append(CmfAugmentationRecord(
+                class_ref=class_ref,
+                property_ref=property_ref,
+                is_object=is_object,
+                min_occurs=min_occurs,
+                max_occurs=max_occurs,
+            ))
 
         # Reuse classes: new (non-reused) properties augment the target type
         for qname, target, _, _ in self._reuse:
@@ -460,13 +507,8 @@ class MatrixToCmfBuilder:
                 # Skip reuse-property refs (they're already on the target)
                 prop_prefix = hp.property_ref.split(".")[0] if "." in hp.property_ref else ""
                 if prop_prefix == self._edge_prefix:
-                    edge_ns.augmentations.append(CmfAugmentationRecord(
-                        class_ref=target_id,
-                        property_ref=hp.property_ref,
-                        is_object=hp.is_object,
-                        min_occurs=hp.min_occurs,
-                        max_occurs=hp.max_occurs,
-                    ))
+                    record(target_id, hp.property_ref, hp.is_object,
+                           hp.min_occurs, hp.max_occurs)
 
         # Augment classes: all new properties augment the augmented type
         for qname, target, _, _, augmented in self._augment:
@@ -474,21 +516,51 @@ class MatrixToCmfBuilder:
             if not augmented_id:
                 continue
 
-            # Find properties assigned to this augment class
-            # (augment classes don't have a CmfClass, so we check assignment directly)
+            # Find properties assigned to this augment class. An augment
+            # class has no CmfClass (augmentation is transparent), so its
+            # created properties are declared here — without this they were
+            # referenced by every record and defined by none.
             m = self._mapping_by_concept.get(qname, {})
             for pm in m.get("propertyMappings") or []:
-                if pm.get("action") == "reuse-property":
-                    continue  # already on target
-                prop_local = local_name(pm.get("sourceProperty", ""))
-                prop_id = _cmf_id(self._edge_prefix, prop_local)
-                edge_ns.augmentations.append(CmfAugmentationRecord(
-                    class_ref=augmented_id,
-                    property_ref=prop_id,
-                    is_object=True,  # default; refined if property exists in inventory
-                    min_occurs=0,
-                    max_occurs="unbounded",
-                ))
+                # Resolve through the same reconciliation the property
+                # index uses. Reading the raw `sourceProperty` here meant a
+                # mis-qualified augmenting-namespace name failed the
+                # inventory lookup and the decision vanished silently.
+                prop_qname = self._resolve_prop_qname(pm.get("sourceProperty", ""))
+                prop_data = (self._obj_by_qname.get(prop_qname)
+                             or self._dt_by_qname.get(prop_qname))
+                if prop_data is None:
+                    continue  # not a property of the source inventory
+                is_object = prop_qname in self._obj_by_qname
+                target_prop = accepted_reuse_target(pm)
+                if target_prop:
+                    # Augment is selected when a match exists elsewhere in the
+                    # target ontology. Reference it; do not declare it again.
+                    min_occ, max_occ = self._get_cardinality(qname, prop_qname)
+                    record(augmented_id, self._qname_to_cmf_id(target_prop),
+                           is_object, min_occ, max_occ)
+                    continue
+                prop_prefix = self._property_prefix("augment", prop_qname)
+                prop_id = _cmf_id(prop_prefix, local_name(prop_qname))
+                if prop_id not in declared:
+                    declared.add(prop_id)
+                    model.properties.append(CmfProperty(
+                        prop_id=prop_id,
+                        name=local_name(prop_qname),
+                        namespace_ref=prop_prefix,
+                        documentation=prop_data.get("label", ""),
+                        is_object=is_object,
+                        class_ref=(self._resolve_range(prop_data.get("range", []))
+                                   if is_object else ""),
+                        datatype_ref=("" if is_object
+                                      else self._resolve_datatype(prop_data.get("range", []))),
+                    ))
+                # The occurrence the source asserts, not a hardcoded default.
+                min_occ, max_occ = self._get_cardinality(qname, prop_qname)
+                record(augmented_id, prop_id, is_object, min_occ, max_occ)
+
+        edge_ns.augmentations.sort(key=lambda a: (
+            a.class_ref, a.property_ref, a.is_object, a.min_occurs, a.max_occurs))
 
     # ------------------------------------------------------------------
     # Codelists

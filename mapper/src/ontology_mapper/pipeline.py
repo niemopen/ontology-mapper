@@ -34,7 +34,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from ontology_mapper.pipeline_context import PipelineContext
-from ontology_mapper.run_dir_utils import STATE_FILENAME, RUNS_ROOT, resolve_run_dir, load_state, state_path_for, resolve_specs_dir
+from ontology_mapper.run_dir_utils import RUNS_ROOT, STATE_FILENAME, load_state, resolve_run_dir, resolve_specs_dir, state_path_for, utc_stamp
 SPECS_DIR = resolve_specs_dir()
 
 # Ensure UTF-8 output on Windows
@@ -205,7 +205,7 @@ class PipelineState:
 
     @classmethod
     def new(cls, organization: str = "") -> "PipelineState":
-        now = datetime.now(timezone.utc).isoformat()
+        now = utc_stamp()
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
         # Include org prefix only when runs are in the default flat directory.
         # When OM_RUNS_DIR is set (e.g., web UI org-scoped dirs),
@@ -219,10 +219,14 @@ class PipelineState:
     @classmethod
     def load(cls, path: Path) -> "PipelineState":
         data = json.loads(path.read_text(encoding="utf-8"))
-        return cls(**data)
+        state = cls(**data)
+        # Runtime location only: preserve the persisted schema and run_id when
+        # operating on a copy selected by --run-dir.
+        state._run_dir = path.resolve().parent
+        return state
 
     def save(self, path: Path) -> None:
-        self.updated_at = datetime.now(timezone.utc).isoformat()
+        self.updated_at = utc_stamp()
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
             json.dumps(asdict(self), indent=2, default=str) + "\n",
@@ -462,7 +466,7 @@ def execute_stage(state: PipelineState, stage_number: str) -> StageResult:
     Returns a StageResult with the outcome.
     """
     spec = STAGE_MAP[stage_number]
-    now = datetime.now(timezone.utc).isoformat()
+    now = utc_stamp()
 
     print(f"\n{'─' * 64}")
     print(f"  Stage {stage_number}: {spec.name}")
@@ -475,7 +479,7 @@ def execute_stage(state: PipelineState, stage_number: str) -> StageResult:
             stage=stage_number,
             status="failed",
             started_at=now,
-            completed_at=datetime.now(timezone.utc).isoformat(),
+            completed_at=utc_stamp(),
             error="Input collection cancelled by user.",
         )
 
@@ -523,7 +527,7 @@ def _handle_ingest(state: PipelineState, spec: StageSpec, started: str) -> Stage
                 stage=spec.number,
                 status="failed",
                 started_at=started,
-                completed_at=datetime.now(timezone.utc).isoformat(),
+                completed_at=utc_stamp(),
                 error=f"Input validation failed: {errors[0]['code']} — {errors[0]['message']}",
             )
         if findings:
@@ -582,7 +586,7 @@ def _handle_ingest(state: PipelineState, spec: StageSpec, started: str) -> Stage
     inv_path = output_dir / "source-inventory.json"
     inv_data = {
         "input_package": str(pkg_path),
-        "scanned_at": datetime.now(timezone.utc).isoformat(),
+        "scanned_at": utc_stamp(),
         "total_files": file_count,
         "input_type": input_type,
         "inventory": inventory,
@@ -602,7 +606,7 @@ def _handle_ingest(state: PipelineState, spec: StageSpec, started: str) -> Stage
         stage=spec.number,
         status="completed",
         started_at=started,
-        completed_at=datetime.now(timezone.utc).isoformat(),
+        completed_at=utc_stamp(),
         artifacts=[str(inv_path)],
         notes=f"Found {file_count} files across {sum(1 for v in inventory.values() if v)} categories.",
     )
@@ -645,7 +649,7 @@ def _handle_human_review_gate(
                 stage=spec.number,
                 status="completed",
                 started_at=started,
-                completed_at=datetime.now(timezone.utc).isoformat(),
+                completed_at=utc_stamp(),
                 notes="All entries accepted — review gate passed.",
             )
 
@@ -655,7 +659,7 @@ def _handle_human_review_gate(
         stage=spec.number,
         status="pending_review",
         started_at=started,
-        completed_at=datetime.now(timezone.utc).isoformat(),
+        completed_at=utc_stamp(),
         notes="Awaiting human review.",
     )
 
@@ -710,7 +714,7 @@ def _handle_bootstrap_output(
             "targetDomains": [],
             "targetGraphPlatforms": ["neo4j", "rdf"],
             "generatedBy": "ontology-mapper",
-            "generatedAt": datetime.now(timezone.utc).isoformat(),
+            "generatedAt": utc_stamp(),
             "extensionNamespace": ctx.extension_namespace,
             "edgeNamespace": ctx.edge_namespace,
             "stats": {
@@ -731,7 +735,7 @@ def _handle_bootstrap_output(
         stage=spec.number,
         status="completed",
         started_at=started,
-        completed_at=datetime.now(timezone.utc).isoformat(),
+        completed_at=utc_stamp(),
         artifacts=created,
         notes=f"Edge package bootstrapped with {len(created)} directories/files.",
     )
@@ -755,7 +759,7 @@ STAGE_HANDLERS = {
 
 def _get_run_dir(state: PipelineState) -> Path:
     """Return the working directory for intermediate pipeline artifacts."""
-    return RUNS_ROOT / state.run_id
+    return getattr(state, "_run_dir", RUNS_ROOT / state.run_id)
 
 
 def _resolve_org(org_flag: Optional[str] = None) -> Optional[str]:
@@ -924,7 +928,7 @@ def cmd_rerun(args: argparse.Namespace) -> int:
         if not check_inputs_for_stage(state, "6"):
             print("  Input collection cancelled.")
             return 1
-        _handle_bootstrap_output(state, STAGE_MAP["6"], datetime.now(timezone.utc).isoformat())
+        _handle_bootstrap_output(state, STAGE_MAP["6"], utc_stamp())
 
     result = execute_stage(state, stage_number)
     state.record_stage(result)
@@ -988,7 +992,7 @@ def cmd_mark_complete(args: argparse.Namespace) -> int:
         print(f"  Error: Unknown stage '{stage_number}'.")
         return 1
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = utc_stamp()
 
     # Update existing stage entry or create new one
     existing = state.stages.get(stage_number)

@@ -8,6 +8,61 @@ and do not perform I/O.
 XSD = "http://www.w3.org/2001/XMLSchema#"
 
 
+def property_qname_resolver(inventory):
+    """Resolve a recorded property name to its inventory QName.
+
+    Prefer exact identity, then a unique local-name match for old matrices
+    that incorrectly used the parent concept's namespace. Ambiguous names
+    remain unresolved; never guess between properties sharing a local name.
+    """
+    known = set()
+    by_local = {}
+    inventory = inventory or {}
+    for prop in ((inventory.get("objectProperties") or [])
+                 + (inventory.get("datatypeProperties") or [])):
+        qname = prop.get("qname")
+        if not qname:
+            continue
+        known.add(qname)
+        by_local.setdefault(local_name(qname), []).append(qname)
+
+    def resolve(name):
+        if not known or name in known:
+            return name
+        candidates = by_local.get(local_name(name), [])
+        return candidates[0] if len(candidates) == 1 else name
+
+    return resolve
+
+
+def property_mapping_index(matrix, inventory=None):
+    """Index decisions by (class QName, resolved source-property QName)."""
+    resolve = property_qname_resolver(inventory)
+    index = {}
+    for entry in matrix.get("mappings", []):
+        concept = entry.get("sourceConcept")
+        for pm in entry.get("propertyMappings") or []:
+            index[(concept, resolve(pm.get("sourceProperty", "")))] = pm
+    return index
+
+
+def accepted_reuse_target(pm):
+    """The target property an accepted ``reuse-property`` decision names, or
+    None. One home for the three conditions the emitters must agree on."""
+    if not pm or pm.get("action") != "reuse-property":
+        return None
+    if pm.get("reviewStatus") != "accepted":
+        return None
+    target = pm.get("targetProperty")
+    return target if target and target != "[undecided]" else None
+
+
+def source_prefix(inventory):
+    """Source QName prefix, detected from the inventory's first class."""
+    classes = inventory.get("classes") or []
+    return classes[0]["qname"].split(":")[0] if classes else ""
+
+
 def local_name(qname_or_iri):
     """Extract local name from qname (prefix:Foo → Foo) or IRI."""
     if ":" in qname_or_iri and not qname_or_iri.startswith("http"):
@@ -44,10 +99,12 @@ def infer_domains_from_shapes(properties, shapes):
     and constrains property P, then P belongs to X."""
     shape_domains = {}
     for shape in shapes:
-        target_cls = shape["targetClass"]
-        for prop in shape["properties"]:
-            path = prop["path"]
-            shape_domains.setdefault(path, set()).add(target_cls)
+        if not shape_property_is_evaluated(shape):
+            continue
+        for prop in shape.get("properties", []):
+            path = prop.get("path")
+            if path and shape_property_is_evaluated(prop):
+                shape_domains.setdefault(path, set()).update(shape_target_classes(shape))
     return shape_domains
 
 
@@ -98,3 +155,29 @@ def detect_consolidations(matrix, class_by_qname):
             consolidations.append((parent, absorbed, scheme_name))
 
     return consolidations
+
+
+def shape_target_classes(shape):
+    """Every class a SHACL NodeShape targets — the one home for that question.
+
+    SHACL allows a NodeShape to carry several `sh:targetClass` values.
+    Extraction used to keep one arbitrarily under `targetClass`, so a shape
+    targeting two classes constrained only one of them and no consumer
+    could tell. `targetClasses` now carries them all; this falls back to
+    the single name for an inventory written before that, and for the test
+    fixtures that still build shapes by hand.
+    """
+    targets = shape.get("targetClasses")
+    if targets is not None:
+        return list(targets)
+    single = shape.get("targetClass")
+    return [single] if single else []
+
+
+def shape_property_is_evaluated(property_shape):
+    """Whether SHACL evaluates a shape, independently of result severity.
+
+    SHACL sections 2.1.4 and 2.1.6: severity categorizes results; only
+    deactivation disables evaluation. Applies to node and property shapes.
+    """
+    return not property_shape.get("deactivated", False)

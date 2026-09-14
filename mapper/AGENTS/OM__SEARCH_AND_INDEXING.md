@@ -12,13 +12,20 @@
 | `build_vector_index.py` | `om-build-vector-index` | CLI for building/managing indexes |
 | `vector_search.py` | `om-vector-search` | CLI for cross-ontology similarity search |
 | `semantic_search.py` | *(library)* | Per-concept search API (used internally by `batch_search.py`) |
-| `batch_search.py` | `om-batch-search` | Batch vector search: writes one JSON file per source concept |
+| `batch_search.py` | `om-batch-search` | Batch vector search: type and parent/property result files |
 | `collect_alignments.py` | `om-collect-alignments` | Collects evaluated search results, resolves actions, writes alignment report |
 | `build_strategy_reports.py` | `om-build-strategy` | Stage 3 prep: source-concepts.json + alignment workspace |
 
 ---
 
 ## Architecture
+
+Source properties retain their declared `qname` through strategy preparation,
+search and result writing; `name` remains the display local name. Each property
+result belongs to `(source.parentType, source.qname)`. Shared properties receive
+separate files per parent, and resumption retains existing evaluated files,
+including legacy filenames. Collection groups by the document's parent rather
+than deriving identity from its filename.
 
 ### Vector index infrastructure
 

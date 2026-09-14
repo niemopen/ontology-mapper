@@ -5,6 +5,7 @@ Covers schema transformation from alignment report to mapping matrix.
 No reasoning — just verifies fields carry through correctly.
 """
 
+import json
 import pytest
 from ontology_mapper.build_mapping_matrix import (
     build_mapping_entry,
@@ -322,3 +323,184 @@ class TestComputeSummary:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestReviewProtection:
+    """Stage 4 preserves saved decisions independently of their provenance."""
+
+    @staticmethod
+    def _matrix(class_status="pending-review", prop_status="pending-review",
+                reviewed_at=None):
+        doc = {
+            "stage": "4",
+            "mappings": [{
+                "sourceConcept": "dbpi:Person",
+                "action": "reuse",
+                "reviewStatus": class_status,
+                "propertyMappings": [
+                    {"sourceProperty": "dbpi:hasName",
+                     "action": "reuse-property",
+                     "reviewStatus": prop_status},
+                ],
+            }],
+        }
+        if reviewed_at:
+            doc["humanReviewApplied"] = reviewed_at
+        return doc
+
+    def _write(self, tmp_path, matrix):
+        path = tmp_path / "mapping-matrix.json"
+        path.write_text(json.dumps(matrix), encoding="utf-8")
+        return path
+
+    def test_fresh_matrix_counts_no_decisions(self):
+        from ontology_mapper.build_mapping_matrix import review_decisions_present
+
+        assert review_decisions_present(self._matrix()) == (0, 0, None)
+
+    def test_reviewed_matrix_counts_its_decisions(self):
+        from ontology_mapper.build_mapping_matrix import review_decisions_present
+
+        classes, props, at = review_decisions_present(
+            self._matrix("accepted", "accepted"))
+        assert (classes, props) == (1, 1)
+        assert at is None
+
+    def test_marker_is_reported_when_present(self):
+        from ontology_mapper.build_mapping_matrix import review_decisions_present
+
+        _, _, at = review_decisions_present(
+            self._matrix("accepted", "accepted", reviewed_at="2026-05-14T19:52:37Z"))
+        assert at == "2026-05-14T19:52:37Z"
+
+    def test_a_review_without_the_marker_still_counts(self):
+        """Decisions written outside save_matrix() may carry no marker."""
+        from ontology_mapper.build_mapping_matrix import review_decisions_present
+
+        classes, props, at = review_decisions_present(
+            self._matrix("accepted", "accepted"))
+        assert at is None and classes and props
+
+    def test_rejected_and_modified_are_decisions_too(self):
+        from ontology_mapper.build_mapping_matrix import review_decisions_present
+
+        assert review_decisions_present(
+            self._matrix("rejected", "modified"))[:2] == (1, 1)
+
+    def test_rebuild_over_a_review_is_refused(self, tmp_path):
+        from ontology_mapper.build_mapping_matrix import refuse_to_discard_review
+
+        path = self._write(tmp_path, self._matrix("accepted", "accepted"))
+        with pytest.raises(SystemExit) as exc:
+            refuse_to_discard_review(path, force=False)
+        message = str(exc.value)
+        assert "1 class and 1 property decision" in message
+        assert "--force" in message
+        assert json.loads(path.read_text(encoding="utf-8"))["mappings"][0][
+            "reviewStatus"] == "accepted", "the matrix must be left untouched"
+
+    def test_rebuild_over_a_fresh_matrix_proceeds(self, tmp_path):
+        from ontology_mapper.build_mapping_matrix import refuse_to_discard_review
+
+        path = self._write(tmp_path, self._matrix())
+        assert refuse_to_discard_review(path, force=False) is None
+
+    def test_absent_matrix_proceeds(self, tmp_path):
+        from ontology_mapper.build_mapping_matrix import refuse_to_discard_review
+
+        assert refuse_to_discard_review(tmp_path / "nothing.json") is None
+
+    def test_unreadable_matrix_proceeds(self, tmp_path):
+        """A corrupt file holds no decisions to protect, so it must not
+        wedge the stage that would replace it."""
+        from ontology_mapper.build_mapping_matrix import refuse_to_discard_review
+
+        path = tmp_path / "mapping-matrix.json"
+        path.write_text("{not json", encoding="utf-8")
+        assert refuse_to_discard_review(path, force=False) is None
+
+    def test_force_copies_the_review_aside_before_rebuilding(self, tmp_path):
+        from ontology_mapper.build_mapping_matrix import (
+            refuse_to_discard_review, review_decisions_present)
+
+        path = self._write(tmp_path, self._matrix("accepted", "accepted"))
+        backup = refuse_to_discard_review(path, force=True)
+        assert backup is not None and backup.exists()
+        assert backup != path
+        saved = json.loads(backup.read_text(encoding="utf-8"))
+        assert review_decisions_present(saved)[:2] == (1, 1)
+
+    def test_forced_backups_do_not_overwrite_an_earlier_backup(self, tmp_path, monkeypatch):
+        from ontology_mapper.build_mapping_matrix import refuse_to_discard_review
+
+        monkeypatch.setattr("ontology_mapper.build_mapping_matrix.utc_stamp",
+                            lambda: "2026-09-10T12:00:00Z")
+        path = self._write(tmp_path, self._matrix("accepted", "accepted"))
+        first = refuse_to_discard_review(path, force=True)
+        saved = first.read_bytes()
+        self._write(tmp_path, self._matrix("accepted", "pending-review"))
+        second = refuse_to_discard_review(path, force=True)
+        assert first != second
+        assert first.read_bytes() == saved
+        assert second.read_bytes() == path.read_bytes()
+
+    def test_pending_cascade_with_saved_target_is_protected(self, tmp_path):
+        from ontology_mapper.build_mapping_matrix import refuse_to_discard_review
+
+        matrix = self._matrix(reviewed_at="2026-09-10T12:00:00Z")
+        matrix["mappings"][0]["targetType"] = "target:ChangedType"
+        path = self._write(tmp_path, matrix)
+        before = path.read_bytes()
+        with pytest.raises(SystemExit, match="reviewed at"):
+            refuse_to_discard_review(path)
+        assert path.read_bytes() == before
+
+    @pytest.mark.parametrize("matrix", [None, [], 1, "bad", {"mappings": None},
+                                      {"mappings": {}}, {"mappings": [None, 1, {}]}])
+    def test_malformed_json_shapes_can_be_rebuilt(self, tmp_path, matrix):
+        from ontology_mapper.build_mapping_matrix import refuse_to_discard_review
+
+        assert refuse_to_discard_review(self._write(tmp_path, matrix)) is None
+
+    def test_malformed_neighbors_do_not_hide_valid_decisions(self, tmp_path):
+        from ontology_mapper.build_mapping_matrix import refuse_to_discard_review
+
+        matrix = {"mappings": [None, {"reviewStatus": []}, {
+            "propertyMappings": [False, {"reviewStatus": "accepted"}]}]}
+        with pytest.raises(SystemExit, match="1 property"):
+            refuse_to_discard_review(self._write(tmp_path, matrix))
+
+
+@pytest.mark.parametrize("force", [False, True])
+def test_main_preserves_review_files_and_invalidates_snapshot_only_on_rebuild(
+        tmp_path, monkeypatch, force):
+    from ontology_mapper.build_mapping_matrix import main
+
+    (tmp_path / ".mapper-state.json").write_text(json.dumps({"inputs": {
+        "organization": "testorg", "source": "sample",
+        "target_ontology": "example", "target_version": "1"}}), encoding="utf-8")
+    (tmp_path / "alignment-report.json").write_text(json.dumps({
+        "matchingMethod": "semantic", "entries": [REUSE_ENTRY]}), encoding="utf-8")
+    matrix = tmp_path / "mapping-matrix.json"
+    log = tmp_path / "decision-log.json"
+    snapshot = tmp_path / "mapping-matrix.stage4.json"
+    old_matrix = json.dumps(TestReviewProtection._matrix("accepted", "accepted"))
+    old_log = '{"decisions": [{"rationale": "saved review"}]}'
+    matrix.write_text(old_matrix, encoding="utf-8")
+    log.write_text(old_log, encoding="utf-8")
+    snapshot.write_text(old_matrix, encoding="utf-8")
+    monkeypatch.setattr("sys.argv", ["om-build-matrix", "--run-dir", str(tmp_path)]
+                        + (["--force"] if force else []))
+    if force:
+        main()
+        assert json.loads(matrix.read_text())["mappings"][0]["reviewStatus"] == "pending-review"
+        assert not snapshot.exists()
+        assert [p.read_text() for p in tmp_path.glob("mapping-matrix.pre-rebuild-*.json")] == [old_matrix]
+        assert [p.read_text() for p in tmp_path.glob("decision-log.pre-rebuild-*.json")] == [old_log]
+    else:
+        with pytest.raises(SystemExit):
+            main()
+        assert matrix.read_text() == old_matrix
+        assert log.read_text() == old_log
+        assert snapshot.read_text() == old_matrix
+        assert not list(tmp_path.glob("*.pre-rebuild-*.json"))

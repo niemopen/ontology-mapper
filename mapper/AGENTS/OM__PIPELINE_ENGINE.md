@@ -31,7 +31,7 @@ Each pipeline run gets an isolated directory under `.mapper-runs/`:
     source-concepts.json     # Stage 3 prep
     search-results/          # Stage 3: vector search results (om-batch-search)
       types/                 #   one file per source type
-      properties/            #   one file per source property
+      properties/            #   property occurrences (see Search and Indexing)
     alignment-report.json    # Stage 3 output (om-collect-alignments writes this)
     mapping-matrix.json      # Stage 4 output
     decision-log.json        # Stage 4 output
@@ -95,6 +95,20 @@ key in `.mapper-state.json`. All stage tools call `load_config()`.
 3. Most recent run directory (by folder-name timestamp)
 
 Windows Git Bash paths (`/c/dev/...`) are normalized to native paths.
+
+Loaded state retains the selected run directory at runtime, so rerunning a
+copied state writes artifacts into the copy. `utc_stamp()` and `parse_stamp()`
+in `run_dir_utils.py` own UTC timestamp writing and legacy timestamp parsing.
+
+### Rebuilding a reviewed matrix
+
+`om-build-matrix` refuses to overwrite saved review decisions. Runner reruns
+through Stage 4 and web execution reuse the same preservation predicate before
+writing earlier stages. To intentionally rebuild, use
+`om-build-matrix --run-dir PATH --force`: it first backs up both the matrix and
+decision log with a unique suffix, then removes the old Stage 4 reset snapshot
+after the rebuild. Web continuation rechecks current Stage 5 readiness, even
+when the state previously recorded Stage 5 as complete.
 
 ---
 
