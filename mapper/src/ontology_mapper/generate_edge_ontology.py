@@ -397,14 +397,8 @@ def main():
         return ([(pq, p) for pq, p in obj if not _is_reuse_property(cls_qname, pq)],
                 [(pq, p) for pq, p in dt if not _is_reuse_property(cls_qname, pq)])
 
-    # Detect consolidations and shared targets
+    # Detect consolidations
     consolidations = detect_consolidations(matrix, class_by_qname)
-
-    target_type_users = {}
-    for cls_qname, target, _, _ in reuse_classes:
-        if target:
-            target_type_users.setdefault(target, []).append(cls_qname)
-    shared_targets = {t for t, users in target_type_users.items() if len(users) > 1}
 
     # --- TTL emitters ---
 
@@ -465,7 +459,21 @@ def main():
     # than emitting an unparseable document.
     bound_prefixes = set()
     PREFIXES = build_prefixes()
-    shared_target_refs = {target_term_ref(t, target_type_uris) for t in shared_targets}
+
+    def target_ref_identity(ref):
+        """Expand a rendered target QName so aliases and IRIs compare equally."""
+        prefix, _, name = ref.partition(":")
+        namespace = target_ns_map.get(prefix)
+        return URIRef(namespace + name).n3() if namespace else ref
+
+    # Count source classes after grounding their target identities, not their
+    # spellings. Mixed QName/IRI choices still share one target's constraints.
+    target_type_users = {}
+    for cls_qname, target, _, _ in reuse_classes:
+        ref = target_term_ref(target, target_type_uris)
+        if ref:
+            target_type_users.setdefault(target_ref_identity(ref), []).append(cls_qname)
+    shared_targets = {t for t, users in target_type_users.items() if len(users) > 1}
 
     def emit_class_block(cls_qname, target_type, label, comment, prefix, obj_props, dt_props):
         type_name = prefix + edge_class_name(cls_qname)
@@ -654,7 +662,7 @@ def main():
             shape_name = f"{base_name}_{suffix}"
             suffix += 1
         emitted_shape_names.add(shape_name)
-        is_shared = target_type in shared_target_refs
+        is_shared = target_ref_identity(target_type) in shared_targets
 
         lines = []
         lines.append(f"\n# ── {local_name(target_src)} Shape ──")

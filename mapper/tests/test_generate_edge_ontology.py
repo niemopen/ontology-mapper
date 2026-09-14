@@ -633,3 +633,42 @@ class TestNiemOWLPatterns:
             "types": [{"qname": "nc:BaseType", "uri": "https://example.org/target/BaseType"}]})
         shapes = Graph().parse(data=files["test-edge-shapes.ttl"], format="turtle")
         assert [int(v) for v in shapes.objects(None, SH.minCount)] == [0, 0]
+
+    @pytest.mark.parametrize("catalog_uri", [False, True])
+    @pytest.mark.parametrize("second_target", [
+        "nc:BaseType", "https://example.org/target/BaseType", "alias:BaseType", "other:BaseType"])
+    def test_shared_target_identity_is_independent_of_identifier_spelling(self, catalog_uri, second_target):
+        from rdflib import Graph, Literal, RDF, SH, URIRef
+        from pyshacl import validate
+        from ontology_mapper.extract_concepts import extract_shacl_shapes, make_to_qname
+
+        target_uri = "https://example.org/target/"
+        catalog = {"namespaces": {"nc": target_uri, "alias": target_uri, "other": "https://example.org/other/"}}
+        if catalog_uri:
+            catalog["types"] = [{"qname": "nc:BaseType", "uri": target_uri + "BaseType"}]
+        source_shapes = Graph().parse(data='''
+            @prefix src: <https://example.org/src/> .
+            @prefix sh: <http://www.w3.org/ns/shacl#> .
+            src:A a sh:NodeShape ; sh:targetClass src:A ; sh:property [ sh:path src:p ; sh:minCount 1 ] .
+            src:B a sh:NodeShape ; sh:targetClass src:B ; sh:property [ sh:path src:q ; sh:minCount 1 ] .
+        ''', format="turtle")
+        inv = self._minimal_inventory(
+            [{"qname": q, "label": q, "comment": "", "subClassOf": []} for q in ("src:A", "src:B")],
+            dt_props=[{"qname": prop, "label": prop, "domain": [cls], "range": []}
+                      for cls, prop in (("src:A", "src:p"), ("src:B", "src:q"))],
+            shapes=extract_shacl_shapes(source_shapes, make_to_qname({"https://example.org/src/": "src:"})))
+        matrix = {"mappings": [{"sourceConcept": cls, "action": "reuse", "targetType": target,
+                               "reviewStatus": "accepted", "propertyMappings": [{
+                                   "sourceProperty": prop, "action": "reuse-property",
+                                   "targetProperty": mapped_prop, "reviewStatus": "accepted"}]}
+                              for cls, prop, mapped_prop, target in (
+                                  ("src:A", "src:p", "nc:PText", "nc:BaseType"),
+                                  ("src:B", "src:q", "nc:QText", second_target))]}
+        files = self._run_generation(inv, matrix, catalog=catalog)
+        shapes = Graph().parse(data=files["test-edge-shapes.ttl"], format="turtle")
+        expected_minimum = 1 if second_target == "other:BaseType" else 0
+        assert [int(v) for v in shapes.objects(None, SH.minCount)] == [expected_minimum] * 2
+        data = Graph()
+        data.add((URIRef("urn:item"), RDF.type, URIRef(target_uri + "BaseType")))
+        data.add((URIRef("urn:item"), URIRef(target_uri + "PText"), Literal("a")))
+        assert validate(data, shacl_graph=shapes, meta_shacl=True)[0]
