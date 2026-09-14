@@ -315,3 +315,14 @@ class TestStageTimingParsing:
 
         timings = _load_stage_timings(self._state("not-a-time", "2026-05-14T19:52:30Z"))
         assert timings[0]["durationSeconds"] is None
+
+    def test_rounding_does_not_hide_reversed_fractional_timestamps(self):
+        timings = _load_stage_timings(self._state("2026-09-14T12:00:00.010Z", "2026-09-14T12:00:00.000Z"))
+        assert timings[0]["durationSeconds"] is None
+        assert _total_duration(timings) is None
+
+    def test_invalid_endpoint_does_not_shorten_the_reported_total(self):
+        state = {"stages": {
+            "1": {"started_at": "invalid", "completed_at": "2026-09-14T12:00:10Z"},
+            "2": {"started_at": "2026-09-14T12:01:00Z", "completed_at": "2026-09-14T12:02:00Z"}}}
+        assert _total_duration(_load_stage_timings(state)) is None

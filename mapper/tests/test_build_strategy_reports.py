@@ -32,7 +32,7 @@ class TestStripPrefix:
 # ═══════════════════════════════════════════════════════════════════════════
 
 class TestBuildClassProperties:
-    """A property's identity is its qname, not its local name (M5d): a class
+    """A property's identity is its qname, not its local name: a class
     in one namespace may own a property in an augmenting namespace."""
 
     def test_from_domains(self):

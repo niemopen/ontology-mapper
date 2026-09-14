@@ -78,14 +78,18 @@ This is a post-run analysis tool, not part of the standard pipeline.
 
 Writes `{run_dir}/validation-report.json`:
 
+`om-validate` exits 0 when all checks pass and 1 when any check fails, after
+writing the report. The runner treats a reported `FAIL` as blocking, and the
+web pipeline stops before finalization when validation exits unsuccessfully.
+
 ```json
 {
   "stage": "7",
   "generatedAt": "ISO-8601",
-  "allPassed": true,
-  "checkCount": 10,
-  "passCount": 10,
-  "failCount": 0,
+  "allPassed": false,
+  "checkCount": 2,
+  "passCount": 1,
+  "failCount": 1,
   "checks": [
     { "check": "Turtle syntax", "status": "pass", "details": "" },
     { "check": "SHACL conformance", "status": "FAIL", "details": "..." }

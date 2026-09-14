@@ -312,7 +312,7 @@ class TestNiemOWLPatterns:
             "augmentationType": "PersonAugmentationType",
             "augmentsType": "nc:PersonType",
             "propertyMappings": [{
-                # Qualified name — the identity the matrix records (M5d).
+                # Qualified name — the identity the matrix records.
                 "sourceProperty": "src:newProp",
                 "action": "create-property",
                 "reviewStatus": "accepted",
@@ -340,7 +340,7 @@ class TestNiemOWLPatterns:
             "augmentationType": "PersonAugmentationType",
             "augmentsType": "nc:PersonType",
             "propertyMappings": [{
-                # Qualified name — the identity the matrix records (M5d).
+                # Qualified name — the identity the matrix records.
                 "sourceProperty": "src:existingProp",
                 "action": "reuse-property",
                 "targetProperty": "nc:PersonName",
@@ -355,7 +355,7 @@ class TestNiemOWLPatterns:
         # (it already exists on the target type)
         assert "existingProp" not in ext_ttl
 
-    # -- M5d: accepted reuse-property decisions on reuse/extend classes -----
+    # -- accepted reuse-property decisions on reuse/extend classes -----
     @staticmethod
     def _reuse_property_matrix(action, target, source_property="src:existingProp"):
         entry = {
@@ -403,7 +403,7 @@ class TestNiemOWLPatterns:
         assert "rdfs:domain" not in ttl
         assert "owl:DatatypeProperty" not in ttl
         # The class itself is still emitted and still anchored on its target,
-        # and the decision is recorded as an anonymous restriction (M5f).
+        # and the decision is recorded as an anonymous restriction.
         assert "rdfs:subClassOf nc:PersonType" in ttl
         assert "owl:onProperty nc:PersonName" in ttl
 

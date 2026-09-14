@@ -63,6 +63,37 @@ def source_prefix(inventory):
     return classes[0]["qname"].split(":")[0] if classes else ""
 
 
+def source_namespace_bindings(inventory, target_ns_map, edge_prefix):
+    """Map source prefixes to (emitted prefix, URI), avoiding target collisions.
+
+    QName lookup keys stay unchanged. Both emitters use the same stable alias
+    only when one prefix would otherwise identify two different namespaces.
+    """
+    source = {prefix.rstrip(":"): uri for uri, prefix in inventory.get("namespaceMap", {}).items()}
+    source.update({ns["prefix"].rstrip(":"): ns["namespace"]
+                   for ns in inventory.get("augmentingNamespaces", [])})
+    reserved = {**target_ns_map, edge_prefix.rstrip(":"): None, "ext": None,
+                "owl": "http://www.w3.org/2002/07/owl#",
+                "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+                "xsd": XSD, "xs": XSD, "skos": "http://www.w3.org/2004/02/skos/core#",
+                "sh": "http://www.w3.org/ns/shacl#", "dcterms": "http://purl.org/dc/terms/"}
+    occupied = set(reserved) | set(source)
+    bindings = {}
+    for prefix, uri in sorted(source.items()):
+        if prefix == source_prefix(inventory):
+            continue  # primary source properties get the edge/ext namespace
+        emitted = prefix
+        if prefix in reserved and reserved[prefix] != uri:
+            emitted = f"source_{prefix}"
+            suffix = 2
+            while emitted in occupied:
+                emitted = f"source_{prefix}_{suffix}"
+                suffix += 1
+            occupied.add(emitted)
+        bindings[prefix] = (emitted, uri)
+    return bindings
+
+
 def local_name(qname_or_iri):
     """Extract local name from qname (prefix:Foo → Foo) or IRI."""
     if ":" in qname_or_iri and not qname_or_iri.startswith("http"):
@@ -109,27 +140,18 @@ def infer_domains_from_shapes(properties, shapes):
 
 
 def assign_properties_to_classes(properties, all_active_classes, shape_domains):
-    """Assign properties to classes using explicit domains, then SHACL inference."""
+    """Combine explicit domains and active SHACL associations for each property."""
     assigned = {}
     unassigned = []
 
     for prop in properties:
         qname = prop["qname"]
-        domains = prop["domain"]
-
-        if domains:
-            active_domains = [d for d in domains if d in all_active_classes]
-            if active_domains:
-                assigned[qname] = active_domains
-                continue
-
-        if qname in shape_domains:
-            shape_classes = [d for d in shape_domains[qname] if d in all_active_classes]
-            if shape_classes:
-                assigned[qname] = shape_classes
-                continue
-
-        unassigned.append(qname)
+        associations = set(prop["domain"]) | shape_domains.get(qname, set())
+        active = sorted(associations & set(all_active_classes))
+        if active:
+            assigned[qname] = active
+        else:
+            unassigned.append(qname)
 
     return assigned, unassigned
 

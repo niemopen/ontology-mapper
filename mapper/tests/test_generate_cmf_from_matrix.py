@@ -142,6 +142,95 @@ def _build(matrix, inventory, ctx=None, target_ns_map=None):
     return builder.build()
 
 
+def test_explicit_domain_and_subclass_shape_keep_both_reviewed_occurrences():
+    from rdflib import Graph, RDFS, OWL, URIRef
+    from .test_generate_edge_ontology import TestNiemOWLPatterns
+
+    inv = _make_inventory(
+        classes=[_make_class("src:A"), _make_class("src:B", sub_class_of=["src:A"])],
+        dt_props=[_make_dt_prop("src:code", domain=["src:A"])],
+        shapes=[_make_shape("src:B", [_make_shape_prop("src:code", 1, 1)])])
+    matrix = _make_matrix([_make_mapping(q, "reuse", target, property_mappings=[
+        _make_prop_mapping("src:code", "reuse-property", "nc:CodeText")])
+        for q, target in [("src:A", "nc:BaseType"), ("src:B", "nc:SpecialType")]])
+    [b] = [cls for cls in _build(matrix, inv).classes if cls.name == "BType"]
+    assert [(p.property_ref, p.min_occurs, p.max_occurs) for p in b.properties] == [("nc.CodeText", 1, "1")]
+    files = TestNiemOWLPatterns._run_generation(inv, matrix)
+    graph = Graph().parse(data=files["test-edge-core.ttl"], format="turtle")
+    b_ref = URIRef("http://testorg.gov/test/edge#BType")
+    assert any(graph.value(r, OWL.onProperty) is not None for r in graph.objects(b_ref, RDFS.subClassOf))
+
+
+@pytest.mark.parametrize("action", ["reuse", "extend", "augment"])
+@pytest.mark.parametrize("collision", [False, True])
+@pytest.mark.parametrize("object_property", [False, True])
+def test_source_and_target_namespace_identities_agree_in_both_formats(action, collision, object_property):
+    from rdflib import Graph, RDFS, SH, OWL, URIRef
+    from .test_generate_edge_ontology import TestNiemOWLPatterns
+
+    target_uri = "https://example.org/target-nc/"
+    source_uri = "https://example.org/source-nc/" if collision else target_uri
+    inv = _make_inventory(classes=[_make_class("src:X")],
+        dt_props=[_make_dt_prop("nc:custom", domain=["src:X"]), _make_dt_prop("src:standard", domain=["src:X"])],
+        shapes=[_make_shape("src:X", [_make_shape_prop("nc:custom", 1, 1), _make_shape_prop("src:standard")])])
+    if object_property:
+        inv["datatypeProperties"] = inv["datatypeProperties"][1:]
+        inv["objectProperties"] = [_make_obj_prop("nc:custom", domain=["src:X"], range_list=["nc:OtherType"])]
+    inv["namespaceMap"] = {source_uri: "nc:"}
+    inv["augmentingNamespaces"] = [{"prefix": "nc", "namespace": source_uri}]
+    matrix = _make_matrix([_make_mapping("src:X", action, "nc:BaseType", property_mappings=[
+        _make_prop_mapping("nc:custom"), _make_prop_mapping("src:standard", "reuse-property", "nc:KnownText")])])
+    model = _build(matrix, inv, target_ns_map={"nc": target_uri})
+    namespaces = {ns.ns_id: ns.uri for ns in model.namespaces}
+    assert namespaces["nc"] == target_uri
+    [created] = model.properties
+    assert namespaces[created.namespace_ref] + created.name == source_uri + "custom"
+    if object_property:
+        prefix, local = created.class_ref.split(".", 1)
+        assert namespaces[prefix] + local == source_uri + "OtherType"
+    refs = [p.property_ref for cls in model.classes for p in cls.properties]
+    refs += [a.property_ref for ns in model.namespaces for a in ns.augmentations]
+    assert created.prop_id in refs and "nc.KnownText" in refs
+
+    files = TestNiemOWLPatterns._run_generation(inv, matrix, catalog={"namespaces": {"nc": target_uri}})
+    graph = Graph()
+    for name in ("test-edge-core.ttl", "test-edge-extensions.ttl", "test-edge-shapes.ttl"):
+        graph.parse(data=files[name], format="turtle")
+    assert (URIRef(source_uri + "custom"), None, None) in graph
+    assert URIRef(source_uri + "custom") in set(graph.objects(None, SH.path))
+    assert URIRef(target_uri + "KnownText") in set(graph.objects(None, OWL.onProperty))
+    if object_property:
+        assert graph.value(URIRef(source_uri + "custom"), RDFS.range) == URIRef(source_uri + "OtherType")
+    if action == "augment":
+        assert graph.value(URIRef(source_uri + "custom"), RDFS.domain) == URIRef(target_uri + "BaseType")
+
+
+@pytest.mark.parametrize("bounds", [(1, 2), (0, 0), (1, None), (None, 2)])
+def test_cmf_conjoins_all_active_bounds_independently_of_shape_order(bounds):
+    minimum, maximum = bounds
+    shapes = [_make_shape("src:A", [_make_shape_prop("src:p", min_count=minimum)]),
+              _make_shape("src:A", [_make_shape_prop("src:p", max_count=maximum)]),
+              {**_make_shape("src:A", [_make_shape_prop("src:p", 50, 50)]), "deactivated": True}]
+    matrix = _make_matrix([_make_mapping("src:A", "extend", "nc:BaseType")])
+    for ordering in (shapes, list(reversed(shapes))):
+        inv = _make_inventory(classes=[_make_class("src:A")],
+            dt_props=[_make_dt_prop("src:p", domain=["src:A"])], shapes=ordering)
+        [prop] = _build(matrix, inv).classes[0].properties
+        assert (prop.min_occurs, prop.max_occurs) == (minimum or 0, str(maximum) if maximum is not None else "unbounded")
+
+
+def test_namespace_used_only_by_object_range_is_declared():
+    inv = _make_inventory(classes=[_make_class("src:X")],
+        obj_props=[_make_obj_prop("src:link", domain=["src:X"], range_list=["nc:OtherType"])])
+    inv["namespaceMap"] = {"https://example.org/source/": "nc:"}
+    matrix = _make_matrix([_make_mapping("src:X", "extend", "nc:BaseType")])
+    model = _build(matrix, inv, target_ns_map={"nc": "https://example.org/target/"})
+    [prop] = model.properties
+    prefix, local = prop.class_ref.split(".", 1)
+    namespaces = {ns.ns_id: ns.uri for ns in model.namespaces}
+    assert namespaces[prefix] + local == "https://example.org/source/OtherType"
+
+
 # ---------------------------------------------------------------------------
 # Tests: Namespaces
 # ---------------------------------------------------------------------------
@@ -160,8 +249,8 @@ def test_cmf_uses_only_active_shape_bounds(deactivate):
 
 
 class TestConformanceTarget:
-    """M5c: every EXTENSION-category namespace asserts the target ontology's
-    conformance target, taken from its axiom pack — never hardcoded here."""
+    """every EXTENSION-category namespace asserts the target ontology's
+    conformance target, taken from its ontology-specific policy."""
     EXPECTED = "https://docs.oasis-open.org/niemopen/ns/specification/NDR/6.0/#ExtensionSchemaDocument"
 
     def test_extension_namespaces_assert_it(self):
@@ -377,7 +466,7 @@ class TestProperties:
         assert cls.properties[0].max_occurs == "1"
 
     def test_reuse_property_uses_target_ref(self):
-        """M5d: the matrix names the property by QNAME, so the lookup that
+        """the matrix names the property by QNAME, so the lookup that
         resolves the decision must key on the qname too."""
         inv = _make_inventory(
             classes=[_make_class("src:Foo")],
@@ -500,7 +589,7 @@ class TestAugmentations:
         assert aug.class_ref == "nc.FooType"
         assert "extra" in aug.property_ref
 
-    # -- M5c: the augment branch ------------------------------------------
+    # -- the augment branch ------------------------------------------
     @staticmethod
     def _augment_model(shapes=None, obj=False):
         prop = _make_obj_prop("src:extra", domain=["src:Foo"], range_list=["src:Bar"]) if obj \
@@ -519,7 +608,7 @@ class TestAugmentations:
 
     def test_augment_created_property_is_declared_not_just_referenced(self):
         """An augment class has no CmfClass, so its created properties were
-        referenced by every record and declared by none (M5c)."""
+        referenced by every record and declared by none."""
         model = self._augment_model()
         declared = {p.prop_id for p in model.properties}
         records = [a for ns in model.namespaces for a in ns.augmentations]

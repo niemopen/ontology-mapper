@@ -27,8 +27,19 @@ def test_shape_domains_preserve_all_active_named_targets():
     assert infer_domains_from_shapes([], shapes) == {"src:p": {"src:A", "src:B"}}
 
 
+def test_namespace_alias_avoids_other_source_and_target_prefixes():
+    from ontology_mapper.generation_utils import source_namespace_bindings
+
+    inv = {"classes": [{"qname": "src:A"}], "namespaceMap": {
+        "https://source.org/nc/": "nc:", "https://source.org/other/": "source_nc:"}}
+    target = {"nc": "https://target.org/nc/", "source_nc_2": "https://target.org/other/"}
+    bindings = source_namespace_bindings(inv, target, "edge:")
+    assert bindings["nc"] == ("source_nc_3", "https://source.org/nc/")
+    assert bindings["source_nc"] == ("source_nc", "https://source.org/other/")
+
+
 # ---------------------------------------------------------------------------
-# property_mapping_index / accepted_reuse_target — M5d
+# property_mapping_index / accepted_reuse_target
 # ---------------------------------------------------------------------------
 def _matrix(*property_mappings_by_concept):
     return {"mappings": [{"sourceConcept": concept, "propertyMappings": pms}

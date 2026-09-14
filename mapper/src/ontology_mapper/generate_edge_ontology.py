@@ -40,6 +40,7 @@ from ontology_mapper.generation_utils import (
     property_mapping_index,
     accepted_reuse_target,
     shape_property_is_evaluated,
+    source_namespace_bindings,
 )
 
 
@@ -110,6 +111,7 @@ def main():
     # Detect source ontology prefix (one home: generation_utils.source_prefix)
     _source = source_prefix(inv)
     SOURCE_PREFIX = f"{_source}:" if _source else ""
+    source_bindings = source_namespace_bindings(inv, target_ns_map, EDGE_PREFIX)
 
     # Build lookups
     mapping_by_concept = {m["sourceConcept"]: m for m in matrix["mappings"]}
@@ -118,6 +120,14 @@ def main():
     dt_by_qname = {p["qname"]: p for p in inv["datatypeProperties"]}
 
     # --- Closures that reference loaded data ---
+
+    def source_term_ref(qname):
+        if qname.startswith(("http://", "https://", "urn:")):
+            return URIRef(qname).n3()
+        prefix, separator, name = qname.partition(":")
+        if separator and prefix in source_bindings:
+            return f"{source_bindings[prefix][0]}:{name}"
+        return qname
 
     def _target_to_qname(target_type):
         """Return a valid Turtle reference for a target type.
@@ -154,9 +164,6 @@ def main():
             return URIRef(uris[term]).n3()
         if ":" in term:
             return term if term.split(":")[0] in bound_prefixes else None
-        uri = uris.get(term)
-        if uri:
-            return f"<{uri}>"
         return None
 
     def classify_concept(qname):
@@ -175,7 +182,7 @@ def main():
             return "skos:Concept"
         if range_iri == OWL_CLASS:
             return "owl:Class"
-        if is_source_class_ref(range_iri):
+        if is_source_class_ref(range_iri) or range_iri in class_by_qname:
             action, target = classify_concept(range_iri)
             if action == "reuse" and target:
                 return _target_to_qname(target)
@@ -195,6 +202,8 @@ def main():
                 return None
             else:
                 return None
+        if range_iri.partition(":")[0] in source_bindings:
+            return source_term_ref(range_iri)
         return None
 
     def edge_prop_prefix(prop_qname, cls_action):
@@ -254,7 +263,7 @@ def main():
             return None
 
         if not prop_qname.startswith(SOURCE_PREFIX):
-            return prop_qname
+            return source_term_ref(prop_qname)
         return edge_prop_prefix(prop_qname, cls_action) + prop_local
 
     # --- Classify concepts ---
@@ -421,11 +430,10 @@ def main():
         # Declare augmenting namespace prefixes
         declared = {EDGE_PREFIX.rstrip(":"), "ext", "owl", "rdfs",
                      "xsd", "skos", "dcterms", "sh"}
-        for aug in inv.get("augmentingNamespaces", []):
-            prefix = aug["prefix"]
-            ns = aug["namespace"]
-            lines.append(f"@prefix {prefix + ':':<10s} <{ns}> .")
-            declared.add(prefix)
+        for prefix, ns in source_bindings.values():
+            if prefix not in declared:
+                lines.append(f"@prefix {prefix + ':':<10s} <{ns}> .")
+                declared.add(prefix)
         # Scan mapping matrix for target ontology prefixes not yet declared
         # (class targets AND reused property qualified names)
         for m in matrix["mappings"]:
@@ -583,7 +591,7 @@ def main():
             prop = dt_by_qname[pqname]
             prop_local = local_name(pqname)
             if not pqname.startswith(SOURCE_PREFIX):
-                prop_ref = pqname
+                prop_ref = source_term_ref(pqname)
             else:
                 prop_ref = prefix + prop_local
             range_vals = prop["range"]
@@ -599,7 +607,7 @@ def main():
                 continue
             prop = obj_by_qname[pqname]
             prop_local = local_name(pqname)
-            prop_ref = pqname if not pqname.startswith(SOURCE_PREFIX) else prefix + prop_local
+            prop_ref = source_term_ref(pqname) if not pqname.startswith(SOURCE_PREFIX) else prefix + prop_local
             plabel = prop.get("label", prop_local)
             range_vals = prop["range"]
             if range_vals:

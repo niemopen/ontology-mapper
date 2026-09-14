@@ -119,11 +119,19 @@ target property without redeclaring its domain or range. OWL retains those
 references even without source shapes; CMF augmentation records retain borrowed
 properties and their occurrence bounds.
 
+Source namespace prefixes that collide with a different target URI receive
+deterministic aliases from `source_namespace_bindings`; declarations and
+references share those aliases in OWL and CMF. Lookup keys keep source QNames.
+
 SHACL extraction preserves all named targets, zero bounds, severity and
 deactivation. Consumers ignore deactivated constraints and expression paths
 that do not identify a property. Shape-based property assignment does not add
 global OWL domain assertions. NIEM extension conformance policy lives in
 `ontology_specific.extension_conformance_target`.
+
+CMF combines all active shape bounds for a source class/property by taking the
+maximum minimum and minimum maximum. Different source occurrences mapped onto
+one target remain separate records.
 
 ### Catalog outputs (consumed by search and indexing)
 

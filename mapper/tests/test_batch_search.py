@@ -144,7 +144,7 @@ class TestSanitizeFilename:
 # ---------------------------------------------------------------------------
 
 class TestPropertyQname:
-    """M5d: the source ontology's own qname is the property's identity."""
+    """the source ontology's own qname is the property's identity."""
 
     def test_carried_qname_wins(self):
         prop = {"name": "fiscalYearCode", "qname": "fin:fiscalYearCode"}

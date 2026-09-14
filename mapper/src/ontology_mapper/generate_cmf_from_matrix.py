@@ -29,6 +29,7 @@ from ontology_mapper.generation_utils import (
     accepted_reuse_target,
     shape_target_classes,
     shape_property_is_evaluated,
+    source_namespace_bindings,
 )
 from ontology_mapper.ontology_specific import extension_conformance_target
 
@@ -116,6 +117,7 @@ class MatrixToCmfBuilder:
         # Edge/ext prefix for CMF ids (strip trailing ':' and '-edge:')
         self._edge_prefix = ctx.edge_prefix.rstrip(":")  # e.g. "dbpi-edge"
         self._ext_prefix = "ext"
+        self._source_bindings = source_namespace_bindings(inventory, target_ns_map, self._edge_prefix)
 
         # Classified concepts (populated by _classify_concepts)
         self._reuse = []     # (qname, target_type, label, comment)
@@ -132,10 +134,11 @@ class MatrixToCmfBuilder:
                 for prop in shape.get("properties", []):
                     if not prop.get("path") or not shape_property_is_evaluated(prop):
                         continue        # a SHACL path expression names no property
-                    self._shacl_cardinality[(cls, prop["path"])] = {
-                        "minCount": prop.get("minCount"),
-                        "maxCount": prop.get("maxCount"),
-                    }
+                    bounds = self._shacl_cardinality.setdefault((cls, prop["path"]), {})
+                    for key, combine in (("minCount", max), ("maxCount", min)):
+                        value = prop.get(key)
+                        if value is not None:
+                            bounds[key] = combine(bounds.get(key, value), value)
 
     def build(self) -> CmfModel:
         """Build the complete CmfModel."""
@@ -223,15 +226,16 @@ class MatrixToCmfBuilder:
                 self._add_target_ns(model, accepted_reuse_target(pm), seen_prefixes)
 
         # Source namespace for cross-namespace properties
-        source_ns_map = {prefix.rstrip(":"): uri
-                         for uri, prefix in self.inventory.get("namespaceMap", {}).items()}
-        source_ns_map.update({n["prefix"].rstrip(":"): n["namespace"]
-                              for n in self.inventory.get("augmentingNamespaces", [])})
-        for prop in self.inventory["objectProperties"] + self.inventory["datatypeProperties"]:
-            if not prop["qname"].startswith(self._source_prefix):
-                prefix = _qname_prefix(prop["qname"])
+        properties = self.inventory["objectProperties"] + self.inventory["datatypeProperties"]
+        source_refs = {prop["qname"] for prop in properties}
+        source_refs.update(r for prop in properties for r in prop.get("range", [])
+                           if _qname_prefix(r) in self._source_bindings)
+        for qname in sorted(source_refs):
+            if not qname.startswith(self._source_prefix):
+                prefix = _qname_prefix(qname)
+                prefix, uri = self._source_bindings.get(prefix, (
+                    prefix, self.target_ns_map.get(prefix, f"urn:unknown:{prefix}")))
                 if prefix and prefix not in seen_prefixes:
-                    uri = source_ns_map.get(prefix) or self.target_ns_map.get(prefix, f"urn:unknown:{prefix}")
                     model.namespaces.append(CmfNamespace(
                         ns_id=prefix, uri=uri, prefix=prefix,
                         category="EXTERNAL",
@@ -352,7 +356,8 @@ class MatrixToCmfBuilder:
         the model does not contain.
         """
         if not prop_qname.startswith(self._source_prefix):
-            return _qname_prefix(prop_qname)
+            prefix = _qname_prefix(prop_qname)
+            return self._source_bindings.get(prefix, (prefix, ""))[0]
         return self._edge_prefix if cls_action == "reuse" else self._ext_prefix
 
     def _emit_property(self, model: CmfModel, cmf_cls: CmfClass,
@@ -415,7 +420,7 @@ class MatrixToCmfBuilder:
         for r in ranges:
             if r.startswith(_XSD_PREFIX) or r.startswith(_XSD_SHORT):
                 continue
-            if r.startswith(self._source_prefix):
+            if r.startswith(self._source_prefix) or r in self._class_by_qname:
                 mapped = self._map_source_class_ref(r)
                 if mapped:
                     return mapped
@@ -423,6 +428,7 @@ class MatrixToCmfBuilder:
                 # External range — use as-is
                 prefix = _qname_prefix(r)
                 if prefix:
+                    prefix = self._source_bindings.get(prefix, (prefix, ""))[0]
                     return _cmf_id(prefix, local_name(r))
         return ""
 
