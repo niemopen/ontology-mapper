@@ -620,8 +620,9 @@ class TestNiemOWLPatterns:
         data.add((URIRef("urn:item"), RDF.type, target))
         assert not validate(data, shacl_graph=shapes)[0]
 
-    def test_catalog_uri_rendering_preserves_shared_target_minimum_policy(self):
-        from rdflib import Graph, SH
+    def test_catalog_uri_rendering_preserves_shared_source_requirements(self):
+        from rdflib import Graph, Literal, RDF, SH, URIRef
+        from pyshacl import validate
 
         inv = self._minimal_inventory(
             [{"qname": q, "label": q, "comment": "", "subClassOf": []} for q in ("src:A", "src:B")],
@@ -632,7 +633,12 @@ class TestNiemOWLPatterns:
             "namespaces": {"nc": "https://example.org/target/"},
             "types": [{"qname": "nc:BaseType", "uri": "https://example.org/target/BaseType"}]})
         shapes = Graph().parse(data=files["test-edge-shapes.ttl"], format="turtle")
-        assert [int(v) for v in shapes.objects(None, SH.minCount)] == [0, 0]
+        assert [int(v) for v in shapes.objects(None, SH.minCount)] == [1, 1]
+        data = Graph()
+        data.add((URIRef("urn:item"), RDF.type, URIRef("https://example.org/target/BaseType")))
+        assert not validate(data, shacl_graph=shapes, meta_shacl=True)[0]
+        data.add((URIRef("urn:item"), URIRef("http://testorg.gov/test/edge#flag"), Literal("present")))
+        assert validate(data, shacl_graph=shapes)[0]
 
     @pytest.mark.parametrize("catalog_uri", [False, True])
     @pytest.mark.parametrize("second_target", [
@@ -666,12 +672,13 @@ class TestNiemOWLPatterns:
                                   ("src:B", "src:q", "nc:QText", second_target))]}
         files = self._run_generation(inv, matrix, catalog=catalog)
         shapes = Graph().parse(data=files["test-edge-shapes.ttl"], format="turtle")
-        expected_minimum = 1 if second_target == "other:BaseType" else 0
-        assert [int(v) for v in shapes.objects(None, SH.minCount)] == [expected_minimum] * 2
+        assert [int(v) for v in shapes.objects(None, SH.minCount)] == [1, 1]
         data = Graph()
         data.add((URIRef("urn:item"), RDF.type, URIRef(target_uri + "BaseType")))
         data.add((URIRef("urn:item"), URIRef(target_uri + "PText"), Literal("a")))
         assert validate(data, shacl_graph=shapes, meta_shacl=True)[0]
+        data.remove((URIRef("urn:item"), URIRef(target_uri + "PText"), None))
+        assert not validate(data, shacl_graph=shapes)[0]
 
     @pytest.mark.parametrize("action_a", ["reuse", "extend", "augment"])
     @pytest.mark.parametrize("action_b", ["reuse", "extend", "augment"])
@@ -703,16 +710,162 @@ class TestNiemOWLPatterns:
             "types": [{"qname": "nc:BaseType", "uri": "https://example.org/target/BaseType"}]})
         shapes = Graph().parse(data=files["test-edge-shapes.ttl"], format="turtle")
         ontology = Graph().parse(data=files["test-edge-combined.ttl"], format="turtle")
-        shared = second_target != "other:BaseType"
         for cls, action in (("A", action_a), ("B", action_b)):
             shape = URIRef("http://testorg.gov/test/edge#" + cls + "Shape")
             prop_shape = shapes.value(shape, SH.property)
-            assert int(shapes.value(prop_shape, SH.minCount)) == (0 if shared and action != "extend" else 1)
+            assert int(shapes.value(prop_shape, SH.minCount)) == 1
             data = Graph()
             data += ontology
-            data.add((URIRef("urn:item"), RDF.type, shapes.value(shape, SH.targetClass)))
+            base_namespace = "other" if cls == "B" and second_target == "other:BaseType" else "target"
+            target = shapes.value(shape, SH.targetClass) or URIRef(f"https://example.org/{base_namespace}/BaseType")
+            data.add((URIRef("urn:item"), RDF.type, target))
             data.add((URIRef("urn:item"), shapes.value(prop_shape, SH.path), Literal("a")))
             assert validate(data, shacl_graph=shapes, meta_shacl=True, inference="none")[0]
             if action == "extend":
                 data.remove((URIRef("urn:item"), shapes.value(prop_shape, SH.path), None))
+                other = URIRef("http://testorg.gov/test/edge#" + ("B" if cls == "A" else "A") + "Shape")
+                other_property = shapes.value(other, SH.property)
+                data.add((URIRef("urn:item"), shapes.value(other_property, SH.path), Literal("other")))
                 assert not validate(data, shacl_graph=shapes, inference="none")[0]
+
+
+class TestSharedSourceProfiles:
+    SRC = "https://example.org/src/"
+    TARGET = "https://example.org/target/"
+    EXT = "http://testorg.gov/test/ext#"
+
+    @classmethod
+    def _generate(cls, source, actions=None, parents=None, targets=None, property_targets=None):
+        from rdflib import Graph
+        from ontology_mapper.extract_concepts import extract_shacl_shapes, make_to_qname
+
+        actions, parents, targets = actions or {}, parents or {}, targets or {}
+        property_targets = property_targets or {}
+        names = sorted({"A", "B"} | set(parents) | set(targets)
+                       | {parent for values in parents.values() for parent in values})
+        source_shapes = Graph().parse(data=f'''
+            @prefix src: <{cls.SRC}> .
+            @prefix sh: <http://www.w3.org/ns/shacl#> .
+            @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+            {source}
+        ''', format="turtle")
+        inv = TestNiemOWLPatterns._minimal_inventory(
+            [{"qname": "src:" + name, "label": name, "comment": "",
+              "subClassOf": ["src:" + parent for parent in parents.get(name, [])]} for name in names],
+            dt_props=[{"qname": "src:" + p, "label": p, "domain": [], "range": []} for p in ("p", "q")],
+            obj_props=[{"qname": "src:link", "label": "Link", "domain": [], "range": []}],
+            shapes=extract_shacl_shapes(source_shapes, make_to_qname({cls.SRC: "src:"})))
+        matrix = {"mappings": []}
+        for name in names:
+            action = actions.get(name, "reuse")
+            target = "nc:" + targets.get(name, "BaseType")
+            matrix["mappings"].append({
+                "sourceConcept": "src:" + name, "action": action, "targetType": target,
+                "baseType": target if action == "extend" else None,
+                "augmentsType": target if action == "augment" else None,
+                "reviewStatus": "accepted", "propertyMappings": [
+                    {"sourceProperty": "src:" + prop, "action": "reuse-property", "reviewStatus": "accepted",
+                     "targetProperty": "nc:" + property_targets.get((name, prop), mapped)}
+                    for prop, mapped in (("p", "PText"), ("q", "QText"), ("link", "Link"))]})
+        return TestNiemOWLPatterns._run_generation(
+            inv, matrix, catalog={"namespaces": {"nc": cls.TARGET}})
+
+    @classmethod
+    def _conforms(cls, files, values, target="BaseType", object_types=()):
+        from rdflib import Graph, Literal, RDF, URIRef
+        from pyshacl import validate
+
+        shapes = Graph().parse(data=files["test-edge-shapes.ttl"], format="turtle")
+        data = Graph().parse(data=files["test-edge-combined.ttl"], format="turtle")
+        data.add((URIRef("urn:item"), RDF.type, URIRef(target if ":" in target else cls.TARGET + target)))
+        for prop, items in values.items():
+            for value in items:
+                data.add((URIRef("urn:item"), URIRef(cls.TARGET + prop),
+                          value if isinstance(value, URIRef) else Literal(value)))
+        for obj, kind in object_types:
+            data.add((URIRef(obj), RDF.type, URIRef(cls.TARGET + kind)))
+        return validate(data, shacl_graph=shapes, meta_shacl=True, inference="none")[0]
+
+    @pytest.mark.parametrize("action_a", ["reuse", "extend", "augment"])
+    @pytest.mark.parametrize("action_b", ["reuse", "extend", "augment"])
+    def test_maxima_are_alternatives_across_all_actions(self, action_a, action_b):
+        files = self._generate('''
+            src:AShape a sh:NodeShape; sh:targetClass src:A;
+                sh:property [sh:path src:p; sh:minCount 0; sh:maxCount 1].
+            src:BShape a sh:NodeShape; sh:targetClass src:B;
+                sh:property [sh:path src:p; sh:minCount 0; sh:maxCount 2].
+        ''', actions={"A": action_a, "B": action_b})
+        target = self.EXT + "BType" if action_b == "extend" else "BaseType"
+        assert self._conforms(files, {"PText": ["one", "two"]}, target)
+        assert not self._conforms(files, {"PText": ["one", "two", "three"]}, target)
+        if action_a == "extend":
+            assert not self._conforms(files, {"PText": ["one", "two"]}, self.EXT + "AType")
+
+    @pytest.mark.parametrize("p_count,q_count,expected", [(1, 1, True), (2, 2, True), (1, 2, False), (2, 1, False), (0, 0, False)])
+    def test_each_alternative_requires_the_whole_source_profile(self, p_count, q_count, expected):
+        files = self._generate('''
+            src:AP a sh:NodeShape; sh:targetClass src:A; sh:property [sh:path src:p; sh:minCount 1; sh:maxCount 1].
+            src:AQ a sh:NodeShape; sh:targetClass src:A; sh:property [sh:path src:q; sh:minCount 1; sh:maxCount 1].
+            src:BP a sh:NodeShape; sh:targetClass src:B; sh:property [sh:path src:p; sh:minCount 2; sh:maxCount 2].
+            src:BQ a sh:NodeShape; sh:targetClass src:B; sh:property [sh:path src:q; sh:minCount 2; sh:maxCount 2].
+        ''')
+        assert self._conforms(files, {"PText": list(range(p_count)), "QText": list(range(q_count))}) == expected
+
+    @pytest.mark.parametrize("values,expected", [([], True), ([1], False), ([1, 2], True), ([1, 2, 3], False)])
+    def test_zero_and_positive_bounds_survive(self, values, expected):
+        files = self._generate('''
+            src:A a sh:NodeShape; sh:targetClass src:A; sh:property [sh:path src:p; sh:minCount 0; sh:maxCount 0].
+            src:B a sh:NodeShape; sh:targetClass src:B; sh:property [sh:path src:p; sh:minCount 2; sh:maxCount 2].
+        ''')
+        assert self._conforms(files, {"PText": values}) == expected
+
+    @pytest.mark.parametrize("values,expected", [(["one"], True), ([1, 2], True), ([1], False), (["one", 2], False)])
+    def test_datatypes_stay_with_their_source_bounds(self, values, expected):
+        files = self._generate('''
+            src:A a sh:NodeShape; sh:targetClass src:A; sh:property [sh:path src:p; sh:datatype xsd:string; sh:minCount 1; sh:maxCount 1].
+            src:B a sh:NodeShape; sh:targetClass src:B; sh:property [sh:path src:p; sh:datatype xsd:integer; sh:minCount 2; sh:maxCount 2].
+        ''')
+        assert self._conforms(files, {"PText": values}) == expected
+
+    @pytest.mark.parametrize("kind,expected", [("PersonType", True), ("LocationType", True), ("OtherType", False)])
+    def test_object_class_constraints_are_alternatives(self, kind, expected):
+        from rdflib import URIRef
+
+        files = self._generate('''
+            src:A a sh:NodeShape; sh:targetClass src:A; sh:property [sh:path src:link; sh:class src:Person; sh:minCount 1].
+            src:B a sh:NodeShape; sh:targetClass src:B; sh:property [sh:path src:link; sh:class src:Place; sh:minCount 1].
+        ''', targets={"Person": "PersonType", "Place": "LocationType"})
+        assert self._conforms(files, {"Link": [URIRef("urn:object")]}, object_types=[("urn:object", kind)]) == expected
+
+    @pytest.mark.parametrize("other_shape", ["", "src:B a sh:NodeShape; sh:targetClass src:B; sh:deactivated true; sh:property [sh:path src:p; sh:minCount 1].",
+        "src:B a sh:NodeShape; sh:targetClass src:B; sh:property [sh:path src:p; sh:minCount 1; sh:deactivated true]."])
+    def test_unconstrained_source_is_a_valid_alternative(self, other_shape):
+        files = self._generate('src:A a sh:NodeShape; sh:targetClass src:A; sh:property [sh:path src:p; sh:minCount 1].' + other_shape)
+        assert self._conforms(files, {})
+
+    @pytest.mark.parametrize("action", ["reuse", "extend", "augment"])
+    def test_inherited_constraints_use_child_property_mappings(self, action):
+        files = self._generate('''
+            src:A a sh:NodeShape; sh:targetClass src:A; sh:property [sh:path src:p; sh:maxCount 1].
+            src:B a sh:NodeShape; sh:targetClass src:B; sh:property [sh:path src:p; sh:maxCount 2].
+        ''', actions={"B": action}, parents={"B": ["A"]}, property_targets={("B", "p"): "QText"})
+        target = self.EXT + "BType" if action == "extend" else "BaseType"
+        assert self._conforms(files, {"PText": [1, 2], "QText": [1]}, target)
+        assert not self._conforms(files, {"PText": [1, 2], "QText": [1, 2]}, target)
+        if action == "extend":
+            assert not self._conforms(files, {"PText": [1], "QText": [1, 2]}, target)
+
+    @pytest.mark.parametrize("parents", [{"B": ["A"]}, {"B": ["A"], "C": ["B"]}, {"B": ["A"], "A": ["B"]}])
+    def test_direct_transitive_and_cyclic_inheritance(self, parents):
+        files = self._generate('''
+            src:A a sh:NodeShape; sh:targetClass src:A; sh:property [sh:path src:p; sh:maxCount 1].
+            src:B a sh:NodeShape; sh:targetClass src:B; sh:property [sh:path src:p; sh:maxCount 2].
+            src:C a sh:NodeShape; sh:targetClass src:C; sh:property [sh:path src:p; sh:maxCount 3].
+        ''', parents=parents)
+        assert self._conforms(files, {"PText": [1]})
+        assert not self._conforms(files, {"PText": [1, 2]})
+
+    def test_inherited_only_profile_is_not_unconstrained(self):
+        files = self._generate('src:A a sh:NodeShape; sh:targetClass src:A; sh:property [sh:path src:p; sh:minCount 1].', parents={"B": ["A"]})
+        assert self._conforms(files, {"PText": [1]})
+        assert not self._conforms(files, {})

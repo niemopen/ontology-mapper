@@ -632,6 +632,7 @@ def main():
         return "\n".join(lines)
 
     emitted_shape_names = set()
+    emitted_source_shapes = {}
 
     def emit_shape_block(source_shape, prefix, target_src=None):
         if not shape_property_is_evaluated(source_shape):
@@ -664,13 +665,17 @@ def main():
             shape_name = f"{base_name}_{suffix}"
             suffix += 1
         emitted_shape_names.add(shape_name)
+        emitted_source_shapes.setdefault(target_src, []).append(shape_name)
         is_shared = target_ref_identity(target_type) in shared_targets
 
         lines = []
         lines.append(f"\n# ── {local_name(target_src)} Shape ──")
         lines.append(f"{shape_name}")
         lines.append(f"    a sh:NodeShape ;")
-        lines.append(f"    sh:targetClass {target_type} ;")
+        # Shared base targets are validated by the complete source alternatives
+        # below. Extension targets still enforce their own complete profile.
+        if not is_shared:
+            lines.append(f"    sh:targetClass {target_type} ;")
         lines.append(f'    rdfs:label "{local_name(target_src)} Shape" ;')
         severity = source_shape.get("severity")
         if severity:
@@ -691,8 +696,6 @@ def main():
         for i, (prop, path_ref) in enumerate(emittable):
             path_local = local_name(prop["path"])
             min_count = prop.get("minCount")
-            if is_shared and min_count and min_count > 0:
-                min_count = 0
             max_count = prop.get("maxCount")
             dt = prop.get("datatype")
             cls = prop.get("class")
@@ -800,7 +803,7 @@ def main():
 <{EDGE_NS.rstrip('#')}/shapes>
     a owl:Ontology ;
     rdfs:label "{LABEL_PREFIX} Edge SHACL Shapes" ;
-    rdfs:comment "SHACL validation shapes. Shared target types have relaxed minCount constraints." ;
+    rdfs:comment "SHACL validation shapes. Shared target types accept complete source constraint alternatives." ;
     dcterms:created "{now_iso}"^^xsd:date ;
     owl:versionInfo "1.0.0" .
 
@@ -811,11 +814,35 @@ def main():
         shapes_header += f"#   {st} ← {', '.join(users)}\n"
 
     shapes_body = []
-    for shape in inv["shaclShapes"]:
-        for shape_target in shape_target_classes(shape):
-            block = emit_shape_block(shape, EDGE_PREFIX, shape_target)
-            if block:
-                shapes_body.append(block)
+    shared_source_classes = {q for target in shared_targets for q in target_type_users[target]}
+    for source_class in sorted(all_active_qnames):
+        applicable_classes = {source_class}
+        if source_class in shared_source_classes:
+            # sh:targetClass applies to subclass instances. Re-render inherited
+            # constraints in this child's property mapping context, rather than
+            # referencing a parent's potentially different target properties.
+            pending = list(class_by_qname[source_class].get("subClassOf", []))
+            while pending:
+                parent = pending.pop()
+                if parent not in applicable_classes:
+                    applicable_classes.add(parent)
+                    pending.extend(class_by_qname.get(parent, {}).get("subClassOf", []))
+        for shape in inv["shaclShapes"]:
+            if applicable_classes.intersection(shape_target_classes(shape)):
+                block = emit_shape_block(shape, EDGE_PREFIX, source_class)
+                if block:
+                    shapes_body.append(block)
+
+    for target in sorted(shared_targets):
+        branches = []
+        for source_class in sorted(target_type_users[target]):
+            refs = emitted_source_shapes.get(source_class, [])
+            # Multiple shapes on one source class are conjunctive. A class
+            # with no active constraints remains a valid unconstrained branch.
+            branches.append(f"        [ sh:and ({' '.join(refs)}) ]" if refs else "        []")
+        shapes_body.append(
+            f"\n[] a sh:NodeShape ;\n    sh:targetClass {target} ;\n    sh:or (\n"
+            + "\n".join(branches) + "\n    ) .\n")
 
     shapes_ttl = shapes_header + "\n".join(shapes_body) + "\n"
 
@@ -961,7 +988,7 @@ def main():
     print(f"  SHACL shapes: {len(shapes_body)}")
     for term in sorted(set(dropped_target_terms)):
         print(f"  WARNING: target term not emitted (no bound prefix or catalog URI): {term}")
-    print(f"  Shared targets (relaxed minCount): {sorted(shared_targets)}")
+    print(f"  Shared targets (source alternatives): {sorted(shared_targets)}")
     print(f"  Codelists: {len(inv['codelistSchemes'])} schemes, {total_concepts} concepts")
     if consolidations:
         for parent, absorbed, scheme in consolidations:

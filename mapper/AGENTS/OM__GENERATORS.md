@@ -133,8 +133,12 @@ global OWL domain assertions. NIEM extension conformance policy lives in
 `ontology_specific.extension_conformance_target`.
 Distinct source shapes keep separate emitted names, including when they target
 the same class, so their severity values cannot merge into an invalid shape.
-Shared-base minimum relaxation counts reuse, augmentation and extension mappings
-by resolved target identity; extension-specific shapes keep their required fields.
+Shared targets group reuse, augmentation and extension mappings by resolved IRI.
+Their SHACL `sh:or` branches preserve each source class's complete constraints,
+including inherited shapes rendered in the child's mapping context. Multiple
+shapes within a source branch remain conjunctive through `sh:and`; a source
+without active constraints contributes an unconstrained branch. Extension shapes
+retain their own targets and complete constraints, including required fields.
 
 CMF combines all active shape bounds for a source class/property by taking the
 maximum minimum and minimum maximum. Different source occurrences mapped onto
