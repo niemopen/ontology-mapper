@@ -122,12 +122,17 @@ properties and their occurrence bounds.
 Source namespace prefixes that collide with a different target URI receive
 deterministic aliases from `source_namespace_bindings`; declarations and
 references share those aliases in OWL and CMF. Lookup keys keep source QNames.
+OWL class targets use the same bound-prefix/catalog-URI resolution as property
+targets; unresolved references are omitted with a warning. Source datatype
+references preserve their IRIs in property ranges and SHACL constraints.
 
 SHACL extraction preserves all named targets, zero bounds, severity and
 deactivation. Consumers ignore deactivated constraints and expression paths
 that do not identify a property. Shape-based property assignment does not add
 global OWL domain assertions. NIEM extension conformance policy lives in
 `ontology_specific.extension_conformance_target`.
+Distinct source shapes keep separate emitted names, including when they target
+the same class, so their severity values cannot merge into an invalid shape.
 
 CMF combines all active shape bounds for a source class/property by taking the
 maximum minimum and minimum maximum. Different source occurrences mapped onto

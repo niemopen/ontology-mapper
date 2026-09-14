@@ -130,18 +130,11 @@ def main():
         return qname
 
     def _target_to_qname(target_type):
-        """Return a valid Turtle reference for a target type.
-
-        Prefixed qnames (e.g. "nc:AddressType") pass through.
-        Bare identifiers (e.g. SALI hashes) are wrapped as full IRIs
-        using the catalog's URI lookup.
-        """
-        if not target_type or ":" in target_type:
-            return target_to_qname(target_type)
-        uri = target_type_uris.get(target_type)
-        if uri:
-            return f"<{uri}>"
-        return target_to_qname(target_type)
+        """Resolve class targets through the same grounding as property targets."""
+        rendered = target_term_ref(target_type, target_type_uris)
+        if target_type and rendered is None:
+            dropped_target_terms.append(f"class -> {target_type}")
+        return rendered
 
     dropped_target_terms = []
 
@@ -282,7 +275,8 @@ def main():
         elif action == "augment":
             m = mapping_by_concept[qname]
             raw_augmented = m.get("augmentsType") or target
-            augmented_type = _target_to_qname(raw_augmented) if raw_augmented else "owl:Thing"
+            # Render after the prefix header is built, exactly once.
+            augmented_type = raw_augmented or "owl:Thing"
             augment_classes.append((qname, target, cls["label"], cls["comment"],
                                    augmented_type))
 
@@ -471,6 +465,7 @@ def main():
     # than emitting an unparseable document.
     bound_prefixes = set()
     PREFIXES = build_prefixes()
+    shared_target_refs = {target_term_ref(t, target_type_uris) for t in shared_targets}
 
     def emit_class_block(cls_qname, target_type, label, comment, prefix, obj_props, dt_props):
         type_name = prefix + edge_class_name(cls_qname)
@@ -484,7 +479,8 @@ def main():
         lines.append(f"\n# ── {label or local_name(cls_qname)} ──")
         lines.append(f"{type_name}")
         lines.append(f"    a owl:Class ;")
-        lines.append(f"    rdfs:subClassOf {superclass} ;")
+        if superclass:
+            lines.append(f"    rdfs:subClassOf {superclass} ;")
         lines.append(f'    rdfs:label "{label or local_name(cls_qname)}" ;')
         if comment:
             safe_comment = comment.replace('"', '\\"').replace('\n', ' ')
@@ -497,7 +493,7 @@ def main():
             prop_local = local_name(pqname)
             prop_ref = resolve_property_ref(pqname, cls_qname, action)
             range_vals = prop["range"]
-            xsd_type = xsd_qname(range_vals[0]) if range_vals else "xsd:string"
+            xsd_type = source_term_ref(xsd_qname(range_vals[0])) if range_vals else "xsd:string"
             plabel = prop.get("label", prop_local)
             lines.append(f"{prop_ref}")
             lines.append(f"    a owl:DatatypeProperty ;")
@@ -537,18 +533,20 @@ def main():
         """
         lines = []
         lines.append(f"\n# ── Augmentation of {augmented_type} (from {local_name(cls_qname)}) ──")
-        lines.extend(emit_reuse_restrictions(cls_qname, _target_to_qname(augmented_type)))
+        type_ref = _target_to_qname(augmented_type)
+        if type_ref:
+            lines.extend(emit_reuse_restrictions(cls_qname, type_ref))
 
         for pqname, prop in dt_props:
             prop_local = local_name(pqname)
             prop_ref = resolve_property_ref(pqname, cls_qname, "augment")
             range_vals = prop["range"]
-            xsd_type = xsd_qname(range_vals[0]) if range_vals else "xsd:string"
+            xsd_type = source_term_ref(xsd_qname(range_vals[0])) if range_vals else "xsd:string"
             plabel = prop.get("label", prop_local)
             lines.append(f"{prop_ref}")
             lines.append(f"    a owl:DatatypeProperty ;")
-            if cls_qname in prop.get("domain", []):
-                lines.append(f"    rdfs:domain {_target_to_qname(augmented_type)} ;")
+            if type_ref and cls_qname in prop.get("domain", []):
+                lines.append(f"    rdfs:domain {type_ref} ;")
             lines.append(f"    rdfs:range {xsd_type} ;")
             lines.append(f'    rdfs:label "{plabel}" .')
             lines.append("")
@@ -566,8 +564,8 @@ def main():
                 range_ref = "owl:Thing"
             lines.append(f"{prop_ref}")
             lines.append(f"    a owl:ObjectProperty ;")
-            if cls_qname in prop.get("domain", []):
-                lines.append(f"    rdfs:domain {_target_to_qname(augmented_type)} ;")
+            if type_ref and cls_qname in prop.get("domain", []):
+                lines.append(f"    rdfs:domain {type_ref} ;")
             lines.append(f"    rdfs:range {range_ref} ;")
             lines.append(f'    rdfs:label "{plabel}" .')
             lines.append("")
@@ -595,7 +593,7 @@ def main():
             else:
                 prop_ref = prefix + prop_local
             range_vals = prop["range"]
-            xsd_type = xsd_qname(range_vals[0]) if range_vals else "xsd:string"
+            xsd_type = source_term_ref(xsd_qname(range_vals[0])) if range_vals else "xsd:string"
             plabel = prop.get("label", prop_local)
             lines.append(f"{prop_ref}")
             lines.append(f"    a owl:DatatypeProperty ;")
@@ -623,6 +621,8 @@ def main():
             lines.append("")
         return "\n".join(lines)
 
+    emitted_shape_names = set()
+
     def emit_shape_block(source_shape, prefix, target_src=None):
         if not shape_property_is_evaluated(source_shape):
             return ""
@@ -635,19 +635,26 @@ def main():
         action, target = classify_concept(target_src)
         if action == "reuse" and target:
             target_type = _target_to_qname(target)
-            shape_name = prefix + local_name(target_src) + "Shape"
         elif action == "extend":
             target_type = "ext:" + edge_class_name(target_src)
-            shape_name = prefix + local_name(target_src) + "Shape"
         elif action == "augment":
             m = mapping_by_concept.get(target_src, {})
             augmented = m.get("augmentsType") or target
             target_type = _target_to_qname(augmented) if augmented else "owl:Thing"
-            shape_name = prefix + local_name(target_src) + "Shape"
         else:
             return ""
+        if target_type is None:
+            return ""
 
-        is_shared = target_type in shared_targets
+        # Distinct source shapes must not merge severities or constraints.
+        base_name = prefix + local_name(target_src) + "Shape"
+        shape_name = base_name
+        suffix = 2
+        while shape_name in emitted_shape_names:
+            shape_name = f"{base_name}_{suffix}"
+            suffix += 1
+        emitted_shape_names.add(shape_name)
+        is_shared = target_type in shared_target_refs
 
         lines = []
         lines.append(f"\n# ── {local_name(target_src)} Shape ──")
@@ -689,7 +696,7 @@ def main():
                 severity_iri = severity if ":" in severity else "http://www.w3.org/ns/shacl#" + severity
                 constraint_parts.append(f"        sh:severity {URIRef(severity_iri).n3()}")
             if dt:
-                constraint_parts.append(f"        sh:datatype {xsd_qname(dt)}")
+                constraint_parts.append(f"        sh:datatype {source_term_ref(xsd_qname(dt))}")
             elif cls:
                 mapped_cls = map_range_ref(cls)
                 if mapped_cls:

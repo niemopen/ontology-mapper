@@ -530,3 +530,106 @@ class TestNiemOWLPatterns:
         assert conforms == (deactivate is not None)
         if deactivate is None:
             assert list(shapes.subjects(SH.severity, URIRef(prop["severity"])))
+
+    @pytest.mark.parametrize("action", ["reuse", "extend", "augment"])
+    @pytest.mark.parametrize("form", ["iri", "catalog-qname", "bare-id", "bound-qname", "unresolved"])
+    def test_class_references_use_grounded_target_terms(self, action, form, capsys):
+        from rdflib import Graph, RDFS, SH, URIRef
+
+        target_uri = "https://example.org/target/BaseType"
+        target = {"iri": target_uri, "bare-id": "BaseId", "unresolved": "missing:BaseType"}.get(form, "nc:BaseType")
+        catalog = {"namespaces": {"nc": "https://example.org/target/"} if form == "bound-qname" else {}}
+        if form in ("catalog-qname", "bare-id"):
+            catalog["types"] = [{"qname": target, "uri": target_uri}]
+        inv = self._minimal_inventory(
+            [{"qname": "src:Foo", "label": "Foo", "comment": "", "subClassOf": []}],
+            dt_props=[{"qname": "src:code", "label": "Code", "domain": ["src:Foo"], "range": []}],
+            obj_props=[{"qname": "src:link", "label": "Link", "domain": ["src:Foo"], "range": ["src:Foo"]}],
+            shapes=[{"targetClass": "src:Foo", "properties": [{"path": "src:link", "class": "src:Foo"}]}])
+        matrix = {"mappings": [{"sourceConcept": "src:Foo", "action": action, "targetType": target,
+                               "reviewStatus": "accepted", "propertyMappings": []}]}
+        files = self._run_generation(inv, matrix, catalog=catalog)
+        for ttl in files.values():
+            Graph().parse(data=ttl, format="turtle")
+        graph = Graph().parse(data=files["test-edge-combined.ttl"], format="turtle")
+        shapes = Graph().parse(data=files["test-edge-shapes.ttl"], format="turtle")
+        if form == "unresolved":
+            assert target in capsys.readouterr().out
+            assert not list(graph.objects(None, RDFS.subClassOf))
+            if action != "extend":
+                assert not list(shapes.objects(None, SH.targetClass))
+        else:
+            assert "WARNING" not in capsys.readouterr().out
+            predicate = RDFS.domain if action == "augment" else RDFS.subClassOf
+            assert list(graph.subjects(predicate, URIRef(target_uri)))
+            if action != "extend":
+                assert list(graph.subjects(RDFS.range, URIRef(target_uri)))
+                assert list(shapes.subjects(SH.targetClass, URIRef(target_uri)))
+                assert list(shapes.subjects(SH["class"], URIRef(target_uri)))
+
+    @pytest.mark.parametrize("action", ["reuse", "extend", "augment", "global"])
+    @pytest.mark.parametrize("datatype,expected", [
+        ("nc:Code", "https://example.org/source-nc/Code"),
+        ("https://example.org/source-nc/Code", "https://example.org/source-nc/Code"),
+        ("xs:string", "http://www.w3.org/2001/XMLSchema#string"),
+    ])
+    def test_source_datatype_references_preserve_namespace(self, action, datatype, expected):
+        from rdflib import Graph, RDFS, SH, URIRef
+
+        inv = self._inventory_with_one_property()
+        inv["namespaceMap"] = {"https://example.org/src/": "src:", "https://example.org/source-nc/": "nc:"}
+        inv["datatypeProperties"][0]["range"] = [datatype]
+        if action == "global":
+            inv["datatypeProperties"][0]["domain"] = []
+        else:
+            inv["shaclShapes"] = [{"targetClass": "src:Foo", "properties": [
+                {"path": "src:existingProp", "datatype": datatype}]}]
+        matrix = {"mappings": [{"sourceConcept": "src:Foo", "action": "reuse" if action == "global" else action,
+                               "targetType": "nc:BaseType", "propertyMappings": []}]}
+        files = self._run_generation(inv, matrix, catalog={"namespaces": {"nc": "https://example.org/target/"}})
+        graph = Graph().parse(data=files["test-edge-combined.ttl"], format="turtle")
+        assert list(graph.objects(None, RDFS.range)) == [URIRef(expected)]
+        shapes = Graph().parse(data=files["test-edge-shapes.ttl"], format="turtle")
+        assert list(shapes.objects(None, SH.datatype)) == ([] if action == "global" else [URIRef(expected)])
+
+    def test_distinct_source_shapes_preserve_severity_and_remain_valid(self):
+        from rdflib import Graph, RDF, SH, URIRef
+        from pyshacl import validate
+        from ontology_mapper.extract_concepts import extract_shacl_shapes, make_to_qname
+
+        source_shapes = Graph().parse(data='''
+            @prefix src: <https://example.org/src/> .
+            @prefix sh: <http://www.w3.org/ns/shacl#> .
+            src:Required a sh:NodeShape ; sh:targetClass src:Foo ; sh:severity sh:Warning ;
+                sh:property [ sh:path src:existingProp ; sh:minCount 1 ] .
+            src:Bounded a sh:NodeShape ; sh:targetClass src:Foo ;
+                sh:property [ sh:path src:existingProp ; sh:maxCount 2 ] .
+        ''', format="turtle")
+        assert validate(Graph(), shacl_graph=source_shapes, meta_shacl=True)[0]
+        inv = self._inventory_with_one_property()
+        inv["shaclShapes"] = extract_shacl_shapes(source_shapes, make_to_qname({"https://example.org/src/": "src:"}))
+        files = self._run_generation(inv, self._reuse_property_matrix("reuse", "nc:PersonType"))
+        shapes = Graph().parse(data=files["test-edge-shapes.ttl"], format="turtle")
+        nodes = list(shapes.subjects(RDF.type, SH.NodeShape))
+        assert len(nodes) == 2
+        assert {shapes.value(n, SH.severity) for n in nodes} == {SH.Warning, SH.Violation}
+        assert all(len(list(shapes.objects(n, SH.severity))) == 1 for n in nodes)
+        assert validate(Graph(), shacl_graph=shapes, meta_shacl=True)[0]
+        target = URIRef("https://docs.oasis-open.org/niemopen/ns/model/niem-core/6.0/PersonType")
+        data = Graph()
+        data.add((URIRef("urn:item"), RDF.type, target))
+        assert not validate(data, shacl_graph=shapes)[0]
+
+    def test_catalog_uri_rendering_preserves_shared_target_minimum_policy(self):
+        from rdflib import Graph, SH
+
+        inv = self._minimal_inventory(
+            [{"qname": q, "label": q, "comment": "", "subClassOf": []} for q in ("src:A", "src:B")],
+            dt_props=[{"qname": "src:flag", "label": "Flag", "domain": [], "range": []}],
+            shapes=[{"targetClasses": ["src:A", "src:B"], "properties": [{"path": "src:flag", "minCount": 1}]}])
+        matrix = {"mappings": [{"sourceConcept": q, "action": "reuse", "targetType": "nc:BaseType"} for q in ("src:A", "src:B")]}
+        files = self._run_generation(inv, matrix, catalog={
+            "namespaces": {"nc": "https://example.org/target/"},
+            "types": [{"qname": "nc:BaseType", "uri": "https://example.org/target/BaseType"}]})
+        shapes = Graph().parse(data=files["test-edge-shapes.ttl"], format="turtle")
+        assert [int(v) for v in shapes.objects(None, SH.minCount)] == [0, 0]
