@@ -8,8 +8,9 @@ The function dispatches to one of two provider paths:
     user's ChatGPT/Codex subscription. No per-token cost, no API key.
     OpenAI structured-output strict mode is enforced via an automatic
     schema rewriter (additionalProperties=false, required listing every
-    property, const/enum -> type:string inference, nullable union ->
-    first non-null type).
+    property, const/enum -> type:string inference, preserving nullable
+    unions). Mapping calls explicitly use medium reasoning effort so a
+    user's interactive model settings cannot select an unsupported effort.
 
   - **claude**: spawns `claude -p` against the requested Claude model
     (default `sonnet` for fan-out economy; callers can request `opus` or
@@ -226,6 +227,24 @@ def call_structured(
 # ---------------------------------------------------------------------------
 
 
+def _codex_error_message(stdout: bytes, stderr: bytes) -> str:
+    """Read the last Codex failure event, falling back to startup diagnostics."""
+    diagnostic = ""
+    for line in stdout.decode("utf-8", errors="replace").splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(event, dict):
+            continue
+        error = event.get("error") if event.get("type") == "turn.failed" else event
+        if event.get("type") in {"error", "turn.failed"} and isinstance(error, dict):
+            message = error.get("message")
+            if isinstance(message, str) and message.strip():
+                diagnostic = message.strip()
+    return diagnostic or stderr.decode("utf-8", errors="replace").strip()[-2000:]
+
+
 async def _call_codex_async(
     prompt: str, schema: dict, *, model: str, timeout: int
 ) -> dict:
@@ -258,6 +277,8 @@ async def _call_codex_async(
             proc = await _spawn(
                 codex_exe, "exec",
                 "-m", model,
+                "-c", 'model_reasoning_effort="medium"',
+                "--json",
                 "--ephemeral",
                 "-s", "read-only",
                 "--skip-git-repo-check",
@@ -281,15 +302,14 @@ async def _call_codex_async(
                 continue
 
             if proc.returncode != 0:
-                stderr_text = stderr.decode("utf-8", errors="replace").strip()
-                stderr_lower = stderr_text.lower()
-                if any(sig in stderr_lower for sig in _UNAVAILABLE_SIGNALS):
+                diagnostic = _codex_error_message(stdout, stderr)
+                if any(sig in diagnostic.lower() for sig in _UNAVAILABLE_SIGNALS):
                     raise ModelUnavailableError(
-                        f"{model} unavailable: {stderr_text[:400]}"
+                        f"{model} unavailable: {diagnostic[-2000:]}"
                     )
                 last_error = (
                     f"codex failed (rc={proc.returncode}): "
-                    f"{stderr_text[:400]}"
+                    f"{diagnostic[-2000:]}"
                 )
                 continue
 
