@@ -466,10 +466,12 @@ def main():
         namespace = target_ns_map.get(prefix)
         return URIRef(namespace + name).n3() if namespace else ref
 
-    # Count source classes after grounding their target identities, not their
-    # spellings. Mixed QName/IRI choices still share one target's constraints.
+    # Every action can place instances under a base target's shapes. Extension
+    # shapes still target their own types and retain their specific constraints.
+    class_targets = [(q, target) for q, target, _, _ in reuse_classes + extend_classes]
+    class_targets.extend((q, augmented) for q, _, _, _, augmented in augment_classes)
     target_type_users = {}
-    for cls_qname, target, _, _ in reuse_classes:
+    for cls_qname, target in class_targets:
         ref = target_term_ref(target, target_type_uris)
         if ref:
             target_type_users.setdefault(target_ref_identity(ref), []).append(cls_qname)

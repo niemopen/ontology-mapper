@@ -672,3 +672,47 @@ class TestNiemOWLPatterns:
         data.add((URIRef("urn:item"), RDF.type, URIRef(target_uri + "BaseType")))
         data.add((URIRef("urn:item"), URIRef(target_uri + "PText"), Literal("a")))
         assert validate(data, shacl_graph=shapes, meta_shacl=True)[0]
+
+    @pytest.mark.parametrize("action_a", ["reuse", "extend", "augment"])
+    @pytest.mark.parametrize("action_b", ["reuse", "extend", "augment"])
+    @pytest.mark.parametrize("second_target", ["nc:BaseType", "https://example.org/target/BaseType", "other:BaseType"])
+    def test_shared_base_constraints_across_class_actions(self, action_a, action_b, second_target):
+        from rdflib import Graph, Literal, RDF, SH, URIRef
+        from pyshacl import validate
+
+        inv = self._minimal_inventory(
+            [{"qname": "src:" + cls, "label": cls, "comment": "", "subClassOf": []} for cls in ("A", "B")],
+            dt_props=[{"qname": "src:" + prop, "label": prop, "domain": ["src:" + cls], "range": []}
+                      for cls, prop in (("A", "p"), ("B", "q"))] + [
+                          {"qname": "src:anchor", "label": "Anchor", "domain": ["src:A", "src:B"], "range": []}],
+            shapes=[{"targetClass": "src:" + cls, "properties": [{"path": "src:" + prop, "minCount": 1}]}
+                    for cls, prop in (("A", "p"), ("B", "q"))])
+        entries = []
+        for cls, prop, action, target in (("A", "p", action_a, "nc:BaseType"), ("B", "q", action_b, second_target)):
+            entries.append({"sourceConcept": "src:" + cls, "action": action, "targetType": target,
+                            "baseType": target if action == "extend" else None,
+                            "augmentsType": target if action == "augment" else None,
+                            "reviewStatus": "accepted", "propertyMappings": [
+                                {"sourceProperty": "src:" + prop, "reviewStatus": "accepted",
+                                 "action": "reuse-property" if action == "reuse" else "create-property",
+                                 "targetProperty": "nc:" + prop.upper() + "Text" if action == "reuse" else None},
+                                {"sourceProperty": "src:anchor", "action": "reuse-property",
+                                 "targetProperty": "nc:AnchorText", "reviewStatus": "accepted"}]})
+        files = self._run_generation(inv, {"mappings": entries}, catalog={
+            "namespaces": {"nc": "https://example.org/target/", "other": "https://example.org/other/"},
+            "types": [{"qname": "nc:BaseType", "uri": "https://example.org/target/BaseType"}]})
+        shapes = Graph().parse(data=files["test-edge-shapes.ttl"], format="turtle")
+        ontology = Graph().parse(data=files["test-edge-combined.ttl"], format="turtle")
+        shared = second_target != "other:BaseType"
+        for cls, action in (("A", action_a), ("B", action_b)):
+            shape = URIRef("http://testorg.gov/test/edge#" + cls + "Shape")
+            prop_shape = shapes.value(shape, SH.property)
+            assert int(shapes.value(prop_shape, SH.minCount)) == (0 if shared and action != "extend" else 1)
+            data = Graph()
+            data += ontology
+            data.add((URIRef("urn:item"), RDF.type, shapes.value(shape, SH.targetClass)))
+            data.add((URIRef("urn:item"), shapes.value(prop_shape, SH.path), Literal("a")))
+            assert validate(data, shacl_graph=shapes, meta_shacl=True, inference="none")[0]
+            if action == "extend":
+                data.remove((URIRef("urn:item"), shapes.value(prop_shape, SH.path), None))
+                assert not validate(data, shacl_graph=shapes, inference="none")[0]

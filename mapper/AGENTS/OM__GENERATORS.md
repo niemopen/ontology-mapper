@@ -133,6 +133,8 @@ global OWL domain assertions. NIEM extension conformance policy lives in
 `ontology_specific.extension_conformance_target`.
 Distinct source shapes keep separate emitted names, including when they target
 the same class, so their severity values cannot merge into an invalid shape.
+Shared-base minimum relaxation counts reuse, augmentation and extension mappings
+by resolved target identity; extension-specific shapes keep their required fields.
 
 CMF combines all active shape bounds for a source class/property by taking the
 maximum minimum and minimum maximum. Different source occurrences mapped onto
