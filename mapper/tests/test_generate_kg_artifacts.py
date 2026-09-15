@@ -447,13 +447,17 @@ class TestGenerateTransformRules:
         assert result["transforms"][0]["sourceType"] == "ex:Permit"
         assert result["transforms"][0]["targetLabel"] == "Permit"
 
-    def test_date_transform_detected(self):
+    @pytest.mark.parametrize("name", ["issuedDate", "resultDate"])
+    @pytest.mark.parametrize("datatype", [
+        "http://www.w3.org/2001/XMLSchema#date",
+        "http://www.w3.org/2001/XMLSchema#dateTime", "xsd:date", "xsd:dateTime",
+    ])
+    def test_date_transform_detected(self, name, datatype):
         classes = [{
             "sourceQname": "ex:Permit", "label": "Permit", "comment": "",
             "action": "reuse", "targetType": None,
             "datatypeProps": [
-                {"qname": "ex:issuedDate", "label": "issuedDate",
-                 "range": "http://www.w3.org/2001/XMLSchema#date"},
+                {"qname": f"ex:{name}", "label": name, "range": datatype},
             ],
             "objectProps": [],
         }]
@@ -461,19 +465,20 @@ class TestGenerateTransformRules:
         pm = result["transforms"][0]["propertyMappings"]
         assert pm[0]["transform"] == "xsd:date-to-iso8601"
 
-    def test_codelist_transform_detected(self):
+    @pytest.mark.parametrize("name", ["hasApplicationStatus", "TypeDrugMeasurement", "localCode", "resultText"])
+    def test_property_name_does_not_establish_a_codelist_conversion(self, name):
         classes = [{
             "sourceQname": "ex:Permit", "label": "Permit", "comment": "",
             "action": "reuse", "targetType": None,
             "datatypeProps": [
-                {"qname": "ex:hasApplicationStatus", "label": "hasApplicationStatus",
+                {"qname": f"ex:{name}", "label": name,
                  "range": "http://www.w3.org/2001/XMLSchema#string"},
             ],
             "objectProps": [],
         }]
         result = generate_internal_to_edge_transform(classes)
         pm = result["transforms"][0]["propertyMappings"]
-        assert pm[0]["transform"] == "codelist-resolve"
+        assert pm[0]["transform"] is None
 
     def test_relation_mappings(self):
         classes = [{

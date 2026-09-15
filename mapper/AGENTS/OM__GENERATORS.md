@@ -158,6 +158,9 @@ their trailing `#`. Extension catalog entries use full IRIs for extension,
 source concept and created properties. Accepted created-property decisions are
 listed under each owning entry; reuse and pending decisions are omitted.
 
+Graph import recipes preserve values unless a conversion follows from an explicit
+datatype declaration. Property names alone do not establish code-list mappings.
+
 ### Catalog outputs (consumed by search and indexing)
 
 - Reference catalogs must follow the exact JSON schema

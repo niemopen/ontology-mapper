@@ -693,9 +693,7 @@ def generate_internal_to_edge_transform(active_classes):
             range_iri = dp["range"]
             if range_iri in (XSD + "date", XSD + "dateTime", "xsd:date", "xsd:dateTime"):
                 transform = "xsd:date-to-iso8601"
-            # Detect codelist resolves (status/type/code/result properties)
-            if any(kw in prop_name.lower() for kw in ("status", "type", "code", "result")):
-                transform = "codelist-resolve"
+            # A property name alone does not establish a code-list conversion.
             prop_mappings.append({
                 "source": dp["qname"],
                 "target": prop_name,

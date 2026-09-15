@@ -32,5 +32,5 @@ Action:  om-pipeline mark-complete --stage 7 --run-dir {run_dir}
 | 8 | Schema-to-ontology | Cypher constraint/index labels vs active class labels |
 | 9 | Seed data consistency | MATCH labels reference CREATEd labels in seed.cypher |
 | 10 | Transform-to-matrix | internal-to-edge.json source types vs mapping matrix |
-| 11 | CMF consistency (NIEM) | CMF XML parses, class count matches matrix, augmentation records present |
+| 11 | CMF consistency (when present; required for NIEM) | See [mapper validation contract](../../mapper/AGENTS/OM__VALIDATION.md) |
 | 12 | Codebook drift | `targetDefinitionHash` vs current catalog definitions — types/properties changed or removed |
