@@ -735,12 +735,15 @@ class TestSharedSourceProfiles:
     EXT = "http://testorg.gov/test/ext#"
 
     @classmethod
-    def _generate(cls, source, actions=None, parents=None, targets=None, property_targets=None):
+    def _generate(cls, source, actions=None, parents=None, targets=None, property_targets=None,
+                  property_overrides=None):
         from rdflib import Graph
         from ontology_mapper.extract_concepts import extract_shacl_shapes, make_to_qname
+        from ontology_mapper.build_strategy_reports import build_class_properties
 
         actions, parents, targets = actions or {}, parents or {}, targets or {}
         property_targets = property_targets or {}
+        property_overrides = property_overrides or {}
         names = sorted({"A", "B"} | set(parents) | set(targets)
                        | {parent for values in parents.values() for parent in values})
         source_shapes = Graph().parse(data=f'''
@@ -755,6 +758,7 @@ class TestSharedSourceProfiles:
             dt_props=[{"qname": "src:" + p, "label": p, "domain": [], "range": []} for p in ("p", "q")],
             obj_props=[{"qname": "src:link", "label": "Link", "domain": [], "range": []}],
             shapes=extract_shacl_shapes(source_shapes, make_to_qname({cls.SRC: "src:"})))
+        class_properties = build_class_properties(inv)
         matrix = {"mappings": []}
         for name in names:
             action = actions.get(name, "reuse")
@@ -765,8 +769,10 @@ class TestSharedSourceProfiles:
                 "augmentsType": target if action == "augment" else None,
                 "reviewStatus": "accepted", "propertyMappings": [
                     {"sourceProperty": "src:" + prop, "action": "reuse-property", "reviewStatus": "accepted",
-                     "targetProperty": "nc:" + property_targets.get((name, prop), mapped)}
-                    for prop, mapped in (("p", "PText"), ("q", "QText"), ("link", "Link"))]})
+                     "targetProperty": "nc:" + property_targets.get((name, prop), mapped),
+                     **property_overrides.get((name, prop), {})}
+                    for prop, mapped in (("p", "PText"), ("q", "QText"), ("link", "Link"))
+                    if "src:" + prop in class_properties.get("src:" + name, set())]})
         return TestNiemOWLPatterns._run_generation(
             inv, matrix, catalog={"namespaces": {"nc": cls.TARGET}})
 
@@ -780,7 +786,7 @@ class TestSharedSourceProfiles:
         data.add((URIRef("urn:item"), RDF.type, URIRef(target if ":" in target else cls.TARGET + target)))
         for prop, items in values.items():
             for value in items:
-                data.add((URIRef("urn:item"), URIRef(cls.TARGET + prop),
+                data.add((URIRef("urn:item"), URIRef(prop if ":" in prop else cls.TARGET + prop),
                           value if isinstance(value, URIRef) else Literal(value)))
         for obj, kind in object_types:
             data.add((URIRef(obj), RDF.type, URIRef(cls.TARGET + kind)))
@@ -869,3 +875,62 @@ class TestSharedSourceProfiles:
         files = self._generate('src:A a sh:NodeShape; sh:targetClass src:A; sh:property [sh:path src:p; sh:minCount 1].', parents={"B": ["A"]})
         assert self._conforms(files, {"PText": [1]})
         assert not self._conforms(files, {})
+
+    @pytest.mark.parametrize("action_a", ["reuse", "extend", "augment"])
+    @pytest.mark.parametrize("action_b", ["reuse", "extend", "augment"])
+    @pytest.mark.parametrize("created", [False, True])
+    @pytest.mark.parametrize("minimum", [0, 1])
+    def test_inherited_property_without_child_decision_keeps_declaring_reference(
+            self, action_a, action_b, created, minimum):
+        from rdflib import Graph, OWL, RDF, URIRef
+
+        files = self._generate(f'''
+            src:A a sh:NodeShape; sh:targetClass src:A;
+                sh:property [sh:path src:p; sh:minCount {minimum}; sh:maxCount 1].
+            src:B a sh:NodeShape; sh:targetClass src:B;
+                sh:property [sh:path src:q; sh:minCount 1; sh:maxCount 1].
+        ''', actions={"A": action_a, "B": action_b}, parents={"B": ["A"]},
+            property_overrides={("A", "p"): {"action": "create-property"}} if created else {})
+        target = self.EXT + "BType" if action_b == "extend" else "BaseType"
+        prop = (("http://testorg.gov/test/edge#" if action_a == "reuse" else self.EXT) + "p"
+                if created else "PText")
+        assert not self._conforms(files, {prop: ["one", "two"], "QText": ["one"]}, target)
+        assert self._conforms(files, {prop: ["one"], "QText": ["one"]}, target)
+        if minimum:
+            assert not self._conforms(files, {"QText": ["one"]}, target)
+        if created:
+            ontology = Graph().parse(data=files["test-edge-combined.ttl"], format="turtle")
+            assert (URIRef(prop), RDF.type, OWL.DatatypeProperty) in ontology
+
+    @pytest.mark.parametrize("action", ["reuse", "extend", "augment"])
+    @pytest.mark.parametrize("decision", [
+        {"action": "create-property"},
+        {"reviewStatus": "pending-review"},
+        {"targetProperty": "[undecided]"},
+    ])
+    def test_explicit_child_decision_keeps_existing_nonreuse_resolution(self, action, decision):
+        files = self._generate('''
+            src:A a sh:NodeShape; sh:targetClass src:A;
+                sh:property [sh:path src:p; sh:maxCount 1].
+            src:B a sh:NodeShape; sh:targetClass src:B;
+                sh:property [sh:path src:p; sh:maxCount 2].
+        ''', actions={"B": action}, parents={"B": ["A"]},
+            property_overrides={("B", "p"): decision})
+        target = self.EXT + "BType" if action == "extend" else "BaseType"
+        child_prop = ("http://testorg.gov/test/edge#" if action == "reuse" else self.EXT) + "p"
+        assert self._conforms(files, {"PText": [1, 2], child_prop: [1]}, target)
+        assert not self._conforms(files, {"PText": [1, 2], child_prop: [1, 2]}, target)
+
+    @pytest.mark.parametrize("p_count,q_count,expected", [
+        (1, 1, True), (0, 1, False), (1, 0, False), (2, 1, False), (1, 2, False),
+    ])
+    def test_inherited_multitarget_shape_retains_each_declaring_context(self, p_count, q_count, expected):
+        files = self._generate('''
+            src:Shared a sh:NodeShape; sh:targetClass src:A, src:C;
+                sh:property [sh:path src:p; sh:minCount 1; sh:maxCount 1].
+            src:B a sh:NodeShape; sh:targetClass src:B;
+                sh:property [sh:path src:q; sh:minCount 1].
+        ''', actions={"B": "extend"}, parents={"B": ["A", "C"]},
+            property_targets={("C", "p"): "QText", ("B", "q"): "Link"})
+        assert self._conforms(files, {"PText": list(range(p_count)), "QText": list(range(q_count)),
+                                      "Link": ["one"]}, self.EXT + "BType") == expected

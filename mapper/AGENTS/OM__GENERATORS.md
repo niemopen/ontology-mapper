@@ -135,8 +135,9 @@ Distinct source shapes keep separate emitted names, including when they target
 the same class, so their severity values cannot merge into an invalid shape.
 Shared targets group reuse, augmentation and extension mappings by resolved IRI.
 Their SHACL `sh:or` branches preserve each source class's complete constraints,
-including inherited shapes rendered in the child's mapping context. Multiple
-shapes within a source branch remain conjunctive through `sh:and`; a source
+including inherited shapes. An explicit child property decision takes precedence;
+otherwise each declaring context retains its property reference. Multiple shapes
+within a source branch remain conjunctive through `sh:and`; a source
 without active constraints contributes an unconstrained branch. Extension shapes
 retain their own targets and complete constraints, including required fields.
 

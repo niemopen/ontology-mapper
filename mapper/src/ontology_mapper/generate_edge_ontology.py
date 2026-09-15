@@ -634,15 +634,9 @@ def main():
     emitted_shape_names = set()
     emitted_source_shapes = {}
 
-    def emit_shape_block(source_shape, prefix, target_src=None):
+    def emit_shape_block(source_shape, prefix, target_src, declaring_sources):
         if not shape_property_is_evaluated(source_shape):
             return ""
-        # A NodeShape may target several classes; the caller passes which
-        # one this block is for. Defaulting keeps the two-argument form
-        # working for a shape with a single target.
-        if target_src is None:
-            targets = shape_target_classes(source_shape)
-            target_src = targets[0] if targets else ""
         action, target = classify_concept(target_src)
         if action == "reuse" and target:
             target_type = _target_to_qname(target)
@@ -688,8 +682,16 @@ def main():
         emittable = []
         for prop in source_shape["properties"]:
             if prop.get("path") and shape_property_is_evaluated(prop):
-                path_ref = resolve_property_ref(prop["path"], target_src, action)
-                if path_ref is not None:
+                # Strategy decisions cover directly assigned properties. An
+                # inherited property with no child decision keeps its declaring
+                # context; an explicit child decision still takes precedence.
+                contexts = ([target_src] if (target_src, prop["path"]) in _prop_mapping_lookup
+                            else declaring_sources)
+                path_refs = {
+                    resolve_property_ref(prop["path"], context, classify_concept(context)[0])
+                    for context in contexts
+                }
+                for path_ref in sorted(ref for ref in path_refs if ref is not None):
                     emittable.append((prop, path_ref))
         if not emittable:
             lines[-1] = lines[-1].removesuffix(" ;") + " ."
@@ -819,8 +821,8 @@ def main():
         applicable_classes = {source_class}
         if source_class in shared_source_classes:
             # sh:targetClass applies to subclass instances. Re-render inherited
-            # constraints in this child's property mapping context, rather than
-            # referencing a parent's potentially different target properties.
+            # constraints with the child's explicit property decisions, keeping
+            # the declaring context for properties without a child decision.
             pending = list(class_by_qname[source_class].get("subClassOf", []))
             while pending:
                 parent = pending.pop()
@@ -828,8 +830,9 @@ def main():
                     applicable_classes.add(parent)
                     pending.extend(class_by_qname.get(parent, {}).get("subClassOf", []))
         for shape in inv["shaclShapes"]:
-            if applicable_classes.intersection(shape_target_classes(shape)):
-                block = emit_shape_block(shape, EDGE_PREFIX, source_class)
+            declaring_sources = applicable_classes.intersection(shape_target_classes(shape))
+            if declaring_sources:
+                block = emit_shape_block(shape, EDGE_PREFIX, source_class, sorted(declaring_sources))
                 if block:
                     shapes_body.append(block)
 
