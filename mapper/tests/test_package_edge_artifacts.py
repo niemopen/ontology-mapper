@@ -20,11 +20,20 @@ def _matrix(mappings, summary=None):
 
 
 def _mapping(concept, action, target=None, **extra):
-    m = {"sourceConcept": concept, "action": action}
+    m = {"sourceConcept": concept, "action": action, "reviewStatus": "accepted"}
     if target:
         m["targetType"] = target
     m.update(extra)
     return m
+
+
+def _catalog(matrix):
+    from pathlib import Path
+    from ontology_mapper.pipeline_context import PipelineContext
+    context = PipelineContext(Path("run"), Path("run/edge-package"), "example", "source", "niem", "6.0")
+    inventory = {"classes": [{"qname": m["sourceConcept"], "iri": "urn:source#" + m["sourceConcept"].split(":")[-1]}
+                             for m in matrix["mappings"]], "objectProperties": [], "datatypeProperties": []}
+    return build_extension_catalog(matrix, context, inventory, {})
 
 
 @pytest.fixture
@@ -85,12 +94,37 @@ class TestBuildExtensionJustifications:
 # build_extension_catalog
 # ---------------------------------------------------------------------------
 class TestBuildExtensionCatalog:
+    def test_created_properties_are_full_iris_and_belong_to_each_owner(self, tmp_path):
+        from ontology_mapper.pipeline_context import PipelineContext
+        context = PipelineContext(tmp_path, tmp_path / "edge-package", "sample", "source", "niem", "6.0")
+        inventory = {
+            "classes": [{"qname": "src:A", "iri": "urn:source#A"},
+                        {"qname": "src:B", "iri": "urn:source#B"}],
+            "datatypeProperties": [{"qname": "src:value"}, {"qname": "extra:code"}],
+            "objectProperties": [],
+            "namespaceMap": {"https://source.example/extra#": "extra:"},
+        }
+        properties = [
+            {"sourceProperty": "src:value", "action": "create-property", "reviewStatus": "accepted"},
+            {"sourceProperty": "extra:code", "action": "create-property", "reviewStatus": "accepted"},
+            {"sourceProperty": "src:reused", "action": "reuse-property", "reviewStatus": "accepted", "targetProperty": "nc:Name"},
+            {"sourceProperty": "src:pending", "action": "create-property", "reviewStatus": "pending-review"},
+        ]
+        matrix = _matrix([_mapping("src:A", "extend", "nc:RecordType", propertyMappings=properties),
+                          _mapping("src:B", "augment", "nc:RecordType", propertyMappings=properties)])
+        catalog = build_extension_catalog(matrix, context, inventory, {"extra": "https://target.example/extra/"})
+        for entry in catalog["extensions"]:
+            assert entry["extensionIRI"].startswith(context.extension_namespace)
+            assert entry["sourceConceptIRI"] in {"urn:source#A", "urn:source#B"}
+            assert entry["properties"] == sorted([
+                context.extension_namespace + "value", "https://source.example/extra#code"])
+
     def test_extend_uses_baseType(self):
         matrix = _matrix([
             _mapping("src:A", "extend", "nc:ActivityType",
                      baseType="nc:ObjectType"),
         ])
-        catalog = build_extension_catalog(matrix)
+        catalog = _catalog(matrix)
         ext = catalog["extensions"][0]
         assert ext["baseType"] == "nc:ObjectType"
 
@@ -98,7 +132,7 @@ class TestBuildExtensionCatalog:
         matrix = _matrix([
             _mapping("src:A", "extend", "nc:ActivityType"),
         ])
-        catalog = build_extension_catalog(matrix)
+        catalog = _catalog(matrix)
         ext = catalog["extensions"][0]
         assert ext["baseType"] == "nc:ActivityType"
 
@@ -108,7 +142,7 @@ class TestBuildExtensionCatalog:
                      augmentsType="nc:PersonType",
                      augmentationType="PersonAugmentationType"),
         ])
-        catalog = build_extension_catalog(matrix)
+        catalog = _catalog(matrix)
         ext = catalog["extensions"][0]
         assert ext["baseType"] == "nc:PersonType"
         assert ext["name"] == "PersonAugmentationType"
@@ -119,14 +153,14 @@ class TestBuildExtensionCatalog:
             _mapping("src:B", "augment", "nc:PersonType",
                      augmentationType="PersonAugmentationType"),
         ])
-        catalog = build_extension_catalog(matrix)
+        catalog = _catalog(matrix)
         assert len(catalog["extensions"]) == 2
 
     def test_excludes_reuse(self):
         matrix = _matrix([
             _mapping("src:C", "reuse", "nc:ActivityType"),
         ])
-        catalog = build_extension_catalog(matrix)
+        catalog = _catalog(matrix)
         assert len(catalog["extensions"]) == 0
 
 

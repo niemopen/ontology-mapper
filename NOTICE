@@ -11,3 +11,7 @@ This product was consolidated from three earlier repositories:
   - CardamomCosmos/SemanticCompiler
   - CardamomCosmos/SemanticCompilerRunner
   - CardamomCosmos/SemanticCompilerWeb
+
+Bundled NIEM reference model data is derived from the OASIS NIEM Open project
+under Creative Commons Attribution 4.0 International. Source, conversion and
+license attribution: mapper/src/ontology_mapper/specs/REFERENCE_MODELS.md.

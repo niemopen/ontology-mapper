@@ -1,7 +1,7 @@
 """Build a CmfModel directly from the mapping matrix and concept inventory.
 
-Produces spec-compliant CMF per NIEM NDR v6.0. Target-ontology agnostic —
-works for any source/target combination.
+Builds local CMF declarations and target references for any source/target
+combination. cmf_reference completes the serialized model with native definitions.
 
 The builder reads the same inputs as generate_edge_ontology.py (concept
 inventory, mapping matrix, target catalog namespace map) and populates
@@ -30,6 +30,7 @@ from ontology_mapper.generation_utils import (
     shape_target_classes,
     shape_property_is_evaluated,
     source_namespace_bindings,
+    created_property_qname,
 )
 from ontology_mapper.ontology_specific import extension_conformance_target
 
@@ -89,7 +90,7 @@ def _qname_prefix(qname: str) -> str:
 class MatrixToCmfBuilder:
     """Build a CmfModel directly from the mapping matrix and concept inventory.
 
-    Produces spec-compliant CMF per NDR v6.0. Target-ontology agnostic.
+    Target-ontology agnostic; reference completion follows serialization.
     """
 
     def __init__(self, matrix: dict, inventory: dict, ctx, target_ns_map: dict):
@@ -141,7 +142,7 @@ class MatrixToCmfBuilder:
                             bounds[key] = combine(bounds.get(key, value), value)
 
     def build(self) -> CmfModel:
-        """Build the complete CmfModel."""
+        """Build local components and references from the accepted matrix."""
         model = CmfModel()
         self._classify_concepts()
         self._build_namespaces(model)
@@ -191,7 +192,7 @@ class MatrixToCmfBuilder:
         # Edge namespace (always present)
         model.namespaces.append(CmfNamespace(
             ns_id=self._edge_prefix,
-            uri=self.ctx.edge_ns_hash.rstrip("#"),
+            uri=self.ctx.edge_ns_hash,
             prefix=self._edge_prefix,
             documentation=f"Edge ontology for {self.ctx.source}",
             category="EXTENSION",
@@ -205,7 +206,7 @@ class MatrixToCmfBuilder:
         if self._extend or self._augment:
             model.namespaces.append(CmfNamespace(
                 ns_id=self._ext_prefix,
-                uri=self.ctx.ext_ns_hash.rstrip("#"),
+                uri=self.ctx.ext_ns_hash,
                 prefix=self._ext_prefix,
                 documentation=f"Extension types for {self.ctx.source}",
                 category="EXTENSION",
@@ -355,10 +356,9 @@ class MatrixToCmfBuilder:
         every non-reuse action, so every augment record pointed at an id
         the model does not contain.
         """
-        if not prop_qname.startswith(self._source_prefix):
-            prefix = _qname_prefix(prop_qname)
-            return self._source_bindings.get(prefix, (prefix, ""))[0]
-        return self._edge_prefix if cls_action == "reuse" else self._ext_prefix
+        return created_property_qname(
+            prop_qname, cls_action, self._source_prefix.rstrip(":"),
+            self._source_bindings, self._edge_prefix).split(":", 1)[0]
 
     def _emit_property(self, model: CmfModel, cmf_cls: CmfClass,
                        cls_qname: str, cls_action: str,

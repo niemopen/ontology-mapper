@@ -145,6 +145,19 @@ CMF combines all active shape bounds for a source class/property by taking the
 maximum minimum and minimum maximum. Different source occurrences mapped onto
 one target remain separate records.
 
+`cmf_reference.py` completes generated CMF with native offline definitions,
+including transitive references and property kinds. Component identity is the
+namespace URI plus name; conflicting local definitions of a known target term
+are errors. Imported XML is retained without the bridge parser's smaller model
+round trip, and CMF JSON is derived from that same completed XML. Reference data
+installation and attribution live in
+[REFERENCE_MODELS.md](../src/ontology_mapper/specs/REFERENCE_MODELS.md).
+
+Context metadata and CMF preserve the existing OWL edge/ext namespaces, including
+their trailing `#`. Extension catalog entries use full IRIs for extension,
+source concept and created properties. Accepted created-property decisions are
+listed under each owning entry; reuse and pending decisions are omitted.
+
 ### Catalog outputs (consumed by search and indexing)
 
 - Reference catalogs must follow the exact JSON schema

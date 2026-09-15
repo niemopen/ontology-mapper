@@ -41,6 +41,7 @@ from ontology_mapper.generation_utils import (
     accepted_reuse_target,
     shape_property_is_evaluated,
     source_namespace_bindings,
+    created_property_qname,
 )
 
 
@@ -199,13 +200,6 @@ def main():
             return source_term_ref(range_iri)
         return None
 
-    def edge_prop_prefix(prop_qname, cls_action):
-        if not prop_qname.startswith(SOURCE_PREFIX):
-            return ""
-        if cls_action == "reuse":
-            return EDGE_PREFIX
-        return "ext:"
-
     # Property mapping lookup, keyed by the property's QNAME — the identity
     # the matrix records. Built by the shared
     # generation_utils home so this emitter and the CMF emitter cannot drift.
@@ -232,7 +226,6 @@ def main():
         return the target qualified property name. Otherwise fall back to the
         edge/ext prefixed local name.
         """
-        prop_local = local_name(prop_qname)
         pm = _prop_mapping_lookup.get((cls_qname, prop_qname))
         target_prop = accepted_reuse_target(pm)
         if target_prop:
@@ -257,7 +250,8 @@ def main():
 
         if not prop_qname.startswith(SOURCE_PREFIX):
             return source_term_ref(prop_qname)
-        return edge_prop_prefix(prop_qname, cls_action) + prop_local
+        return created_property_qname(
+            prop_qname, cls_action, _source, source_bindings, EDGE_PREFIX)
 
     # --- Classify concepts ---
     reuse_classes = []
@@ -1000,7 +994,9 @@ def main():
     # --- CMF generation (from matrix, all targets) ---
     print(f"\n  Generating CMF artifacts...")
     from ontology_mapper.generate_cmf_from_matrix import MatrixToCmfBuilder
-    from ontology_mapper.owl_cmf_bridge import CmfXmlSerializer, CmfJsonSerializer, set_niem_version
+    from ontology_mapper.owl_cmf_bridge import CmfXmlSerializer, cmf_xml_to_json, set_niem_version
+    from ontology_mapper.cmf_reference import complete_cmf_references, load_reference_cmf
+    from ontology_mapper.ontology_specific import cmf_implicit_roots
 
     set_niem_version(TARGET_VERSION)
 
@@ -1009,8 +1005,13 @@ def main():
     cmf_xml_path = cmf_dir / f"{ctx.cmf_model_stem}.cmf"
     cmf_json_path = cmf_dir / f"{ctx.cmf_model_stem}.cmf.json"
 
-    write_artifact(cmf_xml_path, CmfXmlSerializer(cmf_model).serialize())
-    write_artifact(cmf_json_path, CmfJsonSerializer(cmf_model).serialize())
+    cmf_xml = complete_cmf_references(
+        CmfXmlSerializer(cmf_model).serialize(),
+        load_reference_cmf(TARGET_ONTOLOGY, TARGET_VERSION),
+        implicit_roots=cmf_implicit_roots(TARGET_ONTOLOGY, TARGET_VERSION),
+    )
+    write_artifact(cmf_xml_path, cmf_xml)
+    write_artifact(cmf_json_path, cmf_xml_to_json(cmf_xml))
 
     print(f"    {cmf_xml_path} ({files_written[str(cmf_xml_path)]:,} bytes)")
     print(f"    {cmf_json_path} ({files_written[str(cmf_json_path)]:,} bytes)")

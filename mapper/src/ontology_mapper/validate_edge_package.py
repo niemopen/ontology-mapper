@@ -133,6 +133,7 @@ def check_cmf_consistency(cmf_path, mappings_list):
     Validates:
     - CMF XML parses without error
     - CMF conforms to the official NIEM CMF XSD schema
+    - Every structures:ref binds to a declaration of a compatible kind
     - Class count matches active (reuse + extend) classes in matrix
     - AugmentationRecord entries exist for augment-action mappings
     - At least one property exists
@@ -162,6 +163,7 @@ def check_cmf_consistency(cmf_path, mappings_list):
     errors.extend(xsd_errors)
 
     root = tree.getroot()
+    errors.extend(check_cmf_references(root))
     # CMF uses a namespace — find it dynamically
     nsmap = root.nsmap
     cmf_ns = nsmap.get(None) or nsmap.get("cmf", "")
@@ -212,6 +214,38 @@ def check_cmf_consistency(cmf_path, mappings_list):
     if total_props == 0:
         errors.append("CMF has no properties (expected at least one)")
 
+    return errors
+
+
+def check_cmf_references(root):
+    """XSD validation alone does not enforce CMF ID binding or referent kinds."""
+    from lxml import etree
+
+    declarations = {}
+    references = []
+    for element in root.iter():
+        for attribute, value in element.attrib.items():
+            name = etree.QName(attribute)
+            if name.localname == "id":
+                declarations[(name.namespace, value)] = etree.QName(element).localname
+            elif name.localname == "ref":
+                references.append((name.namespace, value, etree.QName(element).localname))
+    datatypes = {"Datatype", "Restriction", "List", "Union"}
+    properties = {"Property", "ObjectProperty", "DataProperty"}
+    compatible = {
+        "Namespace": {"Namespace"}, "Class": {"Class"}, "SubClassOf": {"Class"},
+        "ObjectProperty": {"ObjectProperty"}, "DataProperty": {"DataProperty"},
+        "Property": properties, "SubPropertyOf": properties,
+        "Datatype": datatypes, "RestrictionBase": datatypes,
+        "ListItemDatatype": datatypes, "UnionMemberDatatype": datatypes,
+    }
+    errors = []
+    for namespace, ref, kind in references:
+        actual = declarations.get((namespace, ref))
+        if actual is None:
+            errors.append(f"Unbound CMF reference: {kind} -> {ref}")
+        elif actual not in compatible.get(kind, {kind}):
+            errors.append(f"Incompatible CMF reference: {kind} -> {ref} is {actual}")
     return errors
 
 

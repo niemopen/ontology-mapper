@@ -76,6 +76,10 @@ This is a post-run analysis tool, not part of the standard pipeline.
 
 ### validate_edge_package.py output
 
+The existing CMF consistency check combines XSD validation with binding and
+referent-kind checks for every `structures:ref`. XSD validation alone does not
+detect missing declarations or a class reference naming a datatype.
+
 Writes `{run_dir}/validation-report.json`:
 
 `om-validate` exits 0 when all checks pass and 1 when any check fails, after

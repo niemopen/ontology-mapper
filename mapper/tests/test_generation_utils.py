@@ -337,3 +337,13 @@ def test_shape_severity_does_not_change_evaluation():
     for severity in ("Violation", "Warning", "Info", "https://example.org/#Custom"):
         assert shape_property_is_evaluated({"severity": severity})
         assert not shape_property_is_evaluated({"severity": severity, "deactivated": True})
+
+
+def test_created_property_identity_is_shared_across_outputs():
+    from ontology_mapper.generation_utils import created_property_qname
+
+    bindings = {"shared": ("src_shared", "https://example.org/source#")}
+    assert created_property_qname("src:value", "reuse", "src", bindings, "sample-edge:") == "sample-edge:value"
+    for action in ("extend", "augment"):
+        assert created_property_qname("src:value", action, "src", bindings, "sample-edge:") == "ext:value"
+    assert created_property_qname("shared:value", "extend", "src", bindings, "sample-edge:") == "src_shared:value"

@@ -444,121 +444,56 @@ class CmfJsonSerializer:
         self.model = model
 
     def serialize(self) -> str:
-        """Produce CMF JSON string."""
-        result = {"Model": {}}
-        m = result["Model"]
+        """Serialize the same information as XML, without a second field list."""
+        return cmf_xml_to_json(CmfXmlSerializer(self.model).serialize())
 
-        m["Namespace"] = [self._ns_to_dict(ns) for ns in self.model.namespaces]
-        m["Class"] = [self._cls_to_dict(cls) for cls in self.model.classes]
 
-        obj_props = [p for p in self.model.properties if p.is_object]
-        data_props = [p for p in self.model.properties if not p.is_object]
-        if obj_props:
-            m["ObjectProperty"] = [self._prop_to_dict(p) for p in obj_props]
-        if data_props:
-            m["DataProperty"] = [self._prop_to_dict(p) for p in data_props]
-        if self.model.restrictions:
-            m["Restriction"] = [self._restr_to_dict(r) for r in self.model.restrictions]
+def cmf_xml_to_json(xml: str) -> str:
+    """Preserve complete CMF XML, including imported components, in legacy JSON.
 
-        return json.dumps(result, indent=2, ensure_ascii=False)
+    Element/attribute names and repeatable associations retain the established
+    package JSON representation. Unmodelled native components are not discarded
+    by a round trip through the smaller generated-model dataclasses.
+    """
+    root = etree.fromstring(xml.encode("utf-8"), etree.XMLParser(resolve_entities=False))
+    repeatable = {"AugmentationRecord", "ChildPropertyAssociation", "Facet",
+                  "UnionMemberDatatype", "LocalTerm"}
+    integer_fields = {"MinOccursQuantity", "AugmentationIndex"}
+    prefixes = {uri: prefix for prefix, uri in root.nsmap.items() if prefix}
+    prefixes["http://www.w3.org/XML/1998/namespace"] = "xml"
 
-    def _ns_to_dict(self, ns: CmfNamespace) -> dict:
-        d = {
-            "structures:id": ns.ns_id,
-            "NamespaceURI": ns.uri,
-            "NamespacePrefixText": ns.prefix,
-            "NamespaceCategoryCode": ns.category,
-        }
-        if ns.documentation:
-            d["DocumentationText"] = ns.documentation
-        if ns.version:
-            d["NamespaceVersionText"] = ns.version
-        if ns.file_path:
-            d["DocumentFilePathText"] = ns.file_path
-        if ns.augmentations:
-            d["AugmentationRecord"] = [
-                self._aug_to_dict(a) for a in ns.augmentations
-            ]
-        return d
+    def convert(element):
+        values = {}
+        for attribute, value in element.attrib.items():
+            name = etree.QName(attribute)
+            if name.namespace == "http://www.w3.org/2001/XMLSchema-instance" and name.localname == "nil":
+                continue
+            available_prefixes = {uri: prefix for prefix, uri in element.nsmap.items() if prefix}
+            available_prefixes.update(prefixes)
+            key = f"{available_prefixes[name.namespace]}:{name.localname}" if name.namespace else name.localname
+            values[key] = value
+        children = {}
+        for child in element:
+            if isinstance(child.tag, str):
+                children.setdefault(etree.QName(child).localname, []).append(convert(child))
+        for name, items in children.items():
+            values[name] = items if len(items) > 1 or name in repeatable or element is root else items[0]
+        if values:
+            if not children and element.text is not None:
+                values["#text"] = element.text
+            return values
+        text = element.text or ""
+        name = etree.QName(element).localname
+        if name in integer_fields:
+            return int(text)
+        if name.endswith("Indicator") and text in {"true", "false", "0", "1"}:
+            return text in {"true", "1"}
+        return text
 
-    def _aug_to_dict(self, aug: CmfAugmentationRecord) -> dict:
-        key = "ObjectProperty" if aug.is_object else "DataProperty"
-        d = {
-            "Class": {"structures:ref": aug.class_ref},
-            key: {"structures:ref": aug.property_ref},
-            "MinOccursQuantity": aug.min_occurs,
-            "MaxOccursQuantity": aug.max_occurs,
-        }
-        if aug.augmentation_index is not None:
-            d["AugmentationIndex"] = aug.augmentation_index
-        return d
-
-    def _cls_to_dict(self, cls: CmfClass) -> dict:
-        d = {
-            "structures:id": cls.class_id,
-            "Name": cls.name,
-            "Namespace": {"structures:ref": cls.namespace_ref},
-        }
-        if cls.documentation:
-            d["DocumentationText"] = cls.documentation
-        if cls.is_abstract:
-            d["AbstractIndicator"] = True
-        if cls.sub_class_of:
-            d["SubClassOf"] = {"structures:ref": cls.sub_class_of}
-        if cls.properties:
-            d["ChildPropertyAssociation"] = [
-                self._hp_to_dict(hp) for hp in cls.properties
-            ]
-        return d
-
-    def _hp_to_dict(self, hp: CmfHasProperty) -> dict:
-        key = "ObjectProperty" if hp.is_object else "DataProperty"
-        d = {
-            key: {"structures:ref": hp.property_ref},
-            "MinOccursQuantity": hp.min_occurs,
-            "MaxOccursQuantity": hp.max_occurs,
-        }
-        if hp.documentation:
-            d["DocumentationText"] = hp.documentation
-        return d
-
-    def _prop_to_dict(self, prop: CmfProperty) -> dict:
-        d = {
-            "structures:id": prop.prop_id,
-            "Name": prop.name,
-            "Namespace": {"structures:ref": prop.namespace_ref},
-        }
-        if prop.documentation:
-            d["DocumentationText"] = prop.documentation
-        if prop.is_abstract:
-            d["AbstractIndicator"] = True
-        if prop.sub_property_of:
-            d["SubPropertyOf"] = {"structures:ref": prop.sub_property_of}
-        if prop.is_object and prop.class_ref:
-            d["Class"] = {"structures:ref": prop.class_ref}
-        elif not prop.is_object and prop.datatype_ref:
-            d["Datatype"] = {"structures:ref": prop.datatype_ref}
-        return d
-
-    def _restr_to_dict(self, restr: CmfRestriction) -> dict:
-        d = {
-            "structures:id": restr.restriction_id,
-            "Name": restr.name,
-            "Namespace": {"structures:ref": restr.namespace_ref},
-            "RestrictionBase": {"structures:ref": restr.restriction_base},
-        }
-        if restr.documentation:
-            d["DocumentationText"] = restr.documentation
-        if restr.facets:
-            d["Facet"] = [
-                {
-                    "FacetCategoryCode": f.category,
-                    "FacetValue": f.value,
-                    **({"DocumentationText": f.documentation} if f.documentation else {}),
-                }
-                for f in restr.facets
-            ]
-        return d
+    result = convert(root)
+    result.setdefault("Namespace", [])
+    result.setdefault("Class", [])
+    return json.dumps({"Model": result}, indent=2, ensure_ascii=False)
 
 
 # ---------------------------------------------------------------------------

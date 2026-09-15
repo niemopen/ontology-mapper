@@ -289,7 +289,7 @@ class TestNamespaces:
         edge_ns = [n for n in model.namespaces if n.ns_id == "test-edge"]
         assert len(edge_ns) == 1
         assert edge_ns[0].category == "EXTENSION"
-        assert edge_ns[0].uri == "http://testorg.gov/test/edge"
+        assert edge_ns[0].uri == "http://testorg.gov/test/edge#"
 
     def test_ext_namespace_only_when_extend_exists(self):
         inv = _make_inventory(classes=[_make_class("src:Foo")])

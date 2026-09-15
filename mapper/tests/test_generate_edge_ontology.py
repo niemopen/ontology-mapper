@@ -3,6 +3,42 @@
 
 import pytest
 
+
+def test_generation_includes_offline_native_cmf_definitions_in_xml_and_json(tmp_path, monkeypatch):
+    import json
+    import sys
+    from lxml import etree
+    from ontology_mapper.generate_edge_ontology import main
+    from ontology_mapper.validate_edge_package import check_cmf_consistency
+
+    monkeypatch.delenv("OM_SPECS_DIR", raising=False)
+    inventory = {
+        "classes": [{"qname": "src:Record", "iri": "urn:source:Record", "label": "Record", "comment": "", "subClassOf": []}],
+        "datatypeProperties": [{"qname": "src:value", "iri": "urn:source:value", "label": "Value", "comment": "",
+                                "domain": ["src:Record"], "range": ["http://www.w3.org/2001/XMLSchema#string"]}],
+        "objectProperties": [], "shaclShapes": [], "codelistSchemes": [], "augmentingNamespaces": [],
+    }
+    mappings = [{"sourceConcept": "src:Record", "action": "extend", "targetType": "nc:TextType", "reviewStatus": "accepted",
+                 "propertyMappings": [{"sourceProperty": "src:value", "action": "create-property", "reviewStatus": "accepted"}]}]
+    for name, content in {
+        "concept-inventory.json": inventory, "mapping-matrix.json": {"mappings": mappings},
+        ".mapper-state.json": {"inputs": {"organization": "sample", "source": "sample", "target_ontology": "niem", "target_version": "6.0"}},
+    }.items():
+        (tmp_path / name).write_text(json.dumps(content), encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["om-generate-ontology", "--run-dir", str(tmp_path)])
+    main()
+    cmf_path = next((tmp_path / "edge-package/cmf").glob("*.cmf"))
+    assert check_cmf_consistency(cmf_path, mappings) == []
+    root = etree.parse(str(cmf_path)).getroot()
+    ns = {"cmf": root.nsmap[None], "s": root.nsmap["structures"]}
+    text_class = root.xpath('./cmf:Class[@s:id="nc.TextType"]', namespaces=ns)[0]
+    assert text_class.findtext("cmf:DocumentationText", namespaces=ns)
+    assert text_class.find("cmf:ChildPropertyAssociation", ns) is not None
+    data = json.loads(cmf_path.with_suffix(".cmf.json").read_text(encoding="utf-8"))["Model"]
+    assert any(c["structures:id"] == "nc.TextType" for c in data["Class"])
+    assert any(c["structures:id"] == "xs.string" for c in data["Datatype"])
+    assert any(n.get("ConformanceTargetURI") for n in data["Namespace"])
+
 from ontology_mapper.generate_edge_ontology import (
     xsd_qname, local_name, edge_class_name,
     infer_domains_from_shapes, assign_properties_to_classes,

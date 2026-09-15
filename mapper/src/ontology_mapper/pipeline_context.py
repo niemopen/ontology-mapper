@@ -80,19 +80,17 @@ class PipelineContext:
     def description(self) -> str:
         return f"{self.target_ontology}-aligned edge ontology for {self.source}"
 
-    # ── Namespace URIs (slash-terminated, for JSON metadata) ─────────
+    # ── Namespace identities shared by every serialization ──────────
 
     @property
     def extension_namespace(self) -> str:
-        return f"https://data.{self.organization_slug}.gov/ontology/{self.source_slug}/ext/"
+        return self.ext_ns_hash
 
     @property
     def edge_namespace(self) -> str:
-        return f"https://data.{self.organization_slug}.gov/ontology/{self.source_slug}/edge/"
+        return self.edge_ns_hash
 
-    # ── Namespace URIs (hash-terminated, for OWL/TTL serialization) ──
-    # TODO: Reconcile protocol/domain mismatch between slash and hash
-    # namespace forms (https://data.{org}.gov vs http://{org}.gov).
+    # Retain the existing RDF term identities when producing metadata.
 
     @property
     def edge_ns_hash(self) -> str:

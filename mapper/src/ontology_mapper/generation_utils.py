@@ -63,6 +63,16 @@ def source_prefix(inventory):
     return classes[0]["qname"].split(":")[0] if classes else ""
 
 
+def created_property_qname(prop_qname, class_action, primary_prefix, bindings, edge_prefix):
+    """One emitted identity for a created property in OWL, CMF and the catalog."""
+    prefix = prop_qname.split(":", 1)[0]
+    if prefix == primary_prefix:
+        prefix = edge_prefix.rstrip(":") if class_action == "reuse" else "ext"
+    else:
+        prefix = bindings.get(prefix, (prefix, ""))[0]
+    return f"{prefix}:{local_name(prop_qname)}"
+
+
 def source_namespace_bindings(inventory, target_ns_map, edge_prefix):
     """Map source prefixes to (emitted prefix, URI), avoiding target collisions.
 

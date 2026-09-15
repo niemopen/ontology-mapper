@@ -31,6 +31,13 @@ def extension_conformance_target(target_ontology: str, target_version: str) -> s
     return ""
 
 
+def cmf_implicit_roots(target_ontology: str, target_version: str):
+    """NIEM's XSD infrastructure root is implicit, not a declared CMF Class."""
+    if target_ontology.lower() == "niem" and target_version == "6.0":
+        return {("https://docs.oasis-open.org/niemopen/ns/model/structures/6.0/", "ObjectType")}
+    return set()
+
+
 # Action determination — NIEM
 # ---------------------------------------------------------------------------
 def _classify_niem_properties(properties, target_type_properties):

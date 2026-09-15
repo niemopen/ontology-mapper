@@ -952,5 +952,14 @@ class TestReclassifyForTargetTypeChange:
         assert result["ruleId"] == "target-type-change-cascade"
 
 
+def test_native_cmf_root_policy_is_target_and_version_specific():
+    from ontology_mapper.ontology_specific import cmf_implicit_roots
+
+    assert cmf_implicit_roots("niem", "6.0") == {
+        ("https://docs.oasis-open.org/niemopen/ns/model/structures/6.0/", "ObjectType")}
+    assert cmf_implicit_roots("example", "6.0") == set()
+    assert cmf_implicit_roots("niem", "5.0") == set()
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

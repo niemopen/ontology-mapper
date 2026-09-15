@@ -52,13 +52,19 @@ class TestPackageNames:
 # ── Namespace URIs ───────────────────────────────────────────────────
 
 class TestNamespaces:
+    @pytest.mark.parametrize("target", ["niem", "other"])
+    def test_metadata_and_rdf_share_the_same_namespace_identity(self, target):
+        ctx = _make_ctx(target_ontology=target, organization="Sample Office", source="Sample Catalog")
+        assert ctx.edge_namespace == ctx.edge_ns_hash
+        assert ctx.extension_namespace == ctx.ext_ns_hash
+
     def test_extension_namespace(self):
         ctx = _make_ctx()
-        assert ctx.extension_namespace == "https://data.redvale.gov/ontology/dbpi/ext/"
+        assert ctx.extension_namespace == "http://redvale.gov/dbpi/ext#"
 
     def test_edge_namespace(self):
         ctx = _make_ctx()
-        assert ctx.edge_namespace == "https://data.redvale.gov/ontology/dbpi/edge/"
+        assert ctx.edge_namespace == "http://redvale.gov/dbpi/edge#"
 
     def test_edge_ns_hash(self):
         ctx = _make_ctx()

@@ -246,7 +246,7 @@ def _write_cmf(tmp_path, num_classes=2, num_props=1, num_augs=0):
         for i in range(num_props)
     )
     aug_records = "".join(
-        _CMF_AUG_RECORD.format(class_ref=f"nc.PersonType", prop_ref=f"edge.augProp{i}")
+        _CMF_AUG_RECORD.format(class_ref="edge.Type0", prop_ref="edge.prop0")
         for i in range(num_augs)
     )
     content = _CMF_TEMPLATE.format(
@@ -258,6 +258,13 @@ def _write_cmf(tmp_path, num_classes=2, num_props=1, num_augs=0):
 
 
 class TestCheckCmfConsistency:
+    def test_reference_binding_does_not_depend_on_structures_prefix_spelling(self, tmp_path):
+        path = _write_cmf(tmp_path, num_classes=1, num_props=1, num_augs=1)
+        text = path.read_text(encoding="utf-8").replace("edge.prop0\" xsi:nil", "edge.missing\" xsi:nil")
+        path.write_text(text.replace("structures:", "s:").replace("xmlns:structures=", "xmlns:s="), encoding="utf-8")
+        assert validate_cmf_schema(path) == []
+        assert any("edge.missing" in e for e in check_cmf_consistency(path, []))
+
     def test_valid_cmf_no_errors(self, tmp_path):
         cmf_path = _write_cmf(tmp_path, num_classes=2, num_props=1)
         mappings = [
@@ -293,8 +300,7 @@ class TestCheckCmfConsistency:
             {"sourceConcept": "src:B", "action": "augment"},
         ]
         errors = check_cmf_consistency(cmf_path, mappings)
-        # No augmentation error (class count matches 1 reuse)
-        assert not any("augment" in e.lower() for e in errors)
+        assert errors == []
 
     def test_no_properties_error(self, tmp_path):
         cmf_path = _write_cmf(tmp_path, num_classes=2, num_props=0)

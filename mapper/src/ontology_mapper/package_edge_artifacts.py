@@ -25,6 +25,10 @@ from pathlib import Path
 from ontology_mapper.run_dir_utils import utc_stamp
 
 from ontology_mapper.pipeline_context import load_context
+from ontology_mapper.generation_utils import (
+    created_property_qname, edge_class_name, property_qname_resolver,
+    source_namespace_bindings, source_prefix,
+)
 
 
 def _load_json_optional(path):
@@ -91,11 +95,18 @@ def build_extension_justifications(matrix, target_ontology, target_version):
     return "\n".join(lines) + "\n"
 
 
-def build_extension_catalog(matrix):
-    """Generate extension-catalog.json from the mapping matrix."""
+def build_extension_catalog(matrix, ctx, inventory, target_ns_map):
+    """Inventory accepted new properties using the generators' term identities."""
+    classes = {c["qname"]: c for c in inventory["classes"]}
+    resolve_property = property_qname_resolver(inventory)
+    bindings = source_namespace_bindings(inventory, target_ns_map, ctx.edge_prefix)
+    namespaces = {**target_ns_map, ctx.edge_prefix.rstrip(":"): ctx.edge_namespace,
+                  "ext": ctx.extension_namespace}
+    namespaces.update({prefix: uri for prefix, uri in bindings.values()})
+    primary = source_prefix(inventory)
     extensions = []
     for m in matrix["mappings"]:
-        if m.get("action") not in ("extend", "augment"):
+        if m.get("action") not in ("extend", "augment") or m.get("reviewStatus") != "accepted":
             continue
 
         concept = m["sourceConcept"]
@@ -105,17 +116,27 @@ def build_extension_catalog(matrix):
             ext_name = m.get("augmentationType", f"{short_name}AugmentationType")
             base = m.get("augmentsType") or m.get("targetType")
         else:
-            ext_name = f"{short_name}Type"
+            ext_name = edge_class_name(concept)
             base = m.get("baseType") or m.get("targetType")
 
+        properties = set()
+        for decision in m.get("propertyMappings") or []:
+            if decision.get("action") != "create-property" or decision.get("reviewStatus") != "accepted":
+                continue
+            qname = created_property_qname(
+                resolve_property(decision["sourceProperty"]), m["action"],
+                primary, bindings, ctx.edge_prefix)
+            prefix, name = qname.split(":", 1)
+            properties.add(namespaces[prefix] + name)
+
         extensions.append({
-            "extensionIRI": f"ext:{ext_name}",
+            "extensionIRI": ctx.extension_namespace + ext_name,
             "name": ext_name,
             "baseType": base,
             "definition": m.get("notes", ""),
-            "properties": [],
+            "properties": sorted(properties),
             "justification": m.get("notes") or m.get("rationale", ""),
-            "sourceConceptIRI": concept,
+            "sourceConceptIRI": classes[concept]["iri"],
             "mappingEntryRef": concept,
         })
 
@@ -259,7 +280,11 @@ def main():
     artifacts_written += 1
 
     # ── 5. Extension catalog ──────────────────────────────────────────────
-    ext_catalog = build_extension_catalog(matrix)
+    from ontology_mapper.run_dir_utils import resolve_specs_dir
+    inventory = json.loads((run_dir / "concept-inventory.json").read_text(encoding="utf-8"))
+    catalog_path = resolve_specs_dir() / f"{ctx.target_ontology}_reference_catalog_{ctx.target_version}.json"
+    target_catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    ext_catalog = build_extension_catalog(matrix, ctx, inventory, target_catalog.get("namespaces", {}))
     ext_catalog_path = pkg / "extensions" / "extension-catalog.json"
     ext_catalog_path.parent.mkdir(parents=True, exist_ok=True)
     ext_catalog_path.write_text(json.dumps(ext_catalog, indent=2) + "\n", encoding="utf-8")
