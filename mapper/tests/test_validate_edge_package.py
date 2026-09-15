@@ -7,7 +7,7 @@ import subprocess
 import sys
 
 
-@pytest.mark.parametrize("defect", [None, "syntax", "shacl"])
+@pytest.mark.parametrize("defect", [None, "syntax", "shacl", "valid-cmf", "cmf-unbound"])
 def test_cli_reports_failure_and_exit_status(tmp_path, defect):
     """Real CLI, real parsing/validation, and synthetic files only."""
     pkg = tmp_path / "edge-package"
@@ -27,11 +27,23 @@ def test_cli_reports_failure_and_exit_status(tmp_path, defect):
         '@prefix sh: <http://www.w3.org/ns/shacl#> . '
         '<urn:S> a sh:NodeShape; sh:targetClass <urn:Example>; '
         f'sh:property [sh:path <urn:value>; sh:minCount {1 if defect == "shacl" else 0}] .')
+    if defect in {"valid-cmf", "cmf-unbound"}:
+        from ontology_mapper.pipeline_context import load_context
+        cmf = _write_cmf(tmp_path, num_classes=1, num_props=1, num_augs=1)
+        content = cmf.read_text(encoding="utf-8")
+        if defect == "cmf-unbound":
+            content = content.replace('edge.prop0" xsi:nil', 'edge.missing" xsi:nil')
+        (pkg / "cmf").mkdir()
+        (pkg / "cmf" / f"{load_context(str(tmp_path)).cmf_model_stem}.cmf").write_text(content, encoding="utf-8")
     result = subprocess.run([sys.executable, "-m", "ontology_mapper.validate_edge_package", "--run-dir", str(tmp_path)],
                             capture_output=True, text=True)
     report = json.loads((tmp_path / "validation-report.json").read_text())
-    assert report["allPassed"] is (defect is None)
-    assert result.returncode == (0 if defect is None else 1), result.stdout + result.stderr
+    expected_pass = defect in {None, "valid-cmf"}
+    assert report["allPassed"] is expected_pass
+    assert result.returncode == (0 if expected_pass else 1), result.stdout + result.stderr
+    if defect in {"valid-cmf", "cmf-unbound"}:
+        check = next(c for c in report["checks"] if c["check"] == "cmf-consistency")
+        assert check["status"] == ("pass" if expected_pass else "FAIL")
 
 from ontology_mapper.validate_edge_package import (
     check_cmf_consistency,
@@ -263,7 +275,7 @@ class TestCheckCmfConsistency:
         text = path.read_text(encoding="utf-8").replace("edge.prop0\" xsi:nil", "edge.missing\" xsi:nil")
         path.write_text(text.replace("structures:", "s:").replace("xmlns:structures=", "xmlns:s="), encoding="utf-8")
         assert validate_cmf_schema(path) == []
-        assert any("edge.missing" in e for e in check_cmf_consistency(path, []))
+        assert any("edge.missing" in e for e in check_cmf_consistency(path, [], {"http://redvale.gov/dbpi/edge#"}))
 
     def test_valid_cmf_no_errors(self, tmp_path):
         cmf_path = _write_cmf(tmp_path, num_classes=2, num_props=1)
@@ -271,7 +283,7 @@ class TestCheckCmfConsistency:
             {"sourceConcept": "src:A", "action": "reuse"},
             {"sourceConcept": "src:B", "action": "extend"},
         ]
-        errors = check_cmf_consistency(cmf_path, mappings)
+        errors = check_cmf_consistency(cmf_path, mappings, {"http://redvale.gov/dbpi/edge#"})
         assert errors == []
 
     def test_too_few_classes(self, tmp_path):
@@ -280,7 +292,7 @@ class TestCheckCmfConsistency:
             {"sourceConcept": "src:A", "action": "reuse"},
             {"sourceConcept": "src:B", "action": "extend"},
         ]
-        errors = check_cmf_consistency(cmf_path, mappings)
+        errors = check_cmf_consistency(cmf_path, mappings, {"http://redvale.gov/dbpi/edge#"})
         assert len(errors) == 1
         assert "classes" in errors[0].lower()
 
@@ -290,7 +302,7 @@ class TestCheckCmfConsistency:
             {"sourceConcept": "src:A", "action": "reuse"},
             {"sourceConcept": "src:B", "action": "augment"},
         ]
-        errors = check_cmf_consistency(cmf_path, mappings)
+        errors = check_cmf_consistency(cmf_path, mappings, {"http://redvale.gov/dbpi/edge#"})
         assert any("augment" in e.lower() for e in errors)
 
     def test_augment_with_records_ok(self, tmp_path):
@@ -299,7 +311,7 @@ class TestCheckCmfConsistency:
             {"sourceConcept": "src:A", "action": "reuse"},
             {"sourceConcept": "src:B", "action": "augment"},
         ]
-        errors = check_cmf_consistency(cmf_path, mappings)
+        errors = check_cmf_consistency(cmf_path, mappings, {"http://redvale.gov/dbpi/edge#"})
         assert errors == []
 
     def test_no_properties_error(self, tmp_path):
@@ -308,13 +320,13 @@ class TestCheckCmfConsistency:
             {"sourceConcept": "src:A", "action": "reuse"},
             {"sourceConcept": "src:B", "action": "extend"},
         ]
-        errors = check_cmf_consistency(cmf_path, mappings)
+        errors = check_cmf_consistency(cmf_path, mappings, {"http://redvale.gov/dbpi/edge#"})
         assert any("no properties" in e.lower() for e in errors)
 
     def test_malformed_xml(self, tmp_path):
         cmf_path = tmp_path / "bad.cmf"
         cmf_path.write_text("<broken xml", encoding="utf-8")
-        errors = check_cmf_consistency(cmf_path, [])
+        errors = check_cmf_consistency(cmf_path, [], {"http://redvale.gov/dbpi/edge#"})
         assert len(errors) == 1
         assert "parse error" in errors[0].lower()
 
@@ -325,7 +337,7 @@ class TestCheckCmfConsistency:
             {"sourceConcept": "src:B", "action": "exclude"},
             {"sourceConcept": "src:C", "action": "exclude"},
         ]
-        errors = check_cmf_consistency(cmf_path, mappings)
+        errors = check_cmf_consistency(cmf_path, mappings, {"http://redvale.gov/dbpi/edge#"})
         assert errors == []
 
 

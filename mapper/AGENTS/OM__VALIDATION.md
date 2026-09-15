@@ -79,6 +79,9 @@ This is a post-run analysis tool, not part of the standard pipeline.
 The existing CMF consistency check combines XSD validation with binding and
 referent-kind checks for every `structures:ref`. XSD validation alone does not
 detect missing declarations or a class reference naming a datatype.
+Matrix class and augmentation counts use only the generated edge/extension
+namespaces; imported definitions cannot satisfy those comparisons. The CLI
+checks CMF whenever its directory is present and requires it for NIEM packages.
 
 Writes `{run_dir}/validation-report.json`:
 

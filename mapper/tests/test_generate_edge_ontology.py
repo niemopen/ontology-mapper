@@ -28,7 +28,7 @@ def test_generation_includes_offline_native_cmf_definitions_in_xml_and_json(tmp_
     monkeypatch.setattr(sys, "argv", ["om-generate-ontology", "--run-dir", str(tmp_path)])
     main()
     cmf_path = next((tmp_path / "edge-package/cmf").glob("*.cmf"))
-    assert check_cmf_consistency(cmf_path, mappings) == []
+    assert check_cmf_consistency(cmf_path, mappings, {"http://sample.gov/sample/edge#", "http://sample.gov/sample/ext#"}) == []
     root = etree.parse(str(cmf_path)).getroot()
     ns = {"cmf": root.nsmap[None], "s": root.nsmap["structures"]}
     text_class = root.xpath('./cmf:Class[@s:id="nc.TextType"]', namespaces=ns)[0]

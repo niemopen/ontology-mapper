@@ -65,7 +65,7 @@ def test_closure_keeps_cycles_native_property_kind_datatypes_and_metadata(tmp_pa
     path = tmp_path / "closed.cmf"
     path.write_text(result, encoding="utf-8")
     assert validate_cmf_schema(path) == []
-    assert check_cmf_consistency(path, []) == []
+    assert check_cmf_consistency(path, [], {"urn:edge"}) == []
     assert complete_cmf_references(generated, reference) == result
 
 
@@ -103,6 +103,73 @@ def test_equivalent_local_definition_with_another_prefix_is_merged():
     assert "xs.string" in result
 
 
+def test_conflicting_duplicate_alias_cannot_hide_behind_equivalent_native_definition():
+    reference = model(namespace("t", "urn:target") + component("Class", "t", "Native")
+                      + component("ObjectProperty", "t", "value", ref("Class", "t.Native")))
+    generated = model(namespace("a", "urn:target") + namespace("b", "urn:target")
+                      + namespace("edge", "urn:edge") + component("Class", "edge", "Local")
+                      + component("ObjectProperty", "a", "value", ref("Class", "edge.Local"))
+                      + component("ObjectProperty", "b", "value", ref("Class", "b.Native")))
+    with pytest.raises(ValueError, match="Conflicting.*value"):
+        complete_cmf_references(generated, reference)
+
+
+def test_equivalent_duplicate_aliases_merge_without_losing_references():
+    reference = model(namespace("t", "urn:target")
+                      + component("DataProperty", "t", "value", ref("Datatype", "xs.string")))
+    generated = model(namespace("a", "urn:target") + namespace("b", "urn:target")
+                      + component("DataProperty", "a", "value", ref("Datatype", "xs.string"))
+                      + component("DataProperty", "b", "value", ref("Datatype", "xs.string")))
+    result = ids(complete_cmf_references(generated, reference))
+    assert len([e for e in result.values() if e.findtext(f"{{{CMF}}}Name") == "value"]) == 1
+    assert "xs.string" in result
+
+
+def test_completion_cannot_erase_generated_conflicting_class_ids(tmp_path):
+    from ontology_mapper.generate_cmf_from_matrix import MatrixToCmfBuilder
+    from ontology_mapper.owl_cmf_bridge import CmfXmlSerializer, set_niem_version
+    from ontology_mapper.pipeline_context import PipelineContext
+
+    context = PipelineContext(tmp_path, tmp_path / "edge-package", "sample", "sample", "niem", "6.0")
+    inventory = {"classes": [{"qname": q, "label": q, "comment": q, "subClassOf": []}
+                             for q in ("src:A", "other:A")],
+                 "objectProperties": [], "datatypeProperties": [], "shaclShapes": [], "codelistSchemes": []}
+    matrix = {"mappings": [{"sourceConcept": q, "action": "extend", "targetType": target}
+                           for q, target in (("src:A", "t.First"), ("other:A", "t.Second"))]}
+    set_niem_version("6.0")
+    xml = CmfXmlSerializer(MatrixToCmfBuilder(matrix, inventory, context, {"t": "urn:target"}).build()).serialize()
+    raw = tmp_path / "raw.cmf"
+    raw.write_text(xml, encoding="utf-8")
+    assert validate_cmf_schema(raw)  # Earlier validation could see the duplicate ID.
+    reference = model(namespace("t", "urn:target") + component("Class", "t", "First") + component("Class", "t", "Second"))
+    with pytest.raises(ValueError, match="Conflicting.*AType"):
+        complete_cmf_references(xml, reference)
+
+
+def test_imported_classes_cannot_mask_a_missing_local_class(tmp_path):
+    generated = model(namespace("edge", "urn:edge") + namespace("t", "urn:target")
+                      + component("Class", "edge", "AType", ref("SubClassOf", "t.Native"))
+                      + component("DataProperty", "edge", "value", ref("Datatype", "xs.string")))
+    reference = model(namespace("t", "urn:target") + component("Class", "t", "Native"))
+    path = tmp_path / "missing-local.cmf"
+    path.write_text(complete_cmf_references(generated, reference), encoding="utf-8")
+    mappings = [{"sourceConcept": "src:A", "action": "extend"}, {"sourceConcept": "src:B", "action": "extend"}]
+    assert any("classes" in e for e in check_cmf_consistency(path, mappings, {"urn:edge"}))
+
+
+def test_imported_augmentations_cannot_mask_missing_local_records(tmp_path):
+    augmentation = ('<AugmentationRecord>' + ref("Class", "t.Native") + ref("DataProperty", "t.value")
+                    + '<MinOccursQuantity>0</MinOccursQuantity><MaxOccursQuantity>1</MaxOccursQuantity></AugmentationRecord>')
+    reference = model(namespace("t", "urn:target", augmentation)
+                      + component("Class", "t", "Native")
+                      + component("DataProperty", "t", "value", ref("Datatype", "xs.string")))
+    generated = model(namespace("edge", "urn:edge") + namespace("t", "urn:target"))
+    path = tmp_path / "missing-augmentation.cmf"
+    path.write_text(complete_cmf_references(generated, reference), encoding="utf-8")
+    mappings = [{"sourceConcept": "src:A", "action": "augment"}]
+    assert any("AugmentationRecords" in e for e in check_cmf_consistency(path, mappings, {"urn:edge"}))
+
+
 def test_only_known_builtin_datatypes_are_declared_and_missing_targets_remain_errors(tmp_path):
     generated = model(namespace("edge", "urn:edge") + namespace("t", "urn:target")
                       + component("Class", "edge", "Record", ref("SubClassOf", "t.Missing"))
@@ -113,7 +180,7 @@ def test_only_known_builtin_datatypes_are_declared_and_missing_targets_remain_er
     path = tmp_path / "missing.cmf"
     path.write_text(result, encoding="utf-8")
     assert validate_cmf_schema(path) == []  # XSD alone missed this failure.
-    errors = check_cmf_consistency(path, [])
+    errors = check_cmf_consistency(path, [], {"urn:edge"})
     assert any("t.Missing" in e and "Unbound" in e for e in errors)
     assert any("xs.NotAType" in e and "Unbound" in e for e in errors)
 
@@ -126,7 +193,7 @@ def test_class_reference_to_datatype_is_not_silently_reinterpreted(tmp_path):
     path = tmp_path / "wrong-kind.cmf"
     path.write_text(complete_cmf_references(generated, reference), encoding="utf-8")
     assert validate_cmf_schema(path) == []
-    assert any("SubClassOf" in e and "Restriction" in e for e in check_cmf_consistency(path, []))
+    assert any("SubClassOf" in e and "Restriction" in e for e in check_cmf_consistency(path, [], {"urn:edge"}))
 
 
 def test_explicit_implicit_root_policy_removes_base_without_fabricating_class():
@@ -165,7 +232,7 @@ def test_imported_namespace_preserves_native_and_local_augmentation_records(tmp_
     assert len(ids(result)["t"].findall(f"{{{CMF}}}AugmentationRecord")) == 2
     path = tmp_path / "augmentation.cmf"
     path.write_text(result, encoding="utf-8")
-    assert check_cmf_consistency(path, []) == []
+    assert check_cmf_consistency(path, [], {"urn:edge"}) == []
 
 
 def test_reference_loader_rejects_file_symlink_outside_specs(tmp_path, monkeypatch):

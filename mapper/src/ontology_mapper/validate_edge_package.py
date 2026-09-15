@@ -127,20 +127,21 @@ def validate_cmf_schema(cmf_path):
     return errors
 
 
-def check_cmf_consistency(cmf_path, mappings_list):
+def check_cmf_consistency(cmf_path, mappings_list, generated_namespace_uris):
     """Check that CMF XML is well-formed, XSD-valid, and consistent with the matrix.
 
     Validates:
     - CMF XML parses without error
     - CMF conforms to the official NIEM CMF XSD schema
     - Every structures:ref binds to a declaration of a compatible kind
-    - Class count matches active (reuse + extend) classes in matrix
-    - AugmentationRecord entries exist for augment-action mappings
+    - Generated class count matches active (reuse + extend) classes in matrix
+    - Generated AugmentationRecord entries exist for augment-action mappings
     - At least one property exists
 
     Args:
         cmf_path: Path to the .cmf XML file.
         mappings_list: List of mapping entry dicts from the matrix.
+        generated_namespace_uris: Edge and extension namespace URIs from context.
 
     Returns:
         List of error strings. Empty means all checks pass.
@@ -165,28 +166,29 @@ def check_cmf_consistency(cmf_path, mappings_list):
     root = tree.getroot()
     errors.extend(check_cmf_references(root))
     # CMF uses a namespace — find it dynamically
-    nsmap = root.nsmap
-    cmf_ns = nsmap.get(None) or nsmap.get("cmf", "")
-    ns = {"cmf": cmf_ns} if cmf_ns else {}
+    cmf_ns = etree.QName(root).namespace
+    prefix = f"{{{cmf_ns}}}" if cmf_ns else ""
 
-    def find_all(tag):
-        if ns:
-            return root.findall(f"cmf:{tag}", ns)
-        return root.findall(tag)
+    def find_all(tag, parent=root):
+        return parent.findall(f"{prefix}{tag}")
 
-    # Count CMF elements
-    cmf_classes = find_all("Class")
+    def attribute_value(element, name):
+        if element is None:
+            return None
+        return next((value for key, value in element.attrib.items()
+                     if etree.QName(key).localname == name), None)
+
+    # Imported definitions validate references, but cannot stand in for mappings.
+    generated_namespaces = [element for element in find_all("Namespace")
+                            if element.findtext(f"{prefix}NamespaceURI") in generated_namespace_uris]
+    generated_ids = {attribute_value(element, "id") for element in generated_namespaces}
+    cmf_classes = [element for element in find_all("Class")
+                   if attribute_value(element.find(f"{prefix}Namespace"), "ref") in generated_ids]
     cmf_obj_props = find_all("ObjectProperty")
     cmf_data_props = find_all("DataProperty")
-    cmf_namespaces = find_all("Namespace")
 
-    # Count augmentation records across all namespaces
-    cmf_aug_count = 0
-    for ns_el in cmf_namespaces:
-        if cmf_ns:
-            cmf_aug_count += len(ns_el.findall(f"cmf:AugmentationRecord", ns))
-        else:
-            cmf_aug_count += len(ns_el.findall("AugmentationRecord"))
+    cmf_aug_count = sum(len(find_all("AugmentationRecord", element))
+                        for element in generated_namespaces)
 
     # Expected counts from matrix
     reuse_extend = sum(1 for m in mappings_list
@@ -198,14 +200,14 @@ def check_cmf_consistency(cmf_path, mappings_list):
     # augmentation records instead)
     if len(cmf_classes) < reuse_extend:
         errors.append(
-            f"CMF has {len(cmf_classes)} classes, expected >= {reuse_extend} "
+            f"CMF has {len(cmf_classes)} generated classes, expected >= {reuse_extend} "
             f"(reuse + extend from matrix)"
         )
 
     # Check augmentation records
     if augment_count > 0 and cmf_aug_count == 0:
         errors.append(
-            f"Matrix has {augment_count} augment actions but CMF has no "
+            f"Matrix has {augment_count} augment actions but CMF has no generated "
             f"AugmentationRecords"
         )
 
@@ -573,14 +575,15 @@ def main():
           (f", {len(transform_errors)} errors: " + "; ".join(transform_errors[:3])
            if transform_errors else ", all transforms match"))
 
-    # ── Check 11: CMF consistency (NIEM only) ─────────────────────────────
-    if target_ontology == "niem":
+    # ── Check 11: CMF consistency (required for NIEM, otherwise when present) ──
+    cmf_dir = PKG / "cmf"
+    cmf_path = cmf_dir / f"{ctx.cmf_model_stem}.cmf"
+    if target_ontology == "niem" or cmf_dir.exists():
         print("\n  Check 11: CMF consistency")
-        cmf_dir = PKG / "cmf"
-        cmf_path = cmf_dir / f"{ctx.cmf_model_stem}.cmf" if cmf_dir.exists() else None
 
-        if cmf_path and cmf_path.exists():
-            cmf_errors = check_cmf_consistency(cmf_path, mappings_list)
+        if cmf_path.exists():
+            cmf_errors = check_cmf_consistency(
+                cmf_path, mappings_list, {ctx.edge_namespace, ctx.extension_namespace})
         elif cmf_dir.exists():
             cmf_errors = [f"CMF file not found: {ctx.cmf_model_stem}.cmf"]
         else:

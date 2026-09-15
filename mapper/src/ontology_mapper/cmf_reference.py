@@ -56,12 +56,20 @@ class _CmfIndex:
         self.structures = root.nsmap["structures"]
         self.id_attr = f"{{{self.structures}}}id"
         self.ref_attr = f"{{{self.structures}}}ref"
-        self.by_id = {e.get(self.id_attr): e for e in root if e.get(self.id_attr)}
+        declarations = [e for e in root if e.get(self.id_attr)]
+        self.by_id = {e.get(self.id_attr): e for e in declarations}
         self.namespaces = {
             sid: e.findtext(f"{{{self.ns}}}NamespaceURI")
             for sid, e in self.by_id.items() if etree.QName(e).localname == "Namespace"
         }
-        self.by_identity = {self.identity(e): e for e in self.by_id.values()}
+        self.by_identity = {}
+        for element in declarations:
+            identity = self.identity(element)
+            previous = self.by_identity.get(identity)
+            if (len(identity) == 2 and previous is not None
+                    and self.signature(previous) != self.signature(element)):
+                raise ValueError(f"Conflicting CMF declarations for {identity[0]} {identity[1]}")
+            self.by_identity[identity] = element
 
     def identity(self, element):
         if etree.QName(element).localname == "Namespace":
