@@ -160,6 +160,13 @@ are dropped. This balances breadth of candidates against noise.
 
 On re-run, files with `status == "evaluated"` are preserved (resumable).
 
+Type candidates from both batch and per-concept searches pass the
+[native class-eligibility policy](OM__ONTOLOGY_ADAPTERS.md) before the score
+floor and evaluator prompt. This also applies to existing indexes; rebuilding
+an index is not required. The bounded top-k retrieval may have fewer survivors
+after filtering. Catalog indexing uses the same policy. Property retrieval is
+unchanged, including properties whose values are datatypes.
+
 `om-collect-alignments` reads type and property files, reassembles
 per-concept evaluations (type + its properties grouped by `parentType`),
 calls `resolve_alignment()` on each, and writes the completed

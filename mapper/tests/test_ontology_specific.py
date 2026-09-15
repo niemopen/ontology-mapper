@@ -13,6 +13,46 @@ from ontology_mapper.ontology_specific import (
 )
 
 
+@pytest.mark.parametrize("name", ["Restricted", "Values", "Choice", "Primitive", "Missing"])
+@pytest.mark.parametrize("full_iri", [False, True])
+def test_native_datatype_cannot_be_selected_as_class(native_class_catalog, name, full_iri):
+    import copy
+    target = f"https://example.test/model/{name}" if full_iri else f"alias:{name}"
+    evaluation = {"sourceConcept": "source:Record", "targetType": target, "properties": []}
+    before = copy.deepcopy(evaluation)
+    with pytest.raises(ValueError, match="class"):
+        resolve_alignment(evaluation, "example", native_class_catalog)
+    assert evaluation == before
+    with pytest.raises(ValueError, match="class"):
+        reclassify_for_target_type_change(evaluation, target, "example", native_class_catalog)
+    assert evaluation == before
+
+
+@pytest.mark.parametrize("name", ["Record", "ActualSimpleType", "Literal", "InheritedLiteral"])
+@pytest.mark.parametrize("full_iri", [False, True])
+def test_native_classes_preserved_regardless_of_name_or_direct_properties(native_class_catalog, name, full_iri):
+    target = f"https://example.test/model/{name}" if full_iri else f"alias:{name}"
+    evaluation = {"sourceConcept": "source:Record", "targetType": target, "properties": []}
+    result = resolve_alignment(evaluation, "example", native_class_catalog)
+    assert result["action"] == "reuse"
+    assert result["targetType"] == target
+    changed = reclassify_for_target_type_change(evaluation, target, "example", native_class_catalog)
+    assert changed["targetType"] == target
+
+
+@pytest.mark.parametrize("target", [None, "[undecided]"])
+def test_unselected_targets_keep_existing_review_behavior(native_class_catalog, target):
+    evaluation = {"sourceConcept": "source:Record", "targetType": target, "properties": []}
+    result = resolve_alignment(evaluation, "example", native_class_catalog)
+    assert result["targetType"] == target
+    assert result["action"] == ("extend" if target is None else "reuse")
+
+
+def test_catalog_without_native_reference_retains_legacy_behavior(native_class_catalog):
+    evaluation = {"sourceConcept": "source:Record", "targetType": "alias:Restricted", "properties": []}
+    assert resolve_alignment(evaluation, "no-reference", native_class_catalog)["action"] == "reuse"
+
+
 # ─── Fixtures ────────────────────────────────────────────────────────────
 
 @pytest.fixture

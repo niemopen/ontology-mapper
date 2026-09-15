@@ -18,6 +18,8 @@ via resolve_alignment().
 """
 import json
 
+from ontology_mapper.cmf_reference import load_reference_cmf, reference_class_identities
+
 
 def extension_conformance_target(target_ontology: str, target_version: str) -> str:
     """NDR 6.0 rule 8-13: the conformance target for extension namespaces.
@@ -36,6 +38,51 @@ def cmf_implicit_roots(target_ontology: str, target_version: str):
     if target_ontology.lower() == "niem" and target_version == "6.0":
         return {("https://docs.oasis-open.org/niemopen/ns/model/structures/6.0/", "ObjectType")}
     return set()
+
+
+class ClassTargetError(ValueError):
+    """A selected target cannot represent a source class in the native model."""
+
+
+def class_target_filter(target_ontology, catalog, target_version=None):
+    """Return the shared native class-eligibility predicate.
+
+    Without an installed reference, retain catalog behavior; this is not a
+    claim of native validation. A supplied reference defines the eligible
+    Class identities. Source names and property counts do not establish kind.
+    """
+    version = target_version or catalog.get("version")
+    reference = load_reference_cmf(target_ontology, version) if version else None
+    if reference is None:
+        return lambda target: True
+
+    classes = reference_class_identities(reference) | cmf_implicit_roots(target_ontology, version)
+    namespaces = catalog.get("namespaces", {})
+    # NIEM NDR 6.0 section 14.1.2 defines component IRIs from URI + name.
+    iris = {uri + ("" if uri.endswith(("/", "#", ":")) else
+                   ":" if uri.startswith("urn:") else "/") + name
+            for uri, name in classes}
+
+    def eligible(target):
+        if target is None or target == "[undecided]":
+            return True  # Keep the existing unresolved/review representation.
+        prefix, _, name = target.partition(":")
+        if prefix in namespaces:
+            return (namespaces[prefix], name) in classes
+        return target in iris
+
+    return eligible
+
+
+def validate_class_target(target, target_ontology, catalog):
+    """Reject incompatible saved or review selections without replacing them."""
+    if not class_target_filter(target_ontology, catalog)(target):
+        raise ClassTargetError(
+            f"Target '{target}' is not a class in the installed {target_ontology} "
+            f"{catalog.get('version', '')} reference model. Choose a class target "
+            "or review the no-match/default-root option; a datatype cannot be "
+            "used as a superclass."
+        )
 
 
 # Action determination — NIEM
@@ -250,6 +297,7 @@ def resolve_alignment(evaluation, target_ontology, catalog):
     result = copy.deepcopy(evaluation)
     properties = result.get("properties", [])
     target_type = result.get("targetType")
+    validate_class_target(target_type, target_ontology, catalog)
 
     # --- No target type: extend from root (create everything from scratch) ---
     if target_type is None:
@@ -351,6 +399,7 @@ def reclassify_for_target_type_change(entry, new_target_type, target_ontology, c
         The input is never mutated.
     """
     import copy
+    validate_class_target(new_target_type, target_ontology, catalog)
     result = copy.deepcopy(entry)
     result["targetType"] = new_target_type
     property_mappings = result.get("propertyMappings", [])

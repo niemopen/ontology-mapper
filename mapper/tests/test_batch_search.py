@@ -25,6 +25,29 @@ from ontology_mapper.batch_search import (
 from ontology_mapper.vector_index import OntologyEntry
 
 
+def test_existing_index_datatypes_removed_before_score_floor(native_class_catalog, tmp_path):
+    candidates = [
+        {"id": "Datatype label", "qname": "alias:Restricted", "score": 1.0},
+        {"id": "Class label", "qname": "alias:Record", "score": 0.7},
+        {"id": "alias:InheritedLiteral", "score": 0.65},
+    ]
+    concepts = [{"qname": "source:Record", "properties": []}]
+    with patch("ontology_mapper.batch_search.query_index", return_value=[{"matches": candidates}]):
+        results = search_all_types(concepts, "example-1.0")
+    assert [c["id"] for c in results["source:Record"]] == ["Class label", "alias:InheritedLiteral"]
+    write_search_results(tmp_path, concepts, results, {}, min_score_ratio=0.75)
+    doc = json.loads((tmp_path / "search-results/types/source_Record.json").read_text(encoding="utf-8"))
+    assert [c["id"] for c in doc["candidates"]] == ["Class label", "alias:InheritedLiteral"]
+
+
+def test_property_search_keeps_datatype_valued_candidates(native_class_catalog):
+    candidate = {"id": "alias:value", "metadata": {"qualifiedType": "alias:Restricted"}}
+    concepts = [{"qname": "source:Record", "properties": [{"name": "value", "qname": "source:value"}]}]
+    with patch("ontology_mapper.batch_search.query_index", return_value=[{"matches": [candidate]}]):
+        results = search_all_properties(concepts, "example-1.0")
+    assert results["source:Record"]["source:value"] == [candidate]
+
+
 @pytest.mark.parametrize("legacy", [False, True])
 def test_shared_cross_namespace_property_keeps_both_parents_and_resumes(tmp_path, legacy):
     from ontology_mapper.collect_alignments import load_search_results, reassemble_evaluations

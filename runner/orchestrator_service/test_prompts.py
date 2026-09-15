@@ -12,6 +12,12 @@ TYPE_PATTERNS = {"object": "Container types.", "association": "Relationships."}
 
 
 class TestTypePrompt:
+    def test_type_prompt_preserves_class_representation(self):
+        prompt = build_type_prompt({"qname": "source:Role", "definition": ""}, [], {}, {})
+        assert "map it to the existing property" not in prompt
+        assert "source class" in prompt.lower()
+        assert "datatype" in prompt.lower()
+
     def test_includes_source(self):
         source = {"qname": "dbpi:Address", "definition": "A location."}
         prompt = build_type_prompt(source, [], ACTIONS, TYPE_PATTERNS)

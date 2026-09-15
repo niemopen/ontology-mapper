@@ -23,6 +23,16 @@ import ontology_mapper.vector_index as vi
 from ontology_mapper.vector_index import OntologyEntry, build_index, save_index
 from ontology_mapper.semantic_search import search_property, search_type
 
+
+def test_per_concept_search_filters_native_datatypes_without_model_calls(native_class_catalog, monkeypatch):
+    candidates = [{"id": "alias:Record"}, {"id": "alias:Restricted"},
+                  {"id": "alias:ActualSimpleType"}]
+    monkeypatch.setattr("ontology_mapper.semantic_search.query_index",
+                        lambda *args, **kwargs: [{"matches": candidates}])
+    assert [c["id"] for c in search_type("source:Record", "", "example-1.0")] == [
+        "alias:Record", "alias:ActualSimpleType"]
+    assert search_property("source:value", "", "example-1.0") == candidates
+
 _original_resolve = vi.resolve_specs_dir
 
 

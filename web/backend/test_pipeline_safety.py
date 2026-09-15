@@ -82,3 +82,29 @@ def test_validation_stops_before_finalization(tmp_path, monkeypatch, valid):
     assert runs._run_pipeline_stages_6_8("sample", tmp_path, str(tmp_path), {}) is valid
     assert ("om-finalize" in commands) is valid
     assert ("7" in completed) is valid
+
+
+@pytest.mark.parametrize("target", ["scr:PersonRoleCategoryCodeType", "hs:PersonRoleCodeSimpleType", "nc:TextType"])
+@pytest.mark.parametrize("same_target", [False, True])
+def test_change_target_checks_native_class_before_saving(run_context, monkeypatch, target, same_target):
+    from ontology_mapper.run_dir_utils import resolve_specs_dir
+
+    run_dir, client, _ = run_context
+    catalog = json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json").read_text(encoding="utf-8"))
+    monkeypatch.setattr(review, "_get_cascade", lambda *args: ("niem", catalog))
+    entry = {"sourceConcept": "source:Record", "targetType": target if same_target else "nc:PersonType",
+             "action": "reuse", "reviewStatus": "accepted", "propertyMappings": []}
+    (run_dir / "mapping-matrix.json").write_text(json.dumps({"mappings": [entry]}), encoding="utf-8")
+    for name in ("decision-log.json", "human-review-decisions.json"):
+        (run_dir / name).write_text(json.dumps({"decisions": []}), encoding="utf-8")
+    before = {p.name: p.read_bytes() for p in run_dir.glob("*.json")}
+    response = client.post("/runs/sample/review/change-target", json={
+        "concept": "source:Record", "new_target_type": target})
+    if target == "nc:TextType":
+        assert response.status_code == 200, response.text
+        assert response.json()["newTargetType"] == target
+    else:
+        assert response.status_code == 400, response.text
+        assert target in response.json()["detail"]
+        assert "not a class" in response.json()["detail"]
+        assert all((run_dir / name).read_bytes() == data for name, data in before.items())

@@ -7,6 +7,7 @@ prefixes and structures:id values are document-local identifiers.
 
 from collections import deque
 from copy import deepcopy
+from functools import lru_cache
 import gzip
 import os
 from pathlib import Path
@@ -100,6 +101,19 @@ class _CmfIndex:
         return (etree.QName(element).localname, tuple(sorted(attributes)),
                 (element.text or "").strip(),
                 tuple(self.signature(child) for child in element if isinstance(child.tag, str)))
+
+
+@lru_cache(maxsize=1)
+def reference_class_identities(xml: str):
+    """Native Class identities, including literal and inherited Classes.
+
+    Cache the immutable answer by content so a changed reference is reread.
+    Datatypes and XSD-only names are not Class declarations.
+    """
+    index = _CmfIndex(etree.fromstring(xml.encode("utf-8"),
+                                     etree.XMLParser(resolve_entities=False)))
+    return frozenset(identity for identity, element in index.by_identity.items()
+                     if etree.QName(element).localname == "Class")
 
 
 def _builtin_model(root):

@@ -40,6 +40,18 @@ def ids(xml):
     return {e.get(f"{{{S}}}id"): e for e in parse(xml) if e.get(f"{{{S}}}id")}
 
 
+def test_native_class_query_excludes_all_datatype_forms_without_name_inference():
+    from ontology_mapper.cmf_reference import reference_class_identities
+
+    xml = model(namespace("n", "urn:target")
+                + component("Class", "n", "ValueSimpleType")
+                + component("Class", "n", "EmptyChild", ref("SubClassOf", "n.ValueSimpleType"))
+                + "".join(component(kind, "n", kind) for kind in
+                          ("Datatype", "Restriction", "List", "Union")))
+    assert reference_class_identities(xml) == {
+        ("urn:target", "ValueSimpleType"), ("urn:target", "EmptyChild")}
+
+
 def test_closure_keeps_cycles_native_property_kind_datatypes_and_metadata(tmp_path):
     reference = model(
         namespace("t", "urn:target", '<LocalTerm><TermName>term</TermName></LocalTerm>')

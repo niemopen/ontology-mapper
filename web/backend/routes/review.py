@@ -236,7 +236,11 @@ async def change_target(
         "action": entry.get("action", "reuse"),
         "targetType": req.new_target_type,
     }
-    apply_decision_with_cascade(entry, decision, target_ontology, catalog)
+    from ontology_mapper.ontology_specific import ClassTargetError
+    try:
+        apply_decision_with_cascade(entry, decision, target_ontology, catalog)
+    except ClassTargetError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     _save(run_dir, matrix, dec_log, [entry])
 

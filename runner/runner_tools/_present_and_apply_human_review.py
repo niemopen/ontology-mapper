@@ -304,6 +304,9 @@ def apply_decision_with_cascade(entry, decision, target_ontology, catalog):
         if "notes" in decision:
             entry["notes"] = decision["notes"]
     else:
+        if "targetType" in decision:
+            from ontology_mapper.ontology_specific import validate_class_target
+            validate_class_target(new_target, target_ontology, catalog)
         apply_decision(entry, decision)
 
 

@@ -41,6 +41,20 @@ structural rules to choose an action. The orchestrator does NOT set the
 action directly — it provides evaluations, and `resolve_alignment()` applies
 rules.
 
+Before resolving a selected target, `validate_class_target()` uses the shared
+`class_target_filter()` policy. When a native CMF reference is installed for
+the target/version, eligibility comes from actual Class identities, resolved
+through catalog namespace bindings or full IRIs, plus explicit implicit roots.
+Datatypes and XSD-only names cannot become superclasses. Literal classes,
+including classes with only inherited properties, remain eligible. Names,
+patterns and property counts do not determine component kind.
+
+An incompatible saved selection raises `ClassTargetError` without replacement.
+The same policy applies to Stage 5 target submissions, including unchanged
+values. Null and undecided retain their existing review semantics. Without an
+installed native reference, existing catalog behavior is preserved; this is
+not a claim of native class validation.
+
 ### NIEM action logic
 
 `resolve_alignment()` delegates to `_determine_niem_action()`:

@@ -19,7 +19,11 @@ Before choosing a target type, check whether the target ontology already defines
 
 ## Property-Path Concepts
 
-Some source "classes" are really simple data values (a country name, a language name, a telephone number). Check whether the concept is better represented as a property on a parent type rather than as a standalone type. If so, map it to the existing property that carries this data rather than creating a new type-level alignment.
+Preserve the source representation: class evaluation selects a class target,
+including a literal class when its semantics match. It does not convert a
+source class into a datatype, code value or property based on its name.
+Insufficient source evidence remains uncertainty. Native structural eligibility
+is defined by the [mapper adapter contract](../../mapper/AGENTS/OM__ONTOLOGY_ADAPTERS.md).
 
 ---
 

@@ -997,6 +997,19 @@ class TestApplyDecisionWithCascade:
         assert entry["ruleId"] == "human-review"
         assert entry["reviewStatus"] == "accepted"
 
+    def test_same_incompatible_target_is_rejected_without_mutation(self):
+        import copy
+        from ontology_mapper.run_dir_utils import resolve_specs_dir
+
+        catalog = json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json").read_text(encoding="utf-8"))
+        entry = self._entry()
+        entry["targetType"] = "scr:PersonRoleCategoryCodeType"
+        before = copy.deepcopy(entry)
+        with pytest.raises(ValueError, match="not a class"):
+            apply_decision_with_cascade(entry, {"action": "reuse", "targetType": entry["targetType"]},
+                                        "niem", catalog)
+        assert entry == before
+
     def test_no_cascade_no_target_in_decision(self, niem_catalog):
         """No targetType in decision → simple apply_decision."""
         entry = self._entry()

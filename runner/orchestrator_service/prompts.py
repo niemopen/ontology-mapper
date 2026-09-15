@@ -16,11 +16,11 @@ Before choosing a target type, check whether the target ontology already \
 defines a specific element or property for the source concept. If it does, \
 the type follows from that element — not from name similarity alone.
 
-Some source "classes" are really simple data values (a country name, a \
-language name, a telephone number). Check whether the concept is better \
-represented as a property on a parent type rather than as a standalone type. \
-If so, map it to the existing property that carries this data rather than \
-creating a new type-level alignment.
+Preserve the source representation. A source class requires a class target; \
+do not reinterpret it as a datatype, code value, or property based on its \
+name. Literal classes are valid class targets when their semantics match. \
+When the source lacks a definition or other evidence for a match, retain \
+that uncertainty rather than inventing a more specific meaning.
 
 Each target ontology defines its own type patterns (e.g., object, \
 association, complex_value). These describe the structural patterns you \

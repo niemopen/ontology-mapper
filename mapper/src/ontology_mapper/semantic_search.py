@@ -31,6 +31,23 @@ Usage:
 from ontology_mapper.vector_index import OntologyEntry, query_index
 
 
+def class_filter_for_index(index_name):
+    """Use the target catalog's namespace bindings with its native reference."""
+    import json
+    from ontology_mapper.adapters.catalog_adapter import _find_catalog
+    from ontology_mapper.ontology_specific import class_target_filter
+
+    name, separator, version = index_name.rpartition("-")
+    if not separator:
+        return lambda target: True
+    try:
+        catalog_path = _find_catalog(name, version)
+    except FileNotFoundError:
+        return lambda target: True  # Source/custom indexes may have no catalog.
+    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    return class_target_filter(name, catalog, version)
+
+
 def search_type(
     source_concept: str,
     source_definition: str,
@@ -59,7 +76,9 @@ def search_type(
         context=source_context,
     )
     results = query_index([entry], target_ontology, "types", top_k=top_k)
-    return results[0]["matches"] if results else []
+    eligible = class_filter_for_index(target_ontology)
+    return [candidate for candidate in results[0]["matches"]
+            if eligible(candidate.get("qname", candidate["id"]))] if results else []
 
 
 def search_property(

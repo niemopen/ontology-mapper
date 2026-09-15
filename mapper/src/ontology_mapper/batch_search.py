@@ -28,6 +28,7 @@ from pathlib import Path
 
 from ontology_mapper.pipeline_context import load_context
 from ontology_mapper.vector_index import OntologyEntry, query_index
+from ontology_mapper.semantic_search import class_filter_for_index
 
 
 # ---------------------------------------------------------------------------
@@ -150,7 +151,10 @@ def search_all_types(
 
     results = query_index(entries, target_index, "types", top_k=top_k)
 
-    return {qnames[i]: r["matches"] for i, r in enumerate(results)}
+    eligible = class_filter_for_index(target_index)
+    return {qnames[i]: [candidate for candidate in r["matches"]
+                       if eligible(candidate.get("qname", candidate["id"]))]
+            for i, r in enumerate(results)}
 
 
 # ---------------------------------------------------------------------------
