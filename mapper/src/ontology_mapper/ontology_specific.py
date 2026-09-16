@@ -19,7 +19,7 @@ via resolve_alignment().
 import json
 
 from ontology_mapper.cmf_reference import load_reference_cmf, reference_class_identities
-from ontology_mapper.generation_utils import component_iri
+from ontology_mapper.generation_utils import target_qname
 
 
 def extension_conformance_target(target_ontology: str, target_version: str) -> str:
@@ -45,44 +45,64 @@ class ClassTargetError(ValueError):
     """A selected target cannot represent a source class in the native model."""
 
 
+def _any_class_target(target):
+    """Eligibility without an installed reference: retain catalog behavior."""
+    return True
+
+
 def class_target_filter(target_ontology, catalog, target_version=None):
     """Return the shared native class-eligibility predicate.
 
     Without an installed reference, retain catalog behavior; this is not a
     claim of native validation. A supplied reference defines the eligible
     Class identities. Source names and property counts do not establish kind.
+
+    A full IRI is eligible only when the catalog binds its namespace, so the
+    accepted form is always one the catalog can name (``prefix:Name``); a
+    reference class in an unbound namespace would otherwise survive review
+    and fail two stages later as an unbound CMF reference.
     """
     version = target_version or catalog.get("version")
     reference = load_reference_cmf(target_ontology, version) if version else None
     if reference is None:
-        return lambda target: True
+        return _any_class_target
 
     classes = reference_class_identities(reference) | cmf_implicit_roots(target_ontology, version)
     namespaces = catalog.get("namespaces", {})
-    # One home for the URI + name rule: generation_utils.component_iri, which
-    # the CMF emitter inverts to ground an accepted IRI back to its QName.
-    iris = {component_iri(uri, name) for uri, name in classes}
 
     def eligible(target):
         if target is None or target == "[undecided]":
             return True  # Keep the existing unresolved/review representation.
-        prefix, _, name = target.partition(":")
-        if prefix in namespaces:
-            return (namespaces[prefix], name) in classes
-        return target in iris
+        prefix, _, name = target_qname(target, namespaces).partition(":")
+        return prefix in namespaces and (namespaces[prefix], name) in classes
 
     return eligible
 
 
-def validate_class_target(target, target_ontology, catalog):
-    """Reject incompatible saved or review selections without replacing them."""
-    if not class_target_filter(target_ontology, catalog)(target):
+def canonical_class_target(target, target_ontology, catalog):
+    """Validate a selection and return the identity the pipeline carries.
+
+    Under a native policy an accepted full IRI becomes its catalog QName, so
+    catalog lookups, scaffolding names, emitters and drift checks all see one
+    spelling. Without an installed reference the selection is kept as given.
+    An incompatible selection is rejected, never replaced.
+    """
+    eligible = class_target_filter(target_ontology, catalog)
+    if not eligible(target):
         raise ClassTargetError(
             f"Target '{target}' is not a class in the installed {target_ontology} "
             f"{catalog.get('version', '')} reference model. Choose a class target "
             "or review the no-match/default-root option; a datatype cannot be "
             "used as a superclass."
         )
+    if eligible is _any_class_target or not target or target == "[undecided]":
+        return target
+    return target_qname(target, catalog.get("namespaces", {}))
+
+
+def validate_class_target(target, target_ontology, catalog):
+    """Reject incompatible saved or review selections without replacing them."""
+    canonical_class_target(target, target_ontology, catalog)
 
 
 # Action determination — NIEM
@@ -296,8 +316,8 @@ def resolve_alignment(evaluation, target_ontology, catalog):
     import copy
     result = copy.deepcopy(evaluation)
     properties = result.get("properties", [])
-    target_type = result.get("targetType")
-    validate_class_target(target_type, target_ontology, catalog)
+    target_type = canonical_class_target(result.get("targetType"), target_ontology, catalog)
+    result["targetType"] = target_type
 
     # --- No target type: extend from root (create everything from scratch) ---
     if target_type is None:
@@ -399,7 +419,7 @@ def reclassify_for_target_type_change(entry, new_target_type, target_ontology, c
         The input is never mutated.
     """
     import copy
-    validate_class_target(new_target_type, target_ontology, catalog)
+    new_target_type = canonical_class_target(new_target_type, target_ontology, catalog)
     result = copy.deepcopy(entry)
     result["targetType"] = new_target_type
     property_mappings = result.get("propertyMappings", [])

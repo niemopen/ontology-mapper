@@ -27,6 +27,10 @@ def native_class_catalog(tmp_path, monkeypatch):
              "Restricted": "Restriction", "Values": "List",
              "Choice": "Union", "Primitive": "Datatype"}
     body = namespace("native", uri) + namespace("xs", "http://www.w3.org/2001/XMLSchema")
+    # A reference class whose namespace the catalog does not bind: a real
+    # class, but one no catalog QName or CMF id can name.
+    body += namespace("other", "https://example.test/other/")
+    body += component("Class", "other", "Foreign")
     body += component("Datatype", "xs", "string")
     for name, kind in kinds.items():
         detail = {"Restriction": ref("RestrictionBase", "xs.string"),

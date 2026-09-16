@@ -28,7 +28,7 @@ from pathlib import Path
 
 from ontology_mapper.pipeline_context import load_context
 from ontology_mapper.vector_index import OntologyEntry, query_index
-from ontology_mapper.semantic_search import class_filter_for_index
+from ontology_mapper.semantic_search import class_filter_for_index, match_predicate
 
 
 # ---------------------------------------------------------------------------
@@ -149,9 +149,8 @@ def search_all_types(
             context="; ".join(c.get("superClasses", [])),
         ))
 
-    eligible = class_filter_for_index(target_index)
     results = query_index(entries, target_index, "types", top_k=top_k,
-                          eligible=lambda match: eligible(match["qname"]))
+                          eligible=match_predicate(class_filter_for_index(target_index)))
 
     return {qnames[i]: r["matches"] for i, r in enumerate(results)}
 

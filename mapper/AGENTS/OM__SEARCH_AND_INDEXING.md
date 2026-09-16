@@ -154,9 +154,9 @@ and property index in two batch calls, then writes separate files:
 - `{run_dir}/search-results/types/{qname}.json` — one per source type
 - `{run_dir}/search-results/properties/{qname}.json` — one per source property
 
-Candidates are filtered: only the top-k (default 25) are queried, then
-any scoring below `--min-score-ratio` (default 75%) of the rank-1 score
-are dropped. This balances breadth of candidates against noise.
+Candidates are filtered: each concept keeps its top-k (default 25)
+candidates, then any scoring below `--min-score-ratio` (default 75%) of the
+rank-1 score are dropped. This balances breadth of candidates against noise.
 
 On re-run, files with `status == "evaluated"` are preserved (resumable).
 

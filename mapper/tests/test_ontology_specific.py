@@ -35,9 +35,53 @@ def test_native_classes_preserved_regardless_of_name_or_direct_properties(native
     evaluation = {"sourceConcept": "source:Record", "targetType": target, "properties": []}
     result = resolve_alignment(evaluation, "example", native_class_catalog)
     assert result["action"] == "reuse"
-    assert result["targetType"] == target
+    # An accepted IRI is carried as the catalog QName: one spelling for
+    # catalog lookups, scaffolding names, emitters and drift checks.
+    assert result["targetType"] == f"alias:{name}"
     changed = reclassify_for_target_type_change(evaluation, target, "example", native_class_catalog)
-    assert changed["targetType"] == target
+    assert changed["targetType"] == f"alias:{name}"
+
+
+def test_full_iri_resolves_exactly_like_its_qname(native_class_catalog):
+    evaluation = {"sourceConcept": "source:Record", "properties": [
+        {"sourceProperty": "source:value", "targetProperty": None}]}
+    by_qname = resolve_alignment({**evaluation, "targetType": "alias:Record"},
+                                 "example", native_class_catalog)
+    by_iri = resolve_alignment({**evaluation, "targetType": "https://example.test/model/Record"},
+                               "example", native_class_catalog)
+    assert by_iri == by_qname
+    assert by_qname["action"] == "extend" and by_qname["baseType"] == "alias:Record"
+
+
+@pytest.mark.parametrize("target", ["other:Foreign", "https://example.test/other/Foreign"])
+def test_reference_class_in_unbound_namespace_is_rejected(native_class_catalog, target):
+    evaluation = {"sourceConcept": "source:Record", "targetType": target, "properties": []}
+    with pytest.raises(ValueError, match="class"):
+        resolve_alignment(evaluation, "example", native_class_catalog)
+
+
+def test_niem_iri_target_keeps_the_reuse_action_of_its_qname():
+    """Real NIEM 6.0 reference: the IRI of a reuse target must not become augment."""
+    nc = "https://docs.oasis-open.org/niemopen/ns/model/niem-core/6.0/"
+    catalog = {"version": "6.0", "namespaces": {"nc": nc},
+               "types": [{"qname": "nc:PersonType", "properties": ["nc:PersonName"]}]}
+    properties = [{"sourceProperty": "s:name", "targetProperty": "nc:PersonName"}]
+    by_qname = resolve_alignment(
+        {"sourceConcept": "s:Person", "targetType": "nc:PersonType", "properties": properties},
+        "niem", catalog)
+    by_iri = resolve_alignment(
+        {"sourceConcept": "s:Person", "targetType": nc + "PersonType", "properties": properties},
+        "niem", catalog)
+    assert by_qname["action"] == "reuse"
+    assert by_iri == by_qname
+
+    entry = {"sourceConcept": "s:Person", "targetType": None, "action": "extend",
+             "propertyMappings": [{"sourceProperty": "s:name", "targetProperty": "nc:PersonName",
+                                   "reviewStatus": "accepted"}]}
+    changed = reclassify_for_target_type_change(entry, nc + "PersonType", "niem", catalog)
+    assert changed["action"] == "reuse"
+    assert changed["targetType"] == "nc:PersonType"
+    assert "augmentationType" not in changed
 
 
 @pytest.mark.parametrize("target", [None, "[undecided]"])

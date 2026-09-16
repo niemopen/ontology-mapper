@@ -41,26 +41,32 @@ structural rules to choose an action. The orchestrator does NOT set the
 action directly — it provides evaluations, and `resolve_alignment()` applies
 rules.
 
-Before resolving a selected target, `validate_class_target()` uses the shared
-`class_target_filter()` policy. When a native CMF reference is installed for
-the target/version, eligibility comes from actual Class identities, resolved
-through catalog namespace bindings or full IRIs, plus explicit implicit roots.
+Before resolving a selected target, `canonical_class_target()` applies the
+shared `class_target_filter()` policy and returns the spelling the pipeline
+carries. When a native CMF reference is installed for the target/version,
+eligibility comes from actual Class identities resolved through the catalog's
+namespace bindings, plus explicit implicit roots. A full IRI is eligible only
+when the catalog binds its namespace, and it is stored as that catalog QName,
+so catalog lookups, scaffolding names, the OWL/CMF emitters and the Stage 7
+drift check all see one identity; a reference class in an unbound namespace is
+rejected at review rather than failing later as an unbound CMF reference.
 Datatypes and XSD-only names cannot become superclasses. Literal classes,
 including classes with only inherited properties, remain eligible. Names,
 patterns and property counts do not determine component kind.
 
-An incompatible saved selection raises `ClassTargetError` without replacement.
-The same policy applies to Stage 5 target submissions, including unchanged
-values. Null and undecided retain their existing review semantics. Without an
-installed native reference, existing catalog behavior is preserved; this is
-not a claim of native class validation.
+An incompatible saved selection raises `ClassTargetError` without replacement
+(`validate_class_target()` is the check-only form used for unchanged Stage 5
+submissions). Null and undecided retain their existing review semantics.
+Without an installed native reference, existing catalog behavior and the
+selection's spelling are preserved; this is not a claim of native class
+validation.
 
 The URI + name rule that builds component IRIs lives in
-`generation_utils.component_iri`. Its inverse, `generation_utils.target_qname`,
-grounds an accepted full-IRI target back to its catalog QName when the CMF
-builder emits ids and namespaces, so a reviewer-supplied IRI produces the same
-`prefix.Name` reference as the QName. An IRI outside the catalog namespaces is
-emitted unchanged and reported by reference validation.
+`generation_utils.component_iri`; its inverse, `generation_utils.target_qname`,
+is what the policy and the CMF builder both ground with. The CMF builder
+applies it again when emitting ids and namespaces, so a matrix saved before
+this policy still emits `prefix.Name` references; an IRI outside the catalog
+namespaces is emitted unchanged and reported by reference validation.
 
 ### NIEM action logic
 
