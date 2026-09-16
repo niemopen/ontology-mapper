@@ -63,3 +63,33 @@ def pytest_configure(config):
         "docker: marks tests that require Docker (e.g. testcontainers Neo4j). "
         "Deselect with: pytest -m 'not docker'",
     )
+
+
+@pytest.fixture
+def fake_type_retrieval(monkeypatch):
+    """Install a deterministic retrieval order without FAISS or the embedding model.
+
+    ``install(ids)`` makes every query see the entries in the given order with
+    descending scores. ``query_index`` still applies ``top_k`` and any
+    eligibility predicate exactly as it does over a real index.
+    """
+
+    class FakeIndex:
+        def __init__(self, total):
+            self.ntotal = total
+
+        def search(self, vectors, k):
+            k = min(k, self.ntotal)
+            return ([[1.0 - 0.01 * i for i in range(k)] for _ in vectors],
+                    [[i for i in range(k)] for _ in vectors])
+
+    def install(ids):
+        metadata = [{"id": identifier, "definition": "", "kind": "type", "metadata": {}}
+                    for identifier in ids]
+        monkeypatch.setattr("ontology_mapper.vector_index.load_index",
+                            lambda name, kind: (FakeIndex(len(ids)), metadata))
+        monkeypatch.setattr("ontology_mapper.vector_index.embed_texts",
+                            lambda texts, **kwargs: [[0.0] for _ in texts])
+        return metadata
+
+    return install

@@ -277,7 +277,7 @@ class Artifacts:
         )
         seed_path = write_seed_ttl(tmp_path)
         self.seed = generate_seed_cypher(
-            self.active_classes, self.relationships, seed_path, "dbpi",
+            self.active_classes, self.relationships, seed_path, "dbpi", "dbpi",
         )
         self.queries = generate_query_templates(
             self.active_classes, self.relationships, "dbpi",

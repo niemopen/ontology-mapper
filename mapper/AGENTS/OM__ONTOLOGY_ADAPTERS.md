@@ -55,6 +55,13 @@ values. Null and undecided retain their existing review semantics. Without an
 installed native reference, existing catalog behavior is preserved; this is
 not a claim of native class validation.
 
+The URI + name rule that builds component IRIs lives in
+`generation_utils.component_iri`. Its inverse, `generation_utils.target_qname`,
+grounds an accepted full-IRI target back to its catalog QName when the CMF
+builder emits ids and namespaces, so a reviewer-supplied IRI produces the same
+`prefix.Name` reference as the QName. An IRI outside the catalog namespaces is
+emitted unchanged and reported by reference validation.
+
 ### NIEM action logic
 
 `resolve_alignment()` delegates to `_determine_niem_action()`:

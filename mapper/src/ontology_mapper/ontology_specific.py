@@ -19,6 +19,7 @@ via resolve_alignment().
 import json
 
 from ontology_mapper.cmf_reference import load_reference_cmf, reference_class_identities
+from ontology_mapper.generation_utils import component_iri
 
 
 def extension_conformance_target(target_ontology: str, target_version: str) -> str:
@@ -58,10 +59,9 @@ def class_target_filter(target_ontology, catalog, target_version=None):
 
     classes = reference_class_identities(reference) | cmf_implicit_roots(target_ontology, version)
     namespaces = catalog.get("namespaces", {})
-    # NIEM NDR 6.0 section 14.1.2 defines component IRIs from URI + name.
-    iris = {uri + ("" if uri.endswith(("/", "#", ":")) else
-                   ":" if uri.startswith("urn:") else "/") + name
-            for uri, name in classes}
+    # One home for the URI + name rule: generation_utils.component_iri, which
+    # the CMF emitter inverts to ground an accepted IRI back to its QName.
+    iris = {component_iri(uri, name) for uri, name in classes}
 
     def eligible(target):
         if target is None or target == "[undecided]":

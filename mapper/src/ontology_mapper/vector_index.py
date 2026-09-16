@@ -30,7 +30,7 @@ import json
 import os
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 from ontology_mapper.run_dir_utils import resolve_specs_dir
 
@@ -287,6 +287,7 @@ def query_index(
     target_ontology: str,
     target_kind: str,
     top_k: int = 20,
+    eligible: Optional[Callable[[dict], bool]] = None,
 ) -> list[dict]:
     """Query a target index with source entries.
 
@@ -298,26 +299,35 @@ def query_index(
             ...
         ]
     }
+
+    ``eligible`` is applied to the full ranking before ``top_k`` is taken, so
+    each query still receives up to ``top_k`` eligible matches. Filtering a
+    truncated ranking instead silently hid classes ranked just below the
+    datatypes that had filled the budget. Ranks count eligible matches.
     """
     index, metadata_list = load_index(target_ontology, target_kind)
 
     texts = [e.embedding_text() for e in query_entries]
     query_vectors = embed_texts(texts)
 
-    k = min(top_k, index.ntotal)
+    # The flat index computes every distance regardless of k, so ranking the
+    # whole index costs nothing extra when a predicate must see it all.
+    k = index.ntotal if eligible else min(top_k, index.ntotal)
     scores, indices = index.search(query_vectors, k)
 
     results = []
     for i, entry in enumerate(query_entries):
         matches = []
-        for rank, (score, idx) in enumerate(zip(scores[i], indices[i])):
+        for score, idx in zip(scores[i], indices[i]):
             if idx == -1:
                 continue
+            if len(matches) == top_k:
+                break
             meta = metadata_list[idx]
             meta_dict = meta.get("metadata", {})
             label = meta.get("label", "")
-            matches.append({
-                "rank": rank + 1,
+            match = {
+                "rank": len(matches) + 1,
                 "score": float(score),
                 "id": label or meta["id"],
                 "qname": meta["id"],
@@ -327,7 +337,9 @@ def query_index(
                 "kind": meta["kind"],
                 "context": meta.get("context", ""),
                 "metadata": meta_dict,
-            })
+            }
+            if eligible is None or eligible(match):
+                matches.append(match)
         results.append({
             "query": asdict(entry),
             "matches": matches,

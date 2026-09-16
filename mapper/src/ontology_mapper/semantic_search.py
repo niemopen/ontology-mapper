@@ -75,10 +75,10 @@ def search_type(
         kind="type",
         context=source_context,
     )
-    results = query_index([entry], target_ontology, "types", top_k=top_k)
     eligible = class_filter_for_index(target_ontology)
-    return [candidate for candidate in results[0]["matches"]
-            if eligible(candidate.get("qname", candidate["id"]))] if results else []
+    results = query_index([entry], target_ontology, "types", top_k=top_k,
+                          eligible=lambda match: eligible(match["qname"]))
+    return results[0]["matches"] if results else []
 
 
 def search_property(

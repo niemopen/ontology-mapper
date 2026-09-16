@@ -25,19 +25,17 @@ from ontology_mapper.batch_search import (
 from ontology_mapper.vector_index import OntologyEntry
 
 
-def test_existing_index_datatypes_removed_before_score_floor(native_class_catalog, tmp_path):
-    candidates = [
-        {"id": "Datatype label", "qname": "alias:Restricted", "score": 1.0},
-        {"id": "Class label", "qname": "alias:Record", "score": 0.7},
-        {"id": "alias:InheritedLiteral", "score": 0.65},
-    ]
+def test_existing_index_classes_ranked_below_datatypes_still_fill_top_k(
+        native_class_catalog, fake_type_retrieval, tmp_path):
+    """The native filter runs over the full ranking, before top-k and the score floor."""
+    fake_type_retrieval(["alias:Restricted", "alias:Values",
+                         "alias:Record", "alias:InheritedLiteral", "alias:Literal"])
     concepts = [{"qname": "source:Record", "properties": []}]
-    with patch("ontology_mapper.batch_search.query_index", return_value=[{"matches": candidates}]):
-        results = search_all_types(concepts, "example-1.0")
-    assert [c["id"] for c in results["source:Record"]] == ["Class label", "alias:InheritedLiteral"]
+    results = search_all_types(concepts, "example-1.0", top_k=2)
+    assert [c["id"] for c in results["source:Record"]] == ["alias:Record", "alias:InheritedLiteral"]
     write_search_results(tmp_path, concepts, results, {}, min_score_ratio=0.75)
     doc = json.loads((tmp_path / "search-results/types/source_Record.json").read_text(encoding="utf-8"))
-    assert [c["id"] for c in doc["candidates"]] == ["Class label", "alias:InheritedLiteral"]
+    assert [c["id"] for c in doc["candidates"]] == ["alias:Record", "alias:InheritedLiteral"]
 
 
 def test_property_search_keeps_datatype_valued_candidates(native_class_catalog):
@@ -254,7 +252,7 @@ class TestSearchAllTypes:
     def test_returns_per_concept(self, mock_qi):
         concepts = [CONCEPT_A, CONCEPT_B]
 
-        def fake_qi(entries, target, kind, top_k=12):
+        def fake_qi(entries, target, kind, top_k=12, eligible=None):
             return _make_query_result(entries, [TYPE_CANDIDATE])
 
         mock_qi.side_effect = fake_qi

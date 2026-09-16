@@ -1270,3 +1270,73 @@ class TestAugmentNamespaceAndRecords:
         inv["classes"].reverse()
         assert records() == forward
         assert {(r[2], r[3]) for r in forward} == {(1, "1"), (0, "unbounded")}
+
+
+class TestDeclaredPrimaryNamespace:
+    """The declared primary namespace, not class sort order, is the source prefix."""
+
+    def test_augmenting_class_sorting_first_keeps_primary_properties_in_edge_namespace(self):
+        inv = _make_inventory(
+            classes=[_make_class("abc:Thing"), _make_class("dbpi:Fee")],
+            dt_props=[_make_dt_prop("dbpi:amount", domain=["dbpi:Fee"]),
+                      _make_dt_prop("abc:note", domain=["dbpi:Fee"])])
+        inv["primaryNamespace"] = {"prefix": "dbpi", "uri": "https://example.test/dbpi#"}
+        inv["namespaceMap"] = {"https://example.test/dbpi#": "dbpi:",
+                               "https://example.test/abc#": "abc:"}
+        inv["augmentingNamespaces"] = [{"prefix": "abc", "namespace": "https://example.test/abc#",
+                                        "propertyCount": 1, "properties": ["abc:note"]}]
+        matrix = _make_matrix([_make_mapping("dbpi:Fee", "reuse", "nc:FeeType", property_mappings=[
+            _make_prop_mapping("dbpi:amount"), _make_prop_mapping("abc:note")])])
+
+        model = _build(matrix, inv)
+
+        [fee] = [cls for cls in model.classes if cls.name == "FeeType"]
+        assert sorted(p.property_ref for p in fee.properties) == ["abc.note", "test-edge.amount"]
+        external = {n.ns_id: n.uri for n in model.namespaces if n.category == "EXTERNAL"}
+        assert external == {"abc": "https://example.test/abc#",
+                            "nc": "http://example.org/niem-core/6.0"}
+        assert "dbpi" not in {n.ns_id for n in model.namespaces}
+
+
+class TestFullIriTargets:
+    """Accepted full-IRI targets are emitted as CMF ids bound to catalog namespaces."""
+
+    NC = "https://docs.oasis-open.org/niemopen/ns/model/niem-core/6.0/"
+    J = "https://docs.oasis-open.org/niemopen/ns/model/domains/justice/6.0/"
+    NS = {"nc": NC, "j": J}
+
+    def test_class_base_augmentation_and_property_iris_become_cmf_ids(self):
+        inv = _make_inventory(
+            classes=[_make_class("src:A"), _make_class("src:B"), _make_class("src:C")],
+            dt_props=[_make_dt_prop("src:code", domain=["src:A"]),
+                      _make_dt_prop("src:extra", domain=["src:C"])])
+        matrix = _make_matrix([
+            _make_mapping("src:A", "reuse", self.NC + "PersonType", property_mappings=[
+                _make_prop_mapping("src:code", "reuse-property", self.NC + "PersonNameText")]),
+            _make_mapping("src:B", "extend", self.NC + "ItemType", base_type=self.NC + "ItemType"),
+            _make_mapping("src:C", "augment", self.J + "ChargeType",
+                          augments_type=self.J + "ChargeType",
+                          property_mappings=[_make_prop_mapping("src:extra")]),
+        ])
+
+        model = _build(matrix, inv, target_ns_map=self.NS)
+
+        by_name = {cls.name: cls for cls in model.classes}
+        assert by_name["AType"].sub_class_of == "nc.PersonType"
+        assert [p.property_ref for p in by_name["AType"].properties] == ["nc.PersonNameText"]
+        assert by_name["BType"].sub_class_of == "nc.ItemType"
+        external = {n.ns_id: n.uri for n in model.namespaces if n.category == "EXTERNAL"}
+        assert external == self.NS
+        augmentations = {(a.class_ref, a.property_ref)
+                         for ns in model.namespaces for a in getattr(ns, "augmentations", [])}
+        assert ("j.ChargeType", "ext.extra") in augmentations
+
+    def test_iri_outside_catalog_namespaces_is_left_for_reference_validation(self):
+        inv = _make_inventory(classes=[_make_class("src:A")])
+        matrix = _make_matrix([_make_mapping("src:A", "reuse", "https://other.test/model/X")])
+
+        model = _build(matrix, inv, target_ns_map=self.NS)
+
+        [a] = model.classes
+        assert a.sub_class_of == "https://other.test/model/X"
+        assert [n.ns_id for n in model.namespaces] == ["test-edge"]

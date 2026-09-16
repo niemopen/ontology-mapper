@@ -24,14 +24,15 @@ from ontology_mapper.vector_index import OntologyEntry, build_index, save_index
 from ontology_mapper.semantic_search import search_property, search_type
 
 
-def test_per_concept_search_filters_native_datatypes_without_model_calls(native_class_catalog, monkeypatch):
-    candidates = [{"id": "alias:Record"}, {"id": "alias:Restricted"},
-                  {"id": "alias:ActualSimpleType"}]
-    monkeypatch.setattr("ontology_mapper.semantic_search.query_index",
-                        lambda *args, **kwargs: [{"matches": candidates}])
-    assert [c["id"] for c in search_type("source:Record", "", "example-1.0")] == [
-        "alias:Record", "alias:ActualSimpleType"]
-    assert search_property("source:value", "", "example-1.0") == candidates
+def test_per_concept_search_fills_top_k_with_classes_ranked_below_datatypes(
+        native_class_catalog, fake_type_retrieval):
+    """Datatypes ahead in the ranking must not consume the class budget."""
+    fake_type_retrieval(["alias:Restricted", "alias:Values", "alias:Choice",
+                         "alias:Record", "alias:Literal", "alias:InheritedLiteral"])
+    assert [c["id"] for c in search_type("source:Record", "", "example-1.0", top_k=2)] == [
+        "alias:Record", "alias:Literal"]
+    assert [c["id"] for c in search_property("source:value", "", "example-1.0", top_k=2)] == [
+        "alias:Restricted", "alias:Values"]
 
 _original_resolve = vi.resolve_specs_dir
 

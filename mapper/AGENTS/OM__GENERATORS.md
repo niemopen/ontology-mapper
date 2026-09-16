@@ -119,6 +119,12 @@ target property without redeclaring its domain or range. OWL retains those
 references even without source shapes; CMF augmentation records retain borrowed
 properties and their occurrence bounds.
 
+The primary source prefix comes from the inventory's declared
+`primaryNamespace` through `generation_utils.source_prefix`, the one home the
+OWL, CMF and KG generators share. Classes are sorted by QName, so the first
+class is only a fallback for inventories written before the declaration; an
+augmenting namespace that sorts first must not become the primary namespace.
+
 Source namespace prefixes that collide with a different target URI receive
 deterministic aliases from `source_namespace_bindings`; declarations and
 references share those aliases in OWL and CMF. Lookup keys keep source QNames.

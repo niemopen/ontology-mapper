@@ -58,9 +58,53 @@ def accepted_reuse_target(pm):
 
 
 def source_prefix(inventory):
-    """Source QName prefix, detected from the inventory's first class."""
+    """The primary source QName prefix: one home for every generator.
+
+    The inventory declares it (``primaryNamespace``, written by extraction and
+    CSV ingest). Classes are sorted by QName, so the first class belongs to
+    whichever namespace sorts first, and an augmenting namespace can win that
+    sort; it is only a fallback for inventories written before the declaration.
+    """
+    declared = (inventory.get("primaryNamespace") or {}).get("prefix") or ""
+    if declared:
+        return declared.rstrip(":")
     classes = inventory.get("classes") or []
     return classes[0]["qname"].split(":")[0] if classes else ""
+
+
+_IRI_SCHEMES = ("http://", "https://", "urn:")
+
+
+def component_iri(namespace_uri, name):
+    """A component's IRI from its namespace URI and name (NIEM NDR 6.0, 14.1.2)."""
+    if namespace_uri.endswith(("/", "#", ":")):
+        separator = ""
+    elif namespace_uri.startswith("urn:"):
+        separator = ":"
+    else:
+        separator = "/"
+    return f"{namespace_uri}{separator}{name}"
+
+
+def target_qname(term, namespaces):
+    """Ground a full-IRI target term to its catalog QName.
+
+    ``namespaces`` maps catalog prefixes to namespace URIs. A term that is not
+    an IRI, or whose namespace the catalog does not bind, is returned unchanged
+    so downstream reference validation still reports it.
+    """
+    if not term or not term.startswith(_IRI_SCHEMES):
+        return term
+    best = None
+    for prefix, uri in sorted(namespaces.items()):
+        base = component_iri(uri, "")
+        if term.startswith(base) and len(term) > len(base):
+            if best is None or len(base) > len(best[1]):
+                best = (prefix, base)
+    if best is None:
+        return term
+    prefix, base = best
+    return f"{prefix}:{term[len(base):]}"
 
 
 def created_property_qname(prop_qname, class_action, primary_prefix, bindings, edge_prefix):

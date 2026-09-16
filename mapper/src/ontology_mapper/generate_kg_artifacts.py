@@ -76,6 +76,7 @@ def build_active_classes(inv, matrix):
     from ontology_mapper.generation_utils import (
         infer_domains_from_shapes,
         assign_properties_to_classes,
+        source_prefix as primary_source_prefix,
     )
 
     mapping_by_concept = {m["sourceConcept"]: m for m in matrix["mappings"]}
@@ -100,8 +101,8 @@ def build_active_classes(inv, matrix):
     )
 
     # Also pick up properties with explicit domains
-    _sample = inv["classes"][0] if inv["classes"] else None
-    source_prefix = (_sample["qname"].split(":")[0] + ":") if _sample else ""
+    _primary = primary_source_prefix(inv)
+    source_prefix = f"{_primary}:" if _primary else ""
     for prop in inv["datatypeProperties"]:
         if not prop["qname"].startswith(source_prefix) and prop["domain"]:
             active = [d for d in prop["domain"] if d in active_qnames]
@@ -277,8 +278,13 @@ def generate_schema_cypher(active_classes, relationships, source):
     return "\n".join(lines)
 
 
-def generate_seed_cypher(active_classes, relationships, seed_data_path, source):
-    """Generate kg/neo4j/seed.cypher — sample data from source seed TTL."""
+def generate_seed_cypher(active_classes, relationships, seed_data_path, source, primary_prefix):
+    """Generate kg/neo4j/seed.cypher — sample data from source seed TTL.
+
+    ``primary_prefix`` is the inventory's declared source prefix
+    (``generation_utils.source_prefix``); seed instances are matched under
+    that namespace as bound in the seed graph.
+    """
     now = utc_stamp()
 
     header = [
@@ -304,13 +310,11 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source):
     g.parse(str(seed_data_path), format="turtle")
 
     # Build class IRI -> label mapping from active classes
-    # Detect the source namespace from the first class qname
-    sample = active_classes[0] if active_classes else None
-    if not sample:
+    if not active_classes:
         header.append("// No active classes — nothing to seed.")
         return "\n".join(header)
 
-    prefix = sample["sourceQname"].split(":")[0]
+    prefix = primary_prefix
     # Find namespace URI from the parsed graph
     ns_uri = None
     for pfx, uri in g.namespaces():
@@ -788,10 +792,13 @@ def main():
         generate_schema_cypher(active_classes, relationships, ctx.source),
     )
 
+    from ontology_mapper.generation_utils import source_prefix
+
     seed_path = Path(ctx.input_package_path) / "seed-data" / f"{ctx.source}-seed-data.ttl"
     write_artifact(
         neo4j_dir / "seed.cypher",
-        generate_seed_cypher(active_classes, relationships, seed_path, ctx.source),
+        generate_seed_cypher(active_classes, relationships, seed_path, ctx.source,
+                             source_prefix(inv)),
     )
 
     for name, content in generate_query_templates(active_classes, relationships, ctx.source).items():

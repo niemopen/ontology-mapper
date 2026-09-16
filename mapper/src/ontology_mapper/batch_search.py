@@ -149,12 +149,11 @@ def search_all_types(
             context="; ".join(c.get("superClasses", [])),
         ))
 
-    results = query_index(entries, target_index, "types", top_k=top_k)
-
     eligible = class_filter_for_index(target_index)
-    return {qnames[i]: [candidate for candidate in r["matches"]
-                       if eligible(candidate.get("qname", candidate["id"]))]
-            for i, r in enumerate(results)}
+    results = query_index(entries, target_index, "types", top_k=top_k,
+                          eligible=lambda match: eligible(match["qname"]))
+
+    return {qnames[i]: r["matches"] for i, r in enumerate(results)}
 
 
 # ---------------------------------------------------------------------------

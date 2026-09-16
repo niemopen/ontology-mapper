@@ -13,6 +13,8 @@ from ontology_mapper.generation_utils import (
     property_mapping_index,
     accepted_reuse_target,
     source_prefix,
+    component_iri,
+    target_qname,
 )
 
 
@@ -124,6 +126,44 @@ class TestSourcePrefix:
     def test_empty_inventory(self):
         assert source_prefix({}) == ""
         assert source_prefix({"classes": []}) == ""
+
+    def test_declared_primary_namespace_wins_over_class_sort_order(self):
+        inventory = {"primaryNamespace": {"prefix": "dbpi", "uri": "https://example.test/dbpi#"},
+                     "classes": [{"qname": "abc:Thing"}, {"qname": "dbpi:Fee"}]}
+        assert source_prefix(inventory) == "dbpi"
+
+    def test_declared_prefix_may_carry_its_colon(self):
+        inventory = {"primaryNamespace": {"prefix": "dbpi:"}, "classes": [{"qname": "abc:Thing"}]}
+        assert source_prefix(inventory) == "dbpi"
+
+
+class TestTargetQname:
+    NS = {"nc": "https://docs.oasis-open.org/niemopen/ns/model/niem-core/6.0/",
+          "hash": "https://example.test/model#",
+          "urn": "urn:example:model",
+          "bare": "https://example.test/bare"}
+
+    def test_component_iri_follows_the_namespace_separator_rule(self):
+        assert component_iri(self.NS["nc"], "PersonType") == self.NS["nc"] + "PersonType"
+        assert component_iri(self.NS["hash"], "A") == "https://example.test/model#A"
+        assert component_iri(self.NS["urn"], "A") == "urn:example:model:A"
+        assert component_iri(self.NS["bare"], "A") == "https://example.test/bare/A"
+
+    @pytest.mark.parametrize("prefix", ["nc", "hash", "urn", "bare"])
+    def test_full_iri_grounds_to_the_catalog_qname(self, prefix):
+        assert target_qname(component_iri(self.NS[prefix], "Thing"), self.NS) == f"{prefix}:Thing"
+
+    def test_qnames_blank_and_unknown_iris_are_unchanged(self):
+        assert target_qname("nc:PersonType", self.NS) == "nc:PersonType"
+        assert target_qname("", self.NS) == ""
+        assert target_qname(None, self.NS) is None
+        assert target_qname("https://other.test/X", self.NS) == "https://other.test/X"
+        assert target_qname("https://example.test/model#", self.NS) == "https://example.test/model#"
+
+    def test_longest_namespace_match_wins(self):
+        namespaces = {"a": "https://x.test/", "ab": "https://x.test/sub/"}
+        assert target_qname("https://x.test/sub/T", namespaces) == "ab:T"
+        assert target_qname("https://x.test/T", namespaces) == "a:T"
 
 
 # ---------------------------------------------------------------------------

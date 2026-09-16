@@ -31,6 +31,8 @@ from ontology_mapper.generation_utils import (
     shape_property_is_evaluated,
     source_namespace_bindings,
     created_property_qname,
+    source_prefix,
+    target_qname,
 )
 from ontology_mapper.ontology_specific import extension_conformance_target
 
@@ -105,9 +107,11 @@ class MatrixToCmfBuilder:
         self._obj_by_qname = {p["qname"]: p for p in inventory["objectProperties"]}
         self._dt_by_qname = {p["qname"]: p for p in inventory["datatypeProperties"]}
 
-        # Detect source prefix from first class
-        sample = inventory["classes"][0] if inventory["classes"] else None
-        self._source_prefix = (sample["qname"].split(":")[0] + ":") if sample else ""
+        # Primary source prefix (one home: generation_utils.source_prefix).
+        # Reading it from the first sorted class let an augmenting namespace
+        # that sorts first reclassify every primary property as external.
+        primary = source_prefix(inventory)
+        self._source_prefix = f"{primary}:" if primary else ""
 
         # Property mapping lookup, keyed by the property's QNAME — the
         # identity the matrix records. Shared home with the OWL emitter so
@@ -247,7 +251,7 @@ class MatrixToCmfBuilder:
         """Add a target namespace if not already present."""
         if not qname:
             return
-        prefix = _qname_prefix(qname)
+        prefix = _qname_prefix(target_qname(qname, self.target_ns_map))
         if not prefix or prefix in seen:
             return
         uri = self.target_ns_map.get(prefix, f"urn:unknown:{prefix}")
@@ -622,9 +626,15 @@ class MatrixToCmfBuilder:
     # ------------------------------------------------------------------
 
     def _qname_to_cmf_id(self, qname: str) -> str:
-        """Convert a qualified name (e.g. 'nc:PersonType') to CMF id ('nc.PersonType')."""
+        """Convert a qualified name (e.g. 'nc:PersonType') to CMF id ('nc.PersonType').
+
+        An accepted full IRI is grounded to its catalog QName first; the class
+        policy admits IRIs, so the emitter must carry them. An IRI outside the
+        catalog namespaces is left as-is for reference validation to report.
+        """
         if not qname:
             return ""
+        qname = target_qname(qname, self.target_ns_map)
         if ":" in qname and not qname.startswith("http"):
             prefix, name = qname.split(":", 1)
             return _cmf_id(prefix, name)

@@ -530,3 +530,28 @@ class TestGenerateLoaderConfig:
         config = generate_loader_config("dbpi")
         assert config["sourceDataPaths"]["schemaScript"] == "kg/neo4j/schema.cypher"
         assert config["sourceDataPaths"]["seedData"] == "kg/neo4j/seed.cypher"
+
+
+def test_seed_data_uses_declared_primary_namespace_when_augmenting_class_sorts_first(tmp_path):
+    from ontology_mapper.generate_kg_artifacts import generate_seed_cypher
+    from ontology_mapper.generation_utils import source_prefix
+
+    dbpi = "https://example.test/dbpi/"
+    abc = "https://example.test/abc/"
+    inv = make_inv([make_class("abc:Thing"), make_class("dbpi:Fee")],
+                   dt_props=[make_dt_prop("dbpi:feeNumber", domain=["dbpi:Fee"])])
+    inv["primaryNamespace"] = {"prefix": "dbpi", "uri": dbpi}
+    matrix = make_matrix([make_mapping("abc:Thing", "reuse", "nc:ThingType"),
+                          make_mapping("dbpi:Fee", "reuse", "nc:FeeType")])
+    active = build_active_classes(inv, matrix)
+    seed = tmp_path / "seed.ttl"
+    seed.write_text(
+        f"@prefix dbpi: <{dbpi}> .\n@prefix abc: <{abc}> .\n"
+        '<urn:fee1> a dbpi:Fee ; dbpi:feeNumber "F-1" .\n'
+        '<urn:thing1> a abc:Thing ; abc:label "T" .\n', encoding="utf-8")
+
+    out = generate_seed_cypher(active, build_relationships(active), seed, "dbpi",
+                               source_prefix(inv))
+
+    assert 'CREATE (:Fee {feeNumber: "F-1"});' in out
+    assert "Could not resolve namespace" not in out

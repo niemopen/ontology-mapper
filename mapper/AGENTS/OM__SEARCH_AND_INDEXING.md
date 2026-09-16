@@ -163,9 +163,12 @@ On re-run, files with `status == "evaluated"` are preserved (resumable).
 Type candidates from both batch and per-concept searches pass the
 [native class-eligibility policy](OM__ONTOLOGY_ADAPTERS.md) before the score
 floor and evaluator prompt. This also applies to existing indexes; rebuilding
-an index is not required. The bounded top-k retrieval may have fewer survivors
-after filtering. Catalog indexing uses the same policy. Property retrieval is
-unchanged, including properties whose values are datatypes.
+an index is not required. `query_index` applies the predicate to the full
+ranking before taking top-k, so each concept still receives up to top-k
+class candidates; the shipped NIEM 6.0 types index is 45% datatypes, and
+filtering after truncation hid classes ranked just below them. Catalog
+indexing uses the same policy. Property retrieval is unchanged, including
+properties whose values are datatypes.
 
 `om-collect-alignments` reads type and property files, reassembles
 per-concept evaluations (type + its properties grouped by `parentType`),
