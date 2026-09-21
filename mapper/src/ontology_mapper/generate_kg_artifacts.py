@@ -69,9 +69,12 @@ def build_active_classes(inv, matrix):
     """Build the list of active classes (reuse + extend + augment) with their properties.
 
     Returns a list of dicts with keys:
-        sourceQname, label, comment, action, targetType,
+        sourceQname, iri, label, comment, action, targetType,
         datatypeProps (list of {qname, label, range}),
-        objectProps (list of {qname, label, rangeQname, rangeLabel})
+        objectProps (list of {qname, iri, label, rangeQname, rangeLabel})
+
+    ``iri`` is the identity the inventory recorded for the class or property;
+    seed instances are matched on it, whatever namespace the QName belongs to.
     """
     from ontology_mapper.generation_utils import (
         infer_domains_from_shapes,
@@ -171,6 +174,7 @@ def build_active_classes(inv, matrix):
                 continue
             object_props.append({
                 "qname": p["qname"],
+                "iri": p["iri"],
                 "label": local_name(p["qname"]),
                 "rangeQname": range_qname,
                 "rangeLabel": graph_label(range_qname),
@@ -178,6 +182,7 @@ def build_active_classes(inv, matrix):
 
         result.append({
             "sourceQname": qname,
+            "iri": cls["iri"],
             "label": graph_label(qname),
             "comment": cls.get("comment", ""),
             "action": m["action"],
@@ -278,12 +283,13 @@ def generate_schema_cypher(active_classes, relationships, source):
     return "\n".join(lines)
 
 
-def generate_seed_cypher(active_classes, relationships, seed_data_path, source, primary_prefix):
+def generate_seed_cypher(active_classes, relationships, seed_data_path, source):
     """Generate kg/neo4j/seed.cypher — sample data from source seed TTL.
 
-    ``primary_prefix`` is the inventory's declared source prefix
-    (``generation_utils.source_prefix``); seed instances are matched under
-    that namespace as bound in the seed graph.
+    Seed instances are matched on the ``iri`` each active class and object
+    property carries from the inventory, so classes from augmenting or other
+    non-primary source namespaces are seeded alongside the primary ones. The
+    seed file's own prefix declarations are not consulted.
     """
     now = utc_stamp()
 
@@ -301,7 +307,7 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
         return "\n".join(header)
 
     try:
-        from rdflib import Graph as RdfGraph, Namespace, RDF, RDFS, XSD as RDF_XSD
+        from rdflib import Graph as RdfGraph, URIRef, RDF
     except ImportError:
         header.append("// rdflib not available — seed data generation skipped.")
         return "\n".join(header)
@@ -314,23 +320,7 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
         header.append("// No active classes — nothing to seed.")
         return "\n".join(header)
 
-    prefix = primary_prefix
-    # Find namespace URI from the parsed graph
-    ns_uri = None
-    for pfx, uri in g.namespaces():
-        if pfx == prefix:
-            ns_uri = str(uri)
-            break
-
-    if not ns_uri:
-        header.append(f"// Could not resolve namespace for prefix '{prefix}'.")
-        return "\n".join(header)
-
-    NS = Namespace(ns_uri)
-    active_labels = {}
-    for cls in active_classes:
-        name = local_name(cls["sourceQname"])
-        active_labels[NS[name]] = cls
+    active_labels = {URIRef(cls["iri"]): cls for cls in active_classes}
 
     # Collect datatype property label lookups
     dt_prop_labels = {}
@@ -414,11 +404,7 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
     ]
 
     # Build a set of known relationship property IRIs
-    rel_prop_iris = set()
-    for cls in active_classes:
-        for op in cls["objectProps"]:
-            prop_name = local_name(op["qname"])
-            rel_prop_iris.add(ns_uri + prop_name)
+    rel_prop_iris = {op["iri"] for cls in active_classes for op in cls["objectProps"]}
 
     for subj, pred, obj in sorted(g):
         if pred == RDF.type:
@@ -792,13 +778,10 @@ def main():
         generate_schema_cypher(active_classes, relationships, ctx.source),
     )
 
-    from ontology_mapper.generation_utils import source_prefix
-
     seed_path = Path(ctx.input_package_path) / "seed-data" / f"{ctx.source}-seed-data.ttl"
     write_artifact(
         neo4j_dir / "seed.cypher",
-        generate_seed_cypher(active_classes, relationships, seed_path, ctx.source,
-                             source_prefix(inv)),
+        generate_seed_cypher(active_classes, relationships, seed_path, ctx.source),
     )
 
     for name, content in generate_query_templates(active_classes, relationships, ctx.source).items():

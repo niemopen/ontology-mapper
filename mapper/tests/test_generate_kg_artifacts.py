@@ -532,26 +532,79 @@ class TestGenerateLoaderConfig:
         assert config["sourceDataPaths"]["seedData"] == "kg/neo4j/seed.cypher"
 
 
-def test_seed_data_uses_declared_primary_namespace_when_augmenting_class_sorts_first(tmp_path):
-    from ontology_mapper.generate_kg_artifacts import generate_seed_cypher
-    from ontology_mapper.generation_utils import source_prefix
+class TestSeedDataIdentity:
+    """Seed instances match the inventory's recorded IRIs, not one namespace."""
 
-    dbpi = "https://example.test/dbpi/"
-    abc = "https://example.test/abc/"
-    inv = make_inv([make_class("abc:Thing"), make_class("dbpi:Fee")],
-                   dt_props=[make_dt_prop("dbpi:feeNumber", domain=["dbpi:Fee"])])
-    inv["primaryNamespace"] = {"prefix": "dbpi", "uri": dbpi}
-    matrix = make_matrix([make_mapping("abc:Thing", "reuse", "nc:ThingType"),
-                          make_mapping("dbpi:Fee", "reuse", "nc:FeeType")])
-    active = build_active_classes(inv, matrix)
-    seed = tmp_path / "seed.ttl"
-    seed.write_text(
-        f"@prefix dbpi: <{dbpi}> .\n@prefix abc: <{abc}> .\n"
-        '<urn:fee1> a dbpi:Fee ; dbpi:feeNumber "F-1" .\n'
-        '<urn:thing1> a abc:Thing ; abc:label "T" .\n', encoding="utf-8")
+    DBPI = "https://example.test/dbpi/"
+    ABC = "https://example.test/abc/"
 
-    out = generate_seed_cypher(active, build_relationships(active), seed, "dbpi",
-                               source_prefix(inv))
+    @staticmethod
+    def _with_iri(entry, namespace_uri):
+        entry["iri"] = namespace_uri + entry["qname"].split(":")[1]
+        return entry
 
-    assert 'CREATE (:Fee {feeNumber: "F-1"});' in out
-    assert "Could not resolve namespace" not in out
+    def _two_namespace_domain(self):
+        inv = make_inv(
+            [self._with_iri(make_class("abc:Thing"), self.ABC),
+             self._with_iri(make_class("dbpi:Fee"), self.DBPI)],
+            obj_props=[self._with_iri(
+                make_obj_prop("abc:owns", domain=["abc:Thing"], range_val=["dbpi:Fee"]),
+                self.ABC)],
+            dt_props=[self._with_iri(make_dt_prop("dbpi:feeNumber", domain=["dbpi:Fee"]), self.DBPI),
+                      self._with_iri(make_dt_prop("abc:thingId", domain=["abc:Thing"]), self.ABC)],
+        )
+        inv["primaryNamespace"] = {"prefix": "dbpi", "uri": self.DBPI}
+        inv["namespaceMap"] = {self.DBPI: "dbpi:", self.ABC: "abc:"}
+        matrix = make_matrix([make_mapping("abc:Thing", "reuse", "nc:ThingType"),
+                              make_mapping("dbpi:Fee", "reuse", "nc:FeeType")])
+        return inv, matrix
+
+    def _generate(self, inv, matrix, seed_text, tmp_path):
+        from ontology_mapper.generate_kg_artifacts import generate_seed_cypher
+
+        active = build_active_classes(inv, matrix)
+        seed = tmp_path / "seed.ttl"
+        seed.write_text(seed_text, encoding="utf-8")
+        return generate_seed_cypher(active, build_relationships(active), seed, "dbpi")
+
+    def test_active_classes_carry_inventory_iris(self):
+        inv, matrix = self._two_namespace_domain()
+        active = {c["sourceQname"]: c for c in build_active_classes(inv, matrix)}
+        assert active["abc:Thing"]["iri"] == self.ABC + "Thing"
+        assert active["dbpi:Fee"]["iri"] == self.DBPI + "Fee"
+        assert active["abc:Thing"]["objectProps"][0]["iri"] == self.ABC + "owns"
+
+    def test_non_primary_namespace_instances_and_relationships_are_seeded(self, tmp_path):
+        inv, matrix = self._two_namespace_domain()
+        out = self._generate(inv, matrix, (
+            f"@prefix dbpi: <{self.DBPI}> .\n@prefix abc: <{self.ABC}> .\n"
+            '<https://data.test/fee1> a dbpi:Fee ; dbpi:feeNumber "F-1" .\n'
+            '<https://data.test/thing1> a abc:Thing ; abc:thingId "T-1" ;\n'
+            '    abc:owns <https://data.test/fee1> .\n'
+        ), tmp_path)
+
+        assert 'CREATE (:Fee {feeNumber: "F-1"});' in out
+        assert 'CREATE (:Thing {thingId: "T-1"});' in out
+        assert 'MATCH (a:Thing {identifier: "T-1"})' in out
+        assert 'MATCH (b:Fee {identifier: "F-1"})' in out
+        assert "CREATE (a)-[:OWNS]->(b);" in out
+
+    def test_seed_prefix_declarations_are_not_consulted(self, tmp_path):
+        """A seed file that binds no prefixes, or binds them differently, still matches."""
+        inv, matrix = self._two_namespace_domain()
+        out = self._generate(inv, matrix, (
+            "@prefix dbpi: <https://elsewhere.test/> .\n"
+            f'<urn:fee1> a <{self.DBPI}Fee> ; <{self.DBPI}feeNumber> "F-1" .\n'
+            f'<urn:thing1> a <{self.ABC}Thing> ; <{self.ABC}thingId> "T-1" .\n'
+        ), tmp_path)
+
+        assert 'CREATE (:Fee {feeNumber: "F-1"});' in out
+        assert 'CREATE (:Thing {thingId: "T-1"});' in out
+
+    def test_instances_of_other_iris_are_not_seeded(self, tmp_path):
+        inv, matrix = self._two_namespace_domain()
+        out = self._generate(inv, matrix, (
+            f'<urn:x> a <{self.DBPI}Thing> ; <{self.DBPI}thingId> "X-1" .\n'
+        ), tmp_path)
+
+        assert "CREATE (:" not in out

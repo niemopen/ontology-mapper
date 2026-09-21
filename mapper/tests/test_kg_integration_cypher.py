@@ -216,7 +216,7 @@ class TestCypherStructuralIntegration:
         # Seed cypher with no seed file — produces a stub
         self.seed = generate_seed_cypher(
             self.active_classes, self.relationships,
-            tmp_path / "nonexistent-seed.ttl", "dbpi", "dbpi",
+            tmp_path / "nonexistent-seed.ttl", "dbpi",
         )
 
         self.queries = generate_query_templates(
@@ -373,7 +373,7 @@ class TestCypherWithSeedData:
         )
 
         self.seed = generate_seed_cypher(
-            self.active_classes, self.relationships, seed_path, "dbpi", "dbpi",
+            self.active_classes, self.relationships, seed_path, "dbpi",
         )
 
     def test_seed_creates_nodes(self):
