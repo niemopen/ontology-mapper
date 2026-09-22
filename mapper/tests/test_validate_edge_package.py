@@ -703,3 +703,59 @@ class TestTheReportSpeaksByContent:
             '{"finalizedAt": "now"}', encoding="utf-8")
 
         assert stale_against_package(report, pkg) is None
+
+
+class TestGovernanceFilesStage7Validates:
+    """`governance/` is not all Stage 8's: Stage 6b writes the decision log
+    there and Stage 7's decision-log check reads it."""
+
+    def _package(self, tmp_path):
+        pkg = tmp_path / "edge-package"
+        (pkg / "ontology").mkdir(parents=True)
+        (pkg / "ontology" / "core.ttl").write_text("# core", encoding="utf-8")
+        (pkg / "governance").mkdir()
+        (pkg / "governance" / "decision-log.json").write_text(
+            '{"decisions": []}', encoding="utf-8")
+        (pkg / "package-manifest.json").write_text("{}", encoding="utf-8")
+        return pkg
+
+    def _report(self, tmp_path, pkg):
+        from ontology_mapper.validate_edge_package import artifact_digests
+        report = tmp_path / "validation-report.json"
+        report.write_text(json.dumps({"validatedArtifacts": artifact_digests(pkg)}),
+                          encoding="utf-8")
+        return report
+
+    def test_a_decision_log_replaced_after_validation_is_named(self):
+        """Stage 7 counts the decisions in this file. Excluding the whole
+        `governance/` directory let Stage 8 publish a PASS beside a log that
+        was rewritten after the count."""
+        import tempfile
+        from pathlib import Path
+        from ontology_mapper.validate_edge_package import stale_against_package
+
+        tmp_path = Path(tempfile.mkdtemp())
+        pkg = self._package(tmp_path)
+        report = self._report(tmp_path, pkg)
+        (pkg / "governance" / "decision-log.json").write_text(
+            '{"decisions": [{"concept": "src:A"}]}', encoding="utf-8")
+
+        assert "decision-log.json" in stale_against_package(report, pkg)
+
+    def test_stage_8_own_governance_files_are_still_not_staleness(self):
+        import tempfile
+        from pathlib import Path
+        from ontology_mapper.validate_edge_package import stale_against_package
+
+        tmp_path = Path(tempfile.mkdtemp())
+        pkg = self._package(tmp_path)
+        report = self._report(tmp_path, pkg)
+        for name, body in (("version-manifest.json", "{}"),
+                           ("lineage-manifest.json", "{}"),
+                           ("validation-report.json", "{}"),
+                           ("change-impact.md", "# impact")):
+            (pkg / "governance" / name).write_text(body, encoding="utf-8")
+        (pkg / "package-manifest.json").write_text(
+            '{"finalizedAt": "now"}', encoding="utf-8")
+
+        assert stale_against_package(report, pkg) is None

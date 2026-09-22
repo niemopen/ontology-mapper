@@ -1500,3 +1500,94 @@ class TestAShapeNamesEveryIdentityItsPropertyWasEmittedUnder:
         assert "sh:alternativePath (ext:code test-edge:code)" in shapes
         assert "test-edge:code" in core
         assert "ext:code" in core
+
+
+class TestAnInheritedShapeNamesTheOwnersTerm:
+    """A shape inherited from an excluded ancestor is resolved in the class
+    that declares each term, not in the class the shape targets."""
+
+    TARGET = TestSharedSourceProfiles.TARGET
+    SRC = "https://sample.test/src/"
+
+    def _cls(self, name, parents=()):
+        return {"qname": "src:" + name, "iri": self.SRC + name, "label": name,
+                "comment": "", "subClassOf": ["src:" + p for p in parents]}
+
+    def _row(self, concept, action, **extra):
+        row = {"sourceConcept": "src:" + concept, "action": action,
+               "targetType": "nc:BaseType", "reviewStatus": "accepted",
+               "propertyMappings": []}
+        row.update(extra)
+        return row
+
+    def _shape(self):
+        # The only shape over `src:code`, on the excluded parent. It gives
+        # the parent the property's sole inferred domain, and the parent is
+        # inactive, so no active class owns the term.
+        return [{"targetClasses": ["src:Parent"],
+                 "properties": [{"path": "src:code", "minCount": 1}]}]
+
+    def test_a_property_no_active_class_owns_keeps_the_global_emitters_term(self):
+        """`emit_global_properties` writes such a property under the edge
+        prefix whatever any class decided. Asking the inheriting leaf instead
+        minted `ext:code` under an extending child — a term nothing declares,
+        which the closure guard then refused, blocking a legitimate
+        consolidation (exclude a parent, extend a child sharing a base type)."""
+        inventory = TestNiemOWLPatterns._minimal_inventory(
+            [self._cls("Parent"), self._cls("ChildA", ["Parent"]),
+             self._cls("ChildB")],
+            dt_props=[{"qname": "src:code", "label": "code",
+                       "domain": [], "range": []}],
+            shapes=self._shape())
+        matrix = {"mappings": [
+            {"sourceConcept": "src:Parent", "action": "exclude",
+             "targetType": None, "reviewStatus": "pending-review",
+             "propertyMappings": []},
+            self._row("ChildA", "extend", targetType="nc:PersonType",
+                      baseType="nc:PersonType"),
+            # Shares ChildA's target, which is what makes the emitter walk
+            # ChildA's ancestors and reach the excluded parent's shape.
+            self._row("ChildB", "reuse", targetType="nc:PersonType")]}
+
+        files = TestNiemOWLPatterns._run_generation(
+            inventory, matrix, catalog={"namespaces": {"nc": self.TARGET}})
+
+        shapes = files["test-edge-shapes.ttl"]
+        core = files["test-edge-core.ttl"]
+        assert "test-edge:code" in core
+        assert "sh:path test-edge:code" in shapes
+        assert "ext:code" not in shapes
+
+    def test_each_owners_own_property_decision_is_named(self):
+        """Two owners with the same action but different property decisions
+        emit two terms. Taking the action from the owner while looking the
+        decision up under the shape's class named neither: the accepted
+        reuse target never reached the shapes file."""
+        inventory = TestNiemOWLPatterns._minimal_inventory(
+            [self._cls("Parent"), self._cls("ChildA", ["Parent"]),
+             self._cls("ChildB"), self._cls("Owner1"), self._cls("Owner2")],
+            dt_props=[{"qname": "src:code", "label": "code",
+                       "domain": ["src:Owner1", "src:Owner2"], "range": []}],
+            shapes=self._shape())
+        matrix = {"mappings": [
+            {"sourceConcept": "src:Parent", "action": "exclude",
+             "targetType": None, "reviewStatus": "pending-review",
+             "propertyMappings": []},
+            self._row("ChildA", "extend", targetType="nc:PersonType",
+                      baseType="nc:PersonType"),
+            self._row("ChildB", "reuse", targetType="nc:PersonType"),
+            self._row("Owner1", "extend", targetType="nc:OwnerType",
+                      baseType="nc:OwnerType",
+                      propertyMappings=[{"sourceProperty": "src:code",
+                                         "action": "reuse-property",
+                                         "reviewStatus": "accepted",
+                                         "targetProperty": "nc:DescriptionText"}]),
+            self._row("Owner2", "extend", targetType="nc:OtherType",
+                      baseType="nc:OtherType")]}
+
+        files = TestNiemOWLPatterns._run_generation(
+            inventory, matrix, catalog={"namespaces": {"nc": self.TARGET}})
+
+        shapes = files["test-edge-shapes.ttl"]
+        assert "nc:DescriptionText" in shapes
+        assert "ext:code" in shapes

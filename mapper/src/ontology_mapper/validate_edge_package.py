@@ -24,12 +24,21 @@ def add_check(results, name, passed, details=""):
 # ---------------------------------------------------------------------------
 # Testable cross-reference helpers
 # ---------------------------------------------------------------------------
-# Everything Stage 8 writes into the package, named in one place. Stage 7
-# validates the rest, so a report cannot speak for these and a second
+# The files Stage 8 writes into the package, named one by one. Stage 7
+# validates everything else, so a report cannot speak for these and a second
 # finalize must not read its own first run as evidence of a stale report.
-# `finalize_package.main` writes `governance/` and rewrites the root
-# manifest; keep the two lists together.
-STAGE_8_OUTPUTS = ("governance", "package-manifest.json")
+# Not the whole `governance/` directory: Stage 6b writes the decision log,
+# generation audit, quality-gate report and coherence manifest there, and
+# Stage 7's decision-log check reads one of them. Excluding the directory
+# let a package be published with a decision log replaced after validation.
+# `finalize_package.main` is the one writer; keep these in step with it.
+STAGE_8_OUTPUTS = (
+    "governance/version-manifest.json",
+    "governance/lineage-manifest.json",
+    "governance/validation-report.json",
+    "governance/change-impact.md",
+    "package-manifest.json",
+)
 
 
 def validated_artifacts(pkg_dir):
@@ -40,7 +49,7 @@ def validated_artifacts(pkg_dir):
     return sorted(
         p for p in pkg_dir.rglob("*")
         if p.is_file()
-        and p.relative_to(pkg_dir).parts[0] not in STAGE_8_OUTPUTS
+        and p.relative_to(pkg_dir).as_posix() not in STAGE_8_OUTPUTS
     )
 
 

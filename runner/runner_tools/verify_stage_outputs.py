@@ -475,9 +475,11 @@ def _verify_stage_7(run_dir, state):
         checks.append(_check("validation_report_is_current", False,
                              f"freshness check failed: {exc}"))
     else:
-        if stale:
-            checks.append(_check("validation_report_is_current", False,
-                                 f"report does not cover {stale}"))
+        # Reported either way, like every other check here: a row that
+        # appears only on failure cannot be told from a check that never ran.
+        checks.append(_check("validation_report_is_current", not stale,
+                             f"report does not cover {stale}" if stale
+                             else "report covers the package as validated"))
 
     vr = _load_json(vr_path)
     if vr:

@@ -322,3 +322,26 @@ class TestVerifyDispatch:
         assert "1" in VALID_STAGES
         assert "6a" in VALID_STAGES
         assert "8" in VALID_STAGES
+
+
+class TestStage7FreshnessIsReportedEitherWay:
+    """A check that appears only on failure cannot be told from one that
+    never ran."""
+
+    def test_a_current_report_records_the_check_as_passing(self, tmp_path):
+        import json as _json
+        from ontology_mapper.validate_edge_package import artifact_digests
+
+        _write_state(tmp_path)
+        pkg = tmp_path / "edge-package"
+        (pkg / "ontology").mkdir(parents=True)
+        (pkg / "ontology" / "core.ttl").write_text("# core", encoding="utf-8")
+        _write_json(tmp_path / "feedback-report.json", {"feedback": []})
+        _write_json(tmp_path / "validation-report.json",
+                    {"checks": [], "validatedArtifacts": artifact_digests(pkg)})
+
+        result = verify(tmp_path, "7")
+        rows = [c for c in result["checks"]
+                if c["name"] == "validation_report_is_current"]
+        assert len(rows) == 1
+        assert rows[0]["status"] == "pass"

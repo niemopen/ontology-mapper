@@ -203,8 +203,8 @@ def main():
             return term if term.split(":")[0] in bound_prefixes else None
         return None
 
-    def emitting_actions(prop_qname, context, emitting_leaf):
-        """Every action a shape's property was declared under.
+    def emitting_identities(prop_qname, context, emitting_leaf):
+        """Every (declaring class, action) a shape's property was emitted under.
 
         The identity belongs to the active class that DECLARES the term —
         the one whose class block writes it — not to whichever ancestor a
@@ -212,19 +212,30 @@ def main():
         model, so an ancestor walk let statement order decide which term a
         shape constrains, and which of two parents' namespaces it came from.
 
-        When a declaring class is in scope, its decision is the answer.
-        Otherwise every declaring class is: two owners whose decisions mint
-        the term differently emit two terms, and the shape names both
-        (the caller unions them into an `sh:alternativePath`). Picking one
-        by sort order left the other emitted term unconstrained.
+        Both halves of the identity come from that one class. The action
+        decides the namespace and the class's own property decision decides
+        whether an accepted reuse target replaces the source term; taking
+        the action from the owner while resolving the decision under the
+        shape's class named neither class's term.
+
+        When a declaring class is in scope its identity is the answer.
+        Otherwise every declaring class is one: owners that mint the term
+        differently emit several, and the shape names them all (the caller
+        unions them into an `sh:alternativePath`). Picking one by sort order
+        left the others unconstrained.
         """
         owners = set(obj_assigned.get(prop_qname, ())) | set(dt_assigned.get(prop_qname, ()))
         for candidate in (emitting_leaf, context):
             if candidate in owners:
-                return [classify_concept(candidate)[0]]
+                return [(candidate, classify_concept(candidate)[0])]
         if owners:
-            return sorted({classify_concept(o)[0] for o in owners}, key=str)
-        return [classify_concept(emitting_leaf)[0]]
+            return [(owner, classify_concept(owner)[0]) for owner in sorted(owners)]
+        # No active class owns the property. `emit_global_properties` writes
+        # it under the edge prefix whatever any class decided, so the shape
+        # names that same term — "reuse" is how `created_property_qname`
+        # spells the edge prefix. Asking the inheriting leaf instead minted
+        # `ext:` under an extending child and named a term nothing declares.
+        return [(None, "reuse")]
 
     def classify_concept(qname):
         m = mapping_by_concept.get(qname)
@@ -793,9 +804,10 @@ def main():
                             else declaring_sources)
                 path_refs = set()
                 for context in contexts:
-                    for action in emitting_actions(prop["path"], context, target_src):
+                    for owner, action in emitting_identities(
+                            prop["path"], context, target_src):
                         path_refs.add(resolve_property_ref(
-                            prop["path"], context, action))
+                            prop["path"], owner, action))
                 refs = sorted(ref for ref in path_refs if ref is not None)
                 if refs:
                     emittable.append((prop, refs))
