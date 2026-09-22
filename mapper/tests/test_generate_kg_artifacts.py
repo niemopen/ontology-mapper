@@ -664,3 +664,29 @@ def test_a_matching_seed_file_still_seeds_without_the_note(tmp_path):
     # Only the note is under test here: an instance whose type the inventory
     # records is a match, whatever the node emitter then writes for it.
     assert "No seed instance matches an active class" not in cypher
+
+
+class TestSeedPropertyKeys:
+    """The seed's property key comes from the inventory QName, like the
+    schema's — the IRI tail does not survive Neo4j."""
+
+    _generate = TestSeedDataIdentity._generate
+
+    def test_a_csv_shaped_property_iri_does_not_become_a_dotted_key(self, tmp_path):
+        """CSV ingest records property IRIs as `{ns}#{Class}.{prop}`.
+        `SET n.Account.accountId` is not valid Cypher, and it does not match
+        the `accountId` the schema constrains."""
+        csv = "https://example.test/csv"
+        account = make_class("csv:Account"); account["iri"] = f"{csv}#Account"
+        acct_id = make_dt_prop("csv:accountId", domain=["csv:Account"])
+        acct_id["iri"] = f"{csv}#Account.accountId"
+        inv = make_inv([account], dt_props=[acct_id])
+        inv["primaryNamespace"] = {"prefix": "csv", "uri": csv}
+        matrix = make_matrix([make_mapping("csv:Account", "extend")])
+
+        out = self._generate(inv, matrix, (
+            f'<https://data.test/a1> a <{csv}#Account> ;'
+            f' <{csv}#Account.accountId> "A-1" .\n'), tmp_path)
+
+        assert "accountId:" in out or "accountId =" in out or "accountId" in out
+        assert "Account.accountId" not in out

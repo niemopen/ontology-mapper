@@ -1445,3 +1445,58 @@ class TestRangesTheCatalogCanName:
         core = self._files("https://elsewhere.test/ns#Thing")["test-edge-core.ttl"]
         assert "test-edge:hasThing" in core
         assert "rdfs:range owl:Thing" in core
+
+
+class TestAShapeNamesEveryIdentityItsPropertyWasEmittedUnder:
+    """A shape whose target declares nothing constrains a property other
+    classes declare. Each of those classes mints the term under its own
+    decision, so naming one of them by sort order leaves the other emitted
+    term unconstrained."""
+
+    TARGET = TestSharedSourceProfiles.TARGET
+
+    def _files(self):
+        inventory = TestNiemOWLPatterns._minimal_inventory(
+            [{"qname": "src:Parent", "iri": "https://sample.test/src/Parent",
+              "label": "Parent", "comment": "", "subClassOf": []},
+             {"qname": "src:Child", "iri": "https://sample.test/src/Child",
+              "label": "Child", "comment": "", "subClassOf": ["src:Parent"]},
+             {"qname": "src:Sibling", "iri": "https://sample.test/src/Sibling",
+              "label": "Sibling", "comment": "", "subClassOf": []},
+             {"qname": "src:Reused", "iri": "https://sample.test/src/Reused",
+              "label": "Reused", "comment": "", "subClassOf": []},
+             {"qname": "src:Extended", "iri": "https://sample.test/src/Extended",
+              "label": "Extended", "comment": "", "subClassOf": []}],
+            dt_props=[{"qname": "src:code", "label": "code",
+                       "domain": ["src:Reused", "src:Extended"], "range": []}],
+            shapes=[{"targetClasses": ["src:Parent"],
+                     "properties": [{"path": "src:code", "minCount": 1}]}])
+        matrix = {"mappings": [
+            {"sourceConcept": "src:Parent", "action": "exclude",
+             "targetType": None, "reviewStatus": "pending-review",
+             "propertyMappings": []},
+            # Child and Sibling share one target, which is what makes the
+            # emitter walk Child's ancestors and reach the excluded Parent's
+            # shape with Child as the emitting leaf.
+            {"sourceConcept": "src:Child", "action": "reuse",
+             "targetType": "nc:BaseType", "reviewStatus": "accepted",
+             "propertyMappings": []},
+            {"sourceConcept": "src:Sibling", "action": "reuse",
+             "targetType": "nc:BaseType", "reviewStatus": "accepted",
+             "propertyMappings": []},
+            {"sourceConcept": "src:Reused", "action": "reuse",
+             "targetType": "nc:OtherType", "reviewStatus": "accepted",
+             "propertyMappings": []},
+            {"sourceConcept": "src:Extended", "action": "extend",
+             "targetType": "nc:ThirdType", "baseType": "nc:ThirdType",
+             "reviewStatus": "accepted", "propertyMappings": []}]}
+        return TestNiemOWLPatterns._run_generation(
+            inventory, matrix, catalog={"namespaces": {"nc": self.TARGET}})
+
+    def test_both_emitted_terms_are_named_and_both_are_declared(self):
+        files = self._files()
+        shapes = files["test-edge-shapes.ttl"]
+        core = files["test-edge-core.ttl"] + files["test-edge-extensions.ttl"]
+        assert "sh:alternativePath (ext:code test-edge:code)" in shapes
+        assert "test-edge:code" in core
+        assert "ext:code" in core
