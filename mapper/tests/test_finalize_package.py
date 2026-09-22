@@ -326,3 +326,66 @@ class TestStageTimingParsing:
             "1": {"started_at": "invalid", "completed_at": "2026-09-14T12:00:10Z"},
             "2": {"started_at": "2026-09-14T12:01:00Z", "completed_at": "2026-09-14T12:02:00Z"}}}
         assert _total_duration(_load_stage_timings(state)) is None
+
+
+class TestFinalizeEndToEnd:
+    """`main()` itself, not its helpers: the freshness guard was referenced
+    there for a whole branch without being imported, so every run raised
+    NameError and Stage 8 published nothing at all."""
+
+    def _run_dir(self, tmp_path, validated=True):
+        from ontology_mapper.validate_edge_package import artifact_digests
+
+        run_dir = tmp_path / "run"
+        pkg = run_dir / "edge-package"
+        (pkg / "ontology").mkdir(parents=True)
+        (pkg / "ontology" / "core.ttl").write_text("# core", encoding="utf-8")
+        (pkg / "package-manifest.json").write_text(
+            json.dumps({"name": "sample-edge"}) + "\n", encoding="utf-8")
+        (run_dir / ".mapper-state.json").write_text(json.dumps({"inputs": {
+            "organization": "redvale", "source": "dbpi",
+            "target_ontology": "niem", "target_version": "6.0"}}), encoding="utf-8")
+        (run_dir / "mapping-matrix.json").write_text(json.dumps({"mappings": [
+            {"sourceConcept": "src:Permit", "action": "reuse",
+             "reviewStatus": "accepted", "targetType": "nc:PermitType"}]}),
+            encoding="utf-8")
+        report = {"stage": "7", "allPassed": True, "checks": []}
+        if validated:
+            report["validatedArtifacts"] = artifact_digests(pkg)
+        (run_dir / "validation-report.json").write_text(
+            json.dumps(report), encoding="utf-8")
+        return run_dir, pkg
+
+    def _finalize(self, run_dir, monkeypatch):
+        import sys
+        from ontology_mapper import finalize_package
+
+        monkeypatch.setattr(sys, "argv",
+                            ["om-finalize", "--run-dir", str(run_dir)])
+        try:
+            finalize_package.main()
+        except SystemExit as exc:
+            return exc.code
+        return 0
+
+    def test_finalize_publishes_the_governance_artifacts(self, tmp_path, monkeypatch):
+        run_dir, pkg = self._run_dir(tmp_path)
+        assert self._finalize(run_dir, monkeypatch) == 0
+        gov = pkg / "governance"
+        assert (gov / "version-manifest.json").exists()
+        assert (gov / "lineage-manifest.json").exists()
+        assert (gov / "validation-report.json").exists()
+        assert (gov / "change-impact.md").exists()
+        assert json.loads((pkg / "package-manifest.json")
+                          .read_text(encoding="utf-8"))["finalizedAt"]
+
+    def test_a_second_finalize_does_not_refuse_its_own_first_run(self, tmp_path, monkeypatch):
+        run_dir, _ = self._run_dir(tmp_path)
+        assert self._finalize(run_dir, monkeypatch) == 0
+        assert self._finalize(run_dir, monkeypatch) == 0
+
+    def test_a_package_rewritten_after_validation_is_refused(self, tmp_path, monkeypatch, capsys):
+        run_dir, pkg = self._run_dir(tmp_path)
+        (pkg / "ontology" / "core.ttl").write_text("# regenerated", encoding="utf-8")
+        assert self._finalize(run_dir, monkeypatch) == 1
+        assert "core.ttl" in capsys.readouterr().out

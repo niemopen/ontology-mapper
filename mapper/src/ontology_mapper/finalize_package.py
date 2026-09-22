@@ -22,6 +22,7 @@ from pathlib import Path
 
 from ontology_mapper.pipeline_context import load_context
 from ontology_mapper.run_dir_utils import parse_stamp, utc_stamp
+from ontology_mapper.validate_edge_package import stale_against_package
 
 
 def _count_actions(mappings):
@@ -329,7 +330,8 @@ def main():
     val_path = ctx.run_dir / "validation-report.json"
     validation_report = json.loads(val_path.read_text(encoding="utf-8")) if val_path.exists() else None
     if validation_report is not None:
-        stale = stale_against_package(val_path, ctx.pkg_dir)
+        stale = stale_against_package(val_path, ctx.pkg_dir,
+                                      validation_report)
         if stale:
             print(f"  [!] validation-report.json predates {stale}")
             print("      Stage 7 certified the package as it was before that "

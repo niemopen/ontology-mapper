@@ -592,6 +592,28 @@ class TestStaleValidationReport:
 
         assert "core.ttl" in stale_against_package(report, tmp_path / "edge-package")
 
+    def test_stage_8s_own_output_does_not_make_the_report_stale(self, tmp_path):
+        """governance/ is finalize's output, written after Stage 7 ran. Counting
+        it made a second `om-finalize` refuse its own first run."""
+        import os
+        from ontology_mapper.validate_edge_package import stale_against_package
+
+        pkg = tmp_path / "edge-package"
+        (pkg / "ontology").mkdir(parents=True)
+        (pkg / "ontology" / "core.ttl").write_text("# stage 6", encoding="utf-8")
+        report = tmp_path / "validation-report.json"
+        report.write_text("{}", encoding="utf-8")
+        stamp = (pkg / "ontology" / "core.ttl").stat().st_mtime_ns
+        os.utime(report, ns=(stamp + 10_000_000, stamp + 10_000_000))
+
+        (pkg / "governance").mkdir()
+        manifest = pkg / "governance" / "version-manifest.json"
+        manifest.write_text("{}", encoding="utf-8")
+        later = report.stat().st_mtime_ns + 10_000_000
+        os.utime(manifest, ns=(later, later))
+
+        assert stale_against_package(report, pkg) is None
+
     def test_a_report_newer_than_the_package_is_current(self, tmp_path):
         import os
         from ontology_mapper.validate_edge_package import stale_against_package
@@ -617,3 +639,67 @@ class TestDriftOnAMissingTarget:
               "targetDefinitionHash": None, "propertyMappings": []}],
             _catalog_with_types([{"qname": "nc:PersonType", "definition": "A person."}]))
         assert errors == ["src:A: target type nc:GoneType not found in catalog"]
+
+
+class TestTheReportSpeaksByContent:
+    """A validation report certifies file contents, not a moment in time."""
+
+    def _package(self, tmp_path):
+        pkg = tmp_path / "edge-package"
+        (pkg / "ontology").mkdir(parents=True)
+        (pkg / "ontology" / "core.ttl").write_text("# first", encoding="utf-8")
+        (pkg / "package-manifest.json").write_text("{}", encoding="utf-8")
+        return pkg
+
+    def _report(self, tmp_path, pkg):
+        from ontology_mapper.validate_edge_package import artifact_digests
+        report = tmp_path / "validation-report.json"
+        report.write_text(json.dumps({"validatedArtifacts": artifact_digests(pkg)}),
+                          encoding="utf-8")
+        return report
+
+    def test_a_rewrite_inside_one_timestamp_tick_is_still_named(self, tmp_path):
+        """The defect a clock cannot see: regenerating the package takes less
+        than a filesystem timestamp tick, so the report looks newer than the
+        files it should have refused."""
+        import os
+        from ontology_mapper.validate_edge_package import stale_against_package
+
+        pkg = self._package(tmp_path)
+        report = self._report(tmp_path, pkg)
+        artifact = pkg / "ontology" / "core.ttl"
+        artifact.write_text("# regenerated", encoding="utf-8")
+        stamp = report.stat().st_mtime_ns
+        os.utime(artifact, ns=(stamp, stamp))
+
+        assert stale_against_package(report, pkg).endswith("core.ttl")
+
+    def test_an_unchanged_package_is_current(self, tmp_path):
+        from ontology_mapper.validate_edge_package import stale_against_package
+
+        pkg = self._package(tmp_path)
+        report = self._report(tmp_path, pkg)
+        assert stale_against_package(report, pkg) is None
+
+    def test_a_deleted_artifact_is_named(self, tmp_path):
+        from ontology_mapper.validate_edge_package import stale_against_package
+
+        pkg = self._package(tmp_path)
+        report = self._report(tmp_path, pkg)
+        (pkg / "ontology" / "core.ttl").unlink()
+        assert stale_against_package(report, pkg).endswith("core.ttl")
+
+    def test_stage_8_own_output_is_not_evidence_of_staleness(self, tmp_path):
+        """`governance/` and the root manifest are finalize's own work, so a
+        second finalize must not read its first run as an invalidated report."""
+        from ontology_mapper.validate_edge_package import stale_against_package
+
+        pkg = self._package(tmp_path)
+        report = self._report(tmp_path, pkg)
+        (pkg / "governance").mkdir()
+        (pkg / "governance" / "version-manifest.json").write_text(
+            '{"currentVersion": "1.0.0"}', encoding="utf-8")
+        (pkg / "package-manifest.json").write_text(
+            '{"finalizedAt": "now"}', encoding="utf-8")
+
+        assert stale_against_package(report, pkg) is None

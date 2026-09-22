@@ -292,10 +292,11 @@ def local_name(qname_or_iri):
 def emitted_class_action(entry):
     """The action the emitters act on for a mapping entry, or None.
 
-    "Only emit accepted mappings" — a `pending-review` entry is not one,
-    and review exit blocks pending concepts, so reaching an emitter with
-    one means review was bypassed. OWL and CMF must agree about that or
-    they disagree about which classes the package contains.
+    "Only emit accepted mappings" — a `pending-review` entry is not one.
+    Review exit blocks pending concepts other than exclusions, so
+    reaching an emitter with one means review was bypassed. OWL and CMF
+    must agree about that or they disagree about which classes the
+    package contains.
     """
     if not entry:
         return None

@@ -1416,3 +1416,32 @@ class TestInheritedIdentityIsOrderIndependent:
         paths = lambda text: sorted(line.strip() for line in text.splitlines()
                                     if "sh:path" in line)
         assert paths(first) == paths(second)
+
+
+class TestRangesTheCatalogCanName:
+    """An open range is the answer for a range this package does not emit —
+    not for one the target catalog binds."""
+
+    TARGET = TestSharedSourceProfiles.TARGET
+
+    def _files(self, range_iri):
+        inventory = TestNiemOWLPatterns._minimal_inventory(
+            [{"qname": "src:Active", "iri": "https://sample.test/src/Active",
+              "label": "Active", "comment": "", "subClassOf": []}],
+            obj_props=[{"qname": "src:hasThing", "label": "hasThing",
+                        "domain": ["src:Active"], "range": [range_iri]}])
+        matrix = {"mappings": [{"sourceConcept": "src:Active", "action": "reuse",
+                                "targetType": "nc:BaseType", "reviewStatus": "accepted",
+                                "propertyMappings": []}]}
+        return TestNiemOWLPatterns._run_generation(
+            inventory, matrix, catalog={"namespaces": {"nc": self.TARGET}})
+
+    def test_a_target_range_is_grounded_not_opened(self):
+        core = self._files(self.TARGET + "PersonType")["test-edge-core.ttl"]
+        assert "test-edge:hasThing" in core
+        assert "rdfs:range nc:PersonType" in core
+
+    def test_a_range_this_package_does_not_emit_stays_open(self):
+        core = self._files("https://elsewhere.test/ns#Thing")["test-edge-core.ttl"]
+        assert "test-edge:hasThing" in core
+        assert "rdfs:range owl:Thing" in core

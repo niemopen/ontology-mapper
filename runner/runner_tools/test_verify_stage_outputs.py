@@ -262,16 +262,33 @@ class TestVerifyStage5:
         _write_state(tmp_path)
         _write_json(tmp_path / "human-review-decisions.json", {})
         _write_json(tmp_path / "mapping-matrix.json", {
-            "mappings": [{"sourceConcept": "src:A", "reviewStatus": "approved"}],
+            "mappings": [{"sourceConcept": "src:A", "action": "reuse",
+                          "reviewStatus": "accepted"}],
         })
         result = verify(tmp_path, "5")
         assert result["summary"]["fail"] == 0
+
+    def test_a_decided_exclusion_is_not_an_unreviewed_concept(self, tmp_path):
+        """`get_pending_items` never presents an exclusion, so its status
+        stays `pending-review` for the life of the run. Reading that raw
+        reports a finished review as incomplete and blocks the pipeline."""
+        _write_state(tmp_path)
+        _write_json(tmp_path / "human-review-decisions.json", {})
+        _write_json(tmp_path / "mapping-matrix.json", {
+            "mappings": [{"sourceConcept": "src:A", "action": "exclude",
+                          "reviewStatus": "pending-review"}],
+        })
+        result = verify(tmp_path, "5")
+        fails = [c for c in result["checks"]
+                 if c["status"] == "fail" and c["name"] == "all_classes_accepted"]
+        assert fails == []
 
     def test_pending_review_fails(self, tmp_path):
         _write_state(tmp_path)
         _write_json(tmp_path / "human-review-decisions.json", {})
         _write_json(tmp_path / "mapping-matrix.json", {
-            "mappings": [{"sourceConcept": "src:A", "reviewStatus": "pending-review"}],
+            "mappings": [{"sourceConcept": "src:A", "action": "reuse",
+                          "reviewStatus": "pending-review"}],
         })
         result = verify(tmp_path, "5")
         fails = [c for c in result["checks"]

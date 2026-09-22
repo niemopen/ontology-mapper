@@ -32,6 +32,7 @@ OWL_CLASS = "http://www.w3.org/2002/07/owl#Class"
 from ontology_mapper.run_dir_utils import utc_stamp
 from ontology_mapper.generation_utils import (
     component_iri,
+    target_qname,
     emitted_class_action,
     is_full_iri,
     local_name,
@@ -202,22 +203,28 @@ def main():
             return term if term.split(":")[0] in bound_prefixes else None
         return None
 
-    def emitting_action(prop_qname, context, emitting_leaf):
-        """The action that names a property a shape constrains.
+    def emitting_actions(prop_qname, context, emitting_leaf):
+        """Every action a shape's property was declared under.
 
         The identity belongs to the active class that DECLARES the term —
         the one whose class block writes it — not to whichever ancestor a
         walk happens to reach first. `subClassOf` is a set in the source
         model, so an ancestor walk let statement order decide which term a
         shape constrains, and which of two parents' namespaces it came from.
+
+        When a declaring class is in scope, its decision is the answer.
+        Otherwise every declaring class is: two owners whose decisions mint
+        the term differently emit two terms, and the shape names both
+        (the caller unions them into an `sh:alternativePath`). Picking one
+        by sort order left the other emitted term unconstrained.
         """
         owners = set(obj_assigned.get(prop_qname, ())) | set(dt_assigned.get(prop_qname, ()))
         for candidate in (emitting_leaf, context):
             if candidate in owners:
-                return classify_concept(candidate)[0]
+                return [classify_concept(candidate)[0]]
         if owners:
-            return classify_concept(sorted(owners)[0])[0]
-        return classify_concept(emitting_leaf)[0]
+            return sorted({classify_concept(o)[0] for o in owners}, key=str)
+        return [classify_concept(emitting_leaf)[0]]
 
     def classify_concept(qname):
         m = mapping_by_concept.get(qname)
@@ -230,6 +237,20 @@ def main():
 
     def is_source_class_ref(iri):
         return iri.startswith(SOURCE_PREFIX)
+
+    def object_range_ref(range_vals):
+        """The `rdfs:range` for an emitted object property.
+
+        A range this package does not emit — an excluded class, a term in a
+        namespace it never declares — leaves the property open rather than
+        dropping it. The property is still the source's, the CMF declares it
+        either way, and a shape may constrain it; dropping the declaration
+        here makes the two models disagree about what the package contains
+        and leaves the shape pointing at an undeclared path.
+        """
+        if not range_vals:
+            return "owl:Thing"
+        return map_range_ref(range_vals[0]) or "owl:Thing"
 
     def map_range_ref(range_iri):
         if range_iri.startswith(XSD):
@@ -260,6 +281,13 @@ def main():
                 return None
         if range_iri.partition(":")[0] in source_bindings:
             return source_term_ref(range_iri)
+        # A range the TARGET catalog binds is grounded the same way a class
+        # target is. Only a bound namespace: `target_term_ref` would hand back
+        # any full IRI verbatim, which would point the range at a source class
+        # this package deliberately does not emit.
+        grounded = target_qname(range_iri, target_ns_map)
+        if grounded != range_iri:
+            return target_term_ref(grounded, target_type_uris)
         return None
 
     # Property mapping lookup, keyed by the property's QNAME — the identity
@@ -604,15 +632,7 @@ def main():
             prop_local = local_name(pqname)
             prop_ref = resolve_property_ref(pqname, cls_qname, action)
             plabel = prop.get("label", prop_local)
-            range_vals = prop["range"]
-            range_ref = map_range_ref(range_vals[0]) if range_vals else None
-            if range_ref is None:
-                # The range names something this package does not emit —
-                # an excluded class, say. The property itself is still the
-                # source's and the CMF still declares it, so declare it
-                # here too with an open range rather than dropping a term
-                # the shapes go on to constrain.
-                range_ref = "owl:Thing"
+            range_ref = object_range_ref(prop["range"])
             lines.append(f"{prop_ref}")
             lines.append(f"    a owl:ObjectProperty ;")
             if cls_qname in prop.get("domain", []):
@@ -654,13 +674,7 @@ def main():
             prop_local = local_name(pqname)
             prop_ref = resolve_property_ref(pqname, cls_qname, "augment")
             plabel = prop.get("label", prop_local)
-            range_vals = prop["range"]
-            if range_vals:
-                range_ref = map_range_ref(range_vals[0])
-                if range_ref is None:
-                    continue
-            else:
-                range_ref = "owl:Thing"
+            range_ref = object_range_ref(prop["range"])
             lines.append(f"{prop_ref}")
             lines.append(f"    a owl:ObjectProperty ;")
             if type_ref and cls_qname in prop.get("domain", []):
@@ -713,13 +727,7 @@ def main():
             prop_local = local_name(pqname)
             prop_ref = prefix + prop_local
             plabel = prop.get("label", prop_local)
-            range_vals = prop["range"]
-            if range_vals:
-                range_ref = map_range_ref(range_vals[0])
-                if range_ref is None:
-                    continue
-            else:
-                range_ref = "owl:Thing"
+            range_ref = object_range_ref(prop["range"])
             lines.append(f"{prop_ref}")
             lines.append(f"    a owl:ObjectProperty ;")
             lines.append(f"    rdfs:range {range_ref} ;")
@@ -785,9 +793,9 @@ def main():
                             else declaring_sources)
                 path_refs = set()
                 for context in contexts:
-                    path_refs.add(resolve_property_ref(
-                        prop["path"], context,
-                        emitting_action(prop["path"], context, target_src)))
+                    for action in emitting_actions(prop["path"], context, target_src):
+                        path_refs.add(resolve_property_ref(
+                            prop["path"], context, action))
                 refs = sorted(ref for ref in path_refs if ref is not None)
                 if refs:
                     emittable.append((prop, refs))

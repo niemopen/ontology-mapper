@@ -70,13 +70,14 @@ def build_active_classes(inv, matrix):
 
     Returns a list of dicts with keys:
         sourceQname, iri, label, comment, action, targetType,
-        datatypeProps (list of {qname, label, range}),
+        datatypeProps (list of {qname, iri, label, range}),
         objectProps (list of {qname, iri, label, rangeQname, rangeLabel})
 
     ``iri`` is the identity the inventory recorded for the class or property;
     seed instances are matched on it, whatever namespace the QName belongs to.
     """
     from ontology_mapper.generation_utils import (
+        emitted_class_action,
         infer_domains_from_shapes,
         assign_properties_to_classes,
         source_prefix as primary_source_prefix,
@@ -87,8 +88,8 @@ def build_active_classes(inv, matrix):
     # Determine active classes
     active_qnames = set()
     for cls in inv["classes"]:
-        m = mapping_by_concept.get(cls["qname"])
-        if m and m["action"] in ("reuse", "extend", "augment"):
+        if emitted_class_action(mapping_by_concept.get(cls["qname"])) in (
+                "reuse", "extend", "augment"):
             active_qnames.add(cls["qname"])
 
     # Assign properties using the same logic as generate_edge_ontology
@@ -145,7 +146,8 @@ def build_active_classes(inv, matrix):
     for cls in inv["classes"]:
         qname = cls["qname"]
         m = mapping_by_concept.get(qname)
-        if not m or m["action"] not in ("reuse", "extend", "augment"):
+        action = emitted_class_action(m)
+        if action not in ("reuse", "extend", "augment"):
             continue
 
         obj_props, dt_props = props_for_class(qname)
@@ -156,6 +158,12 @@ def build_active_classes(inv, matrix):
             ranges = p.get("range", [])
             datatype_props.append({
                 "qname": p["qname"],
+                # The inventory's own IRI for the predicate, which the
+                # seed generator needs to recover a qname from a triple.
+                # A CSV source mints `{ns}#{Class}.{prop}`, so tailing
+                # the IRI by hand gives a key with a dot in it, which
+                # Neo4j rejects.
+                "iri": p.get("iri"),
                 "label": local_name(p["qname"]),
                 "range": ranges[0] if ranges else XSD + "string",
             })
@@ -190,7 +198,7 @@ def build_active_classes(inv, matrix):
             "iri": cls["iri"],
             "label": graph_label(qname),
             "comment": cls.get("comment", ""),
-            "action": m["action"],
+            "action": action,
             "targetType": m.get("targetType"),
             "datatypeProps": datatype_props,
             "objectProps": object_props,

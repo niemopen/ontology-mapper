@@ -290,8 +290,13 @@ def _verify_stage_5(run_dir, state):
     if mm:
         mappings = mm.get("mappings", [])
 
+        # `emitted_class_action`, not the raw status: an exclusion is
+        # never presented for review, so its status stays
+        # `pending-review` and reading it raw reports a decided
+        # exclusion as an unreviewed concept.
+        from ontology_mapper.generation_utils import emitted_class_action
         pending_class = [m["sourceConcept"] for m in mappings
-                         if m.get("reviewStatus") == "pending-review"]
+                         if emitted_class_action(m) is None]
         checks.append(_check("all_classes_accepted",
                              len(pending_class) == 0,
                              f"{len(pending_class)} classes still pending"
@@ -462,14 +467,17 @@ def _verify_stage_7(run_dir, state):
     # documented for direct use, and a crashed validator leaves the old
     # report in place to be read as this run's result.
     from ontology_mapper.validate_edge_package import stale_against_package
-    from ontology_mapper.pipeline_context import load_context
     try:
-        stale = stale_against_package(vr_path, load_context(run_dir).pkg_dir)
-    except Exception:
-        stale = None
-    if stale:
+        stale = stale_against_package(vr_path, _build_ctx(run_dir, state).pkg_dir)
+    except Exception as exc:
+        # A check that cannot run is reported, not dropped: a silent
+        # pass here says the report is current when nobody looked.
         checks.append(_check("validation_report_is_current", False,
-                             f"report predates {stale}"))
+                             f"freshness check failed: {exc}"))
+    else:
+        if stale:
+            checks.append(_check("validation_report_is_current", False,
+                                 f"report does not cover {stale}"))
 
     vr = _load_json(vr_path)
     if vr:

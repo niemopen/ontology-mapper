@@ -24,22 +24,73 @@ def add_check(results, name, passed, details=""):
 # ---------------------------------------------------------------------------
 # Testable cross-reference helpers
 # ---------------------------------------------------------------------------
-def stale_against_package(report_path, pkg_dir):
-    """The package file a validation report predates, or None.
+# Everything Stage 8 writes into the package, named in one place. Stage 7
+# validates the rest, so a report cannot speak for these and a second
+# finalize must not read its own first run as evidence of a stale report.
+# `finalize_package.main` writes `governance/` and rewrites the root
+# manifest; keep the two lists together.
+STAGE_8_OUTPUTS = ("governance", "package-manifest.json")
 
-    A report certifies the artifacts as they were when it ran. Publishing one
-    older than the package — `--from-stage 8` never runs Stage 7 at all —
-    records a PASS for files nobody validated.
+
+def validated_artifacts(pkg_dir):
+    """The package files a validation report speaks for, sorted."""
+    from pathlib import Path
+
+    pkg_dir = Path(pkg_dir)
+    return sorted(
+        p for p in pkg_dir.rglob("*")
+        if p.is_file()
+        and p.relative_to(pkg_dir).parts[0] not in STAGE_8_OUTPUTS
+    )
+
+
+def artifact_digests(pkg_dir):
+    """`{path relative to the package: sha256}` over the validated files."""
+    import hashlib
+    from pathlib import Path
+
+    pkg_dir = Path(pkg_dir)
+    return {p.relative_to(pkg_dir).as_posix():
+            hashlib.sha256(p.read_bytes()).hexdigest()
+            for p in validated_artifacts(pkg_dir)}
+
+
+def stale_against_package(report_path, pkg_dir, report=None):
+    """The artifact a validation report does not speak for, or None.
+
+    A report certifies the files as they were when it ran; `--from-stage 8`
+    never runs Stage 7 at all, so publishing an older report records a PASS
+    for files nobody validated. Answered by comparing the digests the report
+    recorded, because a timestamp cannot carry it: regenerating a package
+    takes less than a filesystem timestamp tick, so a report written after
+    it looks newer than every file it should have refused.
     """
+    import json
     from pathlib import Path
 
     report_path, pkg_dir = Path(report_path), Path(pkg_dir)
     if not report_path.exists() or not pkg_dir.exists():
         return None
+    if report is None:
+        try:
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return None
+
+    recorded = report.get("validatedArtifacts")
+    if recorded:
+        current = artifact_digests(pkg_dir)
+        changed = [name for name, digest in current.items()
+                   if recorded.get(name) != digest]
+        changed += [name for name in recorded if name not in current]
+        return str(pkg_dir / sorted(changed)[0]) if changed else None
+
+    # A report from before digests were recorded. The clock under-reports —
+    # that is the defect above — but it never refuses a package it cannot
+    # speak to, which is the behaviour such a run dir already had.
     stamped = report_path.stat().st_mtime_ns
-    newer = [p for p in pkg_dir.rglob("*")
-             if p.is_file() and p.stat().st_mtime_ns > stamped
-             and p.name != report_path.name]
+    newer = [p for p in validated_artifacts(pkg_dir)
+             if p.stat().st_mtime_ns > stamped]
     if not newer:
         return None
     return str(sorted(newer, key=lambda p: p.stat().st_mtime_ns)[-1])
@@ -639,6 +690,10 @@ def main():
         "passCount": sum(1 for c in checks if c["status"] == "pass"),
         "failCount": sum(1 for c in checks if c["status"] == "FAIL"),
         "checks": checks,
+        # What this report speaks for. Stage 8 and the stage verifier
+        # compare these rather than timestamps, which cannot separate a
+        # package written just before the report from one written after.
+        "validatedArtifacts": artifact_digests(PKG),
     }
 
     out_path = RUN_DIR / "validation-report.json"
