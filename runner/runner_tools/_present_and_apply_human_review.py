@@ -290,9 +290,26 @@ def apply_decision_with_cascade(entry, decision, target_ontology, catalog):
         catalog: Reference catalog dict.
     """
     old_target = entry.get("targetType")
-    new_target = decision.get("targetType")
+    changed = False
+    if "targetType" in decision:
+        from ontology_mapper.ontology_specific import (
+            ClassTargetError,
+            canonical_class_target,
+        )
+        # Compare identities, not spellings: the stored form and the
+        # selection are the same target when they canonicalize alike (a
+        # legacy full IRI against its catalog QName), and the accepted form
+        # is always the canonical one. A stored target the policy now
+        # rejects is compared as written; the selection replaces it.
+        new_target = canonical_class_target(decision["targetType"], target_ontology, catalog)
+        try:
+            old_canonical = canonical_class_target(old_target, target_ontology, catalog)
+        except ClassTargetError:
+            old_canonical = old_target
+        decision = {**decision, "targetType": new_target}
+        changed = new_target != old_canonical
 
-    if "targetType" in decision and new_target != old_target:
+    if changed:
         from ontology_mapper.ontology_specific import (
             reclassify_for_target_type_change,
         )
@@ -304,9 +321,6 @@ def apply_decision_with_cascade(entry, decision, target_ontology, catalog):
         if "notes" in decision:
             entry["notes"] = decision["notes"]
     else:
-        if "targetType" in decision:
-            from ontology_mapper.ontology_specific import validate_class_target
-            validate_class_target(new_target, target_ontology, catalog)
         apply_decision(entry, decision)
 
 

@@ -1010,6 +1010,39 @@ class TestApplyDecisionWithCascade:
                                         "niem", catalog)
         assert entry == before
 
+    @pytest.fixture
+    def native_catalog(self):
+        from ontology_mapper.run_dir_utils import resolve_specs_dir
+        return json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json").read_text(encoding="utf-8"))
+
+    def test_same_target_as_full_iri_is_stored_canonically_without_cascade(self, native_catalog):
+        """A legacy matrix stored the raw IRI; accepting it again stores the
+        catalog QName and does not reclassify — same identity, one spelling."""
+        iri = native_catalog["namespaces"]["nc"] + "PersonType"
+        entry = self._entry()
+        entry["targetType"] = iri
+        apply_decision_with_cascade(entry, {"action": "reuse", "targetType": iri}, "niem", native_catalog)
+        assert entry["targetType"] == "nc:PersonType"
+        assert entry["ruleId"] == "human-review"
+        assert entry["reviewStatus"] == "accepted"
+
+    def test_qname_selection_over_stored_iri_of_same_class_does_not_cascade(self, native_catalog):
+        entry = self._entry()
+        entry["targetType"] = native_catalog["namespaces"]["nc"] + "PersonType"
+        apply_decision_with_cascade(entry, {"action": "reuse", "targetType": "nc:PersonType"},
+                                    "niem", native_catalog)
+        assert entry["targetType"] == "nc:PersonType"
+        assert entry["ruleId"] == "human-review"
+
+    def test_full_iri_of_a_different_class_cascades_to_its_qname(self, native_catalog):
+        entry = self._entry()
+        entry["targetType"] = "nc:CaseType"
+        apply_decision_with_cascade(
+            entry, {"action": "reuse", "targetType": native_catalog["namespaces"]["nc"] + "PersonType"},
+            "niem", native_catalog)
+        assert entry["targetType"] == "nc:PersonType"
+        assert entry["ruleId"] == "target-type-change-cascade"
+
     def test_no_cascade_no_target_in_decision(self, niem_catalog):
         """No targetType in decision → simple apply_decision."""
         entry = self._entry()

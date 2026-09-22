@@ -15,13 +15,13 @@ Usage:
     om-collect-alignments --run-dir {run_dir} [--allow-pending]
 """
 
-import hashlib
 import json
 import sys
 from collections import defaultdict
 from ontology_mapper.run_dir_utils import utc_stamp
 from pathlib import Path
 
+from ontology_mapper.generation_utils import definition_hash
 from ontology_mapper.pipeline_context import load_context
 from ontology_mapper.build_strategy_reports import resolve_catalog_path
 from ontology_mapper.ontology_specific import resolve_alignment
@@ -145,15 +145,9 @@ def reassemble_evaluations(
 # Resolution
 # ---------------------------------------------------------------------------
 
-def _hash_definition(definition):
-    """Hash a target definition for codebook version fingerprinting.
-
-    Returns a 16-character hex string (64-bit SHA-256 prefix), or None
-    if the definition is None.
-    """
-    if definition is None:
-        return None
-    return hashlib.sha256(definition.encode("utf-8")).hexdigest()[:16]
+# The fingerprint's one home is generation_utils.definition_hash; the
+# review cascade and validation Check 12 use the same function.
+_hash_definition = definition_hash
 
 
 def _build_catalog_def_lookups(catalog):

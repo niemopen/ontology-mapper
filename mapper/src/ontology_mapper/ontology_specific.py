@@ -19,7 +19,11 @@ via resolve_alignment().
 import json
 
 from ontology_mapper.cmf_reference import load_reference_cmf, reference_class_identities
-from ontology_mapper.generation_utils import target_qname
+from ontology_mapper.generation_utils import (
+    catalog_type_definition,
+    definition_hash,
+    target_qname,
+)
 
 
 def extension_conformance_target(target_ontology: str, target_version: str) -> str:
@@ -422,6 +426,12 @@ def reclassify_for_target_type_change(entry, new_target_type, target_ontology, c
     new_target_type = canonical_class_target(new_target_type, target_ontology, catalog)
     result = copy.deepcopy(entry)
     result["targetType"] = new_target_type
+    # The target's definition and its fingerprint describe the new target;
+    # the deep copy would otherwise carry the previous target's, and Stage 7
+    # Check 12 would report codebook drift on a legitimate change.
+    definition = catalog_type_definition(new_target_type, catalog) if new_target_type else None
+    result["targetDefinition"] = definition or ""
+    result["targetDefinitionHash"] = definition_hash(definition)
     property_mappings = result.get("propertyMappings", [])
 
     # --- No target type: extend from root ---

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Stage 7: Validate — run all conformance checks on the edge package."""
 
-import hashlib
 import json
 import sys
 from pathlib import Path
 from ontology_mapper.run_dir_utils import utc_stamp
 
+from ontology_mapper.generation_utils import definition_hash
 from ontology_mapper.pipeline_context import load_context
 
 
@@ -251,11 +251,9 @@ def check_cmf_references(root):
     return errors
 
 
-def _hash_definition(definition):
-    """Hash a definition string the same way collect_alignments does."""
-    if definition is None:
-        return None
-    return hashlib.sha256(definition.encode("utf-8")).hexdigest()[:16]
+# The fingerprint's one home is generation_utils.definition_hash, shared with
+# alignment collection and the review cascade that write the stored hashes.
+_hash_definition = definition_hash
 
 
 def check_codebook_drift(mappings_list, catalog):

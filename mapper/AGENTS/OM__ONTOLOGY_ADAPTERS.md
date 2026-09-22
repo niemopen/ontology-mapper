@@ -50,6 +50,9 @@ when the catalog binds its namespace, and it is stored as that catalog QName,
 so catalog lookups, scaffolding names, the OWL/CMF emitters and the Stage 7
 drift check all see one identity; a reference class in an unbound namespace is
 rejected at review rather than failing later as an unbound CMF reference.
+The review apply path (`runner_tools.apply_decision_with_cascade`) compares
+canonical identities, so re-accepting a stored IRI as its QName stores the QName
+without a cascade; only a different class triggers reclassification.
 Datatypes and XSD-only names cannot become superclasses. Literal classes,
 including classes with only inherited properties, remain eligible. Names,
 patterns and property counts do not determine component kind.
@@ -118,6 +121,10 @@ result = reclassify_for_target_type_change(entry, new_target_type, target_ontolo
   for NIEM; found/missing count for non-NIEM). Clears old scaffolding, rebuilds
   for the new action, resets `reviewStatus` to `"pending-review"` on entry and
   all properties. Sets `ruleId = "target-type-change-cascade"`.
+  Replaces `targetDefinition` and `targetDefinitionHash` with the new target's
+  catalog definition (`generation_utils.definition_hash`, the same fingerprint
+  alignment collection writes and Stage 7 Check 12 compares), so a legitimate
+  target change does not report codebook drift.
 - **Null target type**: Allowed — produces extend from root
   (`structures:ObjectType` for NIEM, no `baseType` for non-NIEM).
 - **Property actions do NOT change**: `reuse-property` / `create-property` /

@@ -1035,6 +1035,47 @@ class TestReclassifyForTargetTypeChange:
         )
         assert result["ruleId"] == "target-type-change-cascade"
 
+    # --- target metadata follows the new target ---
+
+    def _entry_with_target_metadata(self, niem_catalog):
+        from ontology_mapper.generation_utils import catalog_type_definition, definition_hash
+
+        for t in niem_catalog["types"]:
+            t["definition"] = f"A data type for {t['qname']}."
+        entry = self._make_entry("reuse", "nc:CaseType", self._props_on_case_type())
+        entry["targetDefinition"] = catalog_type_definition("nc:CaseType", niem_catalog)
+        entry["targetDefinitionHash"] = definition_hash(entry["targetDefinition"])
+        return entry
+
+    def test_target_definition_and_hash_describe_the_new_target(self, niem_catalog):
+        """Check 12 compares the stored hash with the catalog definition of the
+        stored target; after a change both must describe the new target."""
+        from ontology_mapper.generation_utils import definition_hash
+        from ontology_mapper.validate_edge_package import check_codebook_drift
+
+        entry = self._entry_with_target_metadata(niem_catalog)
+        result = reclassify_for_target_type_change(entry, "nc:PersonType", "niem", niem_catalog)
+
+        assert result["targetDefinition"] == "A data type for nc:PersonType."
+        assert result["targetDefinitionHash"] == definition_hash("A data type for nc:PersonType.")
+        assert check_codebook_drift([result], niem_catalog) == []
+        assert entry["targetDefinition"] == "A data type for nc:CaseType."  # input untouched
+
+    def test_no_target_clears_target_metadata(self, niem_catalog):
+        entry = self._entry_with_target_metadata(niem_catalog)
+        result = reclassify_for_target_type_change(entry, None, "niem", niem_catalog)
+        assert result["targetDefinition"] == ""
+        assert result["targetDefinitionHash"] is None
+
+    def test_target_without_catalog_definition_hashes_none(self, niem_catalog):
+        entry = self._entry_with_target_metadata(niem_catalog)
+        for t in niem_catalog["types"]:
+            if t["qname"] == "nc:PersonType":
+                del t["definition"]
+        result = reclassify_for_target_type_change(entry, "nc:PersonType", "niem", niem_catalog)
+        assert result["targetDefinition"] == ""
+        assert result["targetDefinitionHash"] is None
+
 
 def test_native_cmf_root_policy_is_target_and_version_specific():
     from ontology_mapper.ontology_specific import cmf_implicit_roots

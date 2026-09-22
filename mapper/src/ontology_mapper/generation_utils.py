@@ -5,7 +5,29 @@ and generate_kg_artifacts.py (knowledge graph). All functions are stateless
 and do not perform I/O.
 """
 
+import hashlib
+
 XSD = "http://www.w3.org/2001/XMLSchema#"
+
+
+def definition_hash(definition):
+    """Fingerprint a target definition for codebook drift detection.
+
+    One home for the writer (alignment collection, the review cascade) and
+    the reader (validation Check 12): a 16-character hex string, the 64-bit
+    SHA-256 prefix, or None when there is no definition.
+    """
+    if definition is None:
+        return None
+    return hashlib.sha256(definition.encode("utf-8")).hexdigest()[:16]
+
+
+def catalog_type_definition(target_type, catalog):
+    """The catalog's own definition of a target type, or None if it has none."""
+    for t in catalog.get("types", []):
+        if t.get("qname") == target_type:
+            return t.get("definition")
+    return None
 
 
 def property_qname_resolver(inventory):
