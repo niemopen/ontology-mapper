@@ -24,8 +24,12 @@ Source properties retain their declared `qname` through strategy preparation,
 search and result writing; `name` remains the display local name. Each property
 result belongs to `(source.parentType, source.qname)`. Shared properties receive
 separate files per parent, and resumption retains existing evaluated files,
-including legacy filenames. Collection groups by the document's parent rather
-than deriving identity from its filename.
+including legacy filenames. A file written before the declared `qname`
+existed recorded every property under its parent's prefix; resumption reuses
+such a file when its local name is unique for that parent (the rule
+`property_qname_resolver` applies to old matrices) and never guesses between
+two. Collection groups by the document's parent rather than deriving identity
+from its filename.
 
 ### Vector index infrastructure
 

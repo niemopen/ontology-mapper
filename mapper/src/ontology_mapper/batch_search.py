@@ -26,6 +26,7 @@ import hashlib
 import re
 from pathlib import Path
 
+from ontology_mapper.generation_utils import local_name
 from ontology_mapper.pipeline_context import load_context
 from ontology_mapper.vector_index import OntologyEntry, query_index
 from ontology_mapper.semantic_search import class_filter_for_index, match_predicate
@@ -292,13 +293,26 @@ def write_search_results(
     # Keep legacy evaluated filenames, but identify a property occurrence by
     # both its parent and its QName. One shared property may have different
     # decisions on different types.
+    #
+    # Files written before ``source-concepts.json`` carried property QNames
+    # qualified every property under its parent's prefix (see
+    # ``_property_qname``), so an augmenting-namespace property's evaluated
+    # file is keyed ``(parent, parent-prefix:name)`` and can never match the
+    # declared identity. Index those by ``(parent, local name)`` as well and
+    # reuse the file when that local name is unique for the parent — the
+    # same rule ``generation_utils.property_qname_resolver`` applies to old
+    # matrices. An ambiguous local name is never guessed between.
     occurrence_paths = {}
+    legacy_paths = {}
     used_names = set()
     for path in sorted(props_dir.glob("*.json")):
         used_names.add(path.name.casefold())
         try:
             source = json.loads(path.read_text(encoding="utf-8")).get("source", {})
-            occurrence_paths[(source.get("parentType"), source.get("qname"))] = path
+            parent, recorded = source.get("parentType"), source.get("qname")
+            occurrence_paths[(parent, recorded)] = path
+            if recorded:
+                legacy_paths.setdefault((parent, local_name(recorded)), []).append(path)
         except (ValueError, AttributeError):
             continue
 
@@ -342,6 +356,11 @@ def write_search_results(
             )
             identity = (qname, pq)
             filepath = occurrence_paths.get(identity)
+            if filepath is None:
+                legacy = legacy_paths.get((qname, local_name(pq)), [])
+                if len(legacy) == 1:
+                    filepath = legacy[0]
+                    occurrence_paths[identity] = filepath
             if filepath is None:
                 filename = sanitize_filename(pq) + ".json"
                 if filename.casefold() in used_names:

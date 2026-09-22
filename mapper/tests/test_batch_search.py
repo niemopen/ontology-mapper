@@ -82,6 +82,44 @@ def test_shared_cross_namespace_property_keeps_both_parents_and_resumes(tmp_path
         assert next(e for e in combined if e["sourceConcept"] == "src:A")["properties"][0]["targetProperty"] == "nc:Saved"
 
 
+def _write_evaluated_property_file(tmp_path, filename, parent, qname, target):
+    directory = tmp_path / "search-results" / "properties"
+    directory.mkdir(parents=True, exist_ok=True)
+    doc = build_property_file(parent, "", qname.split(":")[-1], qname, "", [], [])
+    doc.update(status="evaluated", evaluation={"sourceProperty": qname, "targetProperty": target})
+    (directory / filename).write_text(json.dumps(doc), encoding="utf-8")
+
+
+def test_legacy_file_qualified_under_parent_prefix_is_reused_not_duplicated(tmp_path):
+    """A pre-declaration file recorded `src:flag` for the augmenting-namespace
+    property `other:flag`; the declared identity must find that evaluated file
+    instead of leaving it as a phantom beside a new pending one."""
+    _write_evaluated_property_file(tmp_path, "src_flag.json", "src:A", "src:flag", "nc:Saved")
+    concepts = [{"qname": "src:A", "definition": "", "properties": [{"name": "flag", "qname": "other:flag"}]}]
+
+    counts = write_search_results(tmp_path, concepts, {}, {"src:A": {"other:flag": [PROP_CANDIDATE]}})
+
+    props_dir = tmp_path / "search-results" / "properties"
+    assert counts["props_skipped"] == 1 and counts["props_written"] == 0
+    assert sorted(p.name for p in props_dir.glob("*.json")) == ["src_flag.json"]
+    from ontology_mapper.collect_alignments import load_search_results
+    _, props = load_search_results(tmp_path)
+    assert [(p["status"], p["evaluation"]["targetProperty"]) for _, p in props] == [("evaluated", "nc:Saved")]
+
+
+def test_ambiguous_legacy_local_name_is_not_guessed(tmp_path):
+    """Two legacy files share a local name under one parent; neither is claimed."""
+    _write_evaluated_property_file(tmp_path, "src_flag.json", "src:A", "src:flag", "nc:One")
+    _write_evaluated_property_file(tmp_path, "aux_flag.json", "src:A", "aux:flag", "nc:Two")
+    concepts = [{"qname": "src:A", "definition": "", "properties": [{"name": "flag", "qname": "other:flag"}]}]
+
+    counts = write_search_results(tmp_path, concepts, {}, {"src:A": {"other:flag": [PROP_CANDIDATE]}})
+
+    props_dir = tmp_path / "search-results" / "properties"
+    assert counts["props_written"] == 1
+    assert sorted(p.name for p in props_dir.glob("*.json")) == ["aux_flag.json", "other_flag.json", "src_flag.json"]
+
+
 # ---------------------------------------------------------------------------
 # Sample data
 # ---------------------------------------------------------------------------
