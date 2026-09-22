@@ -18,6 +18,13 @@ Verify:  python runner_tools/verify_stage_outputs.py --run-dir {run_dir} --stage
 Action:  om-pipeline mark-complete --stage 7 --run-dir {run_dir}
 ```
 
+`om-validate` exits nonzero when any check fails, after writing
+`validation-report.json`. Both orchestrators (`run_pipeline.run_stage_7` and
+the web backend's stage runner) still run `feedback_report.py` so the failures
+are mapped back to source decisions, then stop the stage: verification's
+`validation_all_pass` check fails, Stage 7 is not marked complete, and Stage 8
+is never reached.
+
 ## Validation Checks
 
 | # | Check | What it catches |

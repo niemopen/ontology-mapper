@@ -475,3 +475,37 @@ class TestStage5Metric:
         result = _stage_metric(tmp_path, "5")
         assert "1 pending" in result
         assert "1 accepted" in result
+
+
+# ---------------------------------------------------------------------------
+# Stage 7: failed validation still produces the feedback report
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("valid", [False, True])
+def test_stage_7_writes_feedback_report_before_stopping_on_failed_validation(tmp_path, monkeypatch, valid):
+    import runner_tools.run_pipeline as runner
+
+    commands = []
+
+    def run_cmd(stage, cmd, cwd=None):
+        commands.append(cmd[0])
+        if cmd[0] == "om-validate" and not valid:
+            raise StageError(stage, "Command failed (rc=1): om-validate")
+        return ""
+
+    def verify_stage(run_dir, stage):
+        if not valid:
+            raise VerificationError(stage, "1 error(s):\n  - [validation_all_pass] 1 checks failed")
+        return {}
+
+    monkeypatch.setattr(runner, "run_cmd", run_cmd)
+    monkeypatch.setattr(runner, "verify_stage", verify_stage)
+
+    if valid:
+        runner.run_stage_7(tmp_path, [])
+        assert commands == ["om-validate", "python", "om-pipeline"]
+    else:
+        with pytest.raises(VerificationError, match="validation_all_pass"):
+            runner.run_stage_7(tmp_path, [])
+        # feedback_report.py ran after the failed validation; mark-complete did not
+        assert commands == ["om-validate", "python"]

@@ -397,12 +397,18 @@ def _run_pipeline_stages_6_8(run_id: str, run_dir: Path, cwd: str, env: dict) ->
     if not _mark_complete(run_id, "6", run_dir, cwd, env):
         return False
 
-    # Stage 7: Validate
+    # Stage 7: Validate. om-validate exits nonzero when a check fails, after
+    # writing the report; the feedback report maps those failures back to
+    # source decisions, so it is produced before the failed stage stops.
     _pipeline_status[run_id]["stage"] = "7"
     _record_stage_start(run_dir, "7")
-    if not _run_cmd(run_id, "7", ["om-validate", "--run-dir", rd], cwd, env):
+    validated = _run_cmd(run_id, "7", ["om-validate", "--run-dir", rd], cwd, env)
+    validation_failure = None if validated else dict(_pipeline_status[run_id])
+    reported = _run_cmd(run_id, "7", ["python", "runner_tools/feedback_report.py", "--run-dir", rd], cwd, env)
+    if not validated:
+        _pipeline_status[run_id] = validation_failure  # the validation failure is the cause to show
         return False
-    if not _run_cmd(run_id, "7", ["python", "runner_tools/feedback_report.py", "--run-dir", rd], cwd, env):
+    if not reported:
         return False
     if not _mark_complete(run_id, "7", run_dir, cwd, env):
         return False

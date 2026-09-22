@@ -76,12 +76,21 @@ def test_validation_stops_before_finalization(tmp_path, monkeypatch, valid):
 
     def command(run_id, stage, cmd, cwd, env):
         commands.append(cmd[0])
-        return valid or cmd[0] != "om-validate"
+        if not valid and cmd[0] == "om-validate":
+            runs._pipeline_status[run_id] = {"status": "failed", "stage": "7", "error": "SOME CHECKS FAILED"}
+            return False
+        return True
 
     monkeypatch.setattr(runs, "_run_cmd", command)
     assert runs._run_pipeline_stages_6_8("sample", tmp_path, str(tmp_path), {}) is valid
     assert ("om-finalize" in commands) is valid
     assert ("7" in completed) is valid
+    # The feedback report maps failures back to decisions, so it is produced
+    # even when validation fails, and the validation failure stays the cause.
+    assert "python" in commands
+    assert commands.index("python") > commands.index("om-validate")
+    if not valid:
+        assert runs._pipeline_status["sample"]["error"] == "SOME CHECKS FAILED"
 
 
 @pytest.mark.parametrize("target", ["scr:PersonRoleCategoryCodeType", "hs:PersonRoleCodeSimpleType", "nc:TextType"])

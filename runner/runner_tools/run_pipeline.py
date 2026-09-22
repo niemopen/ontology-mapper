@@ -686,12 +686,25 @@ def run_stage_6(run_dir: Path, timers: list[StageTimer]):
 
 
 def run_stage_7(run_dir: Path, timers: list[StageTimer]):
-    """Stage 7: Validate — run validation + feedback report."""
+    """Stage 7: Validate — run validation + feedback report.
+
+    ``om-validate`` exits nonzero when a check fails, after writing
+    ``validation-report.json``. The feedback report maps those failures back
+    to source decisions, so it is produced before the stage stops; the stage
+    then fails through verification (``validation_all_pass``) or, failing
+    that, the validation error itself. Stage 8 is never reached.
+    """
     with StageTimer("7") as t:
-        run_cmd("7", ["om-validate", "--run-dir", str(run_dir)])
+        validation_failure = None
+        try:
+            run_cmd("7", ["om-validate", "--run-dir", str(run_dir)])
+        except StageError as exc:
+            validation_failure = exc
         run_cmd("7", ["python", "runner_tools/feedback_report.py",
                        "--run-dir", str(run_dir)])
         verify_stage(run_dir, "7")
+        if validation_failure is not None:
+            raise validation_failure
         run_cmd("7", ["om-pipeline", "mark-complete", "--stage", "7", "--run-dir", str(run_dir)])
     timers.append(t)
 
