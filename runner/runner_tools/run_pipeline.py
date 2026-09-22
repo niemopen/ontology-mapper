@@ -270,6 +270,24 @@ def _resolve_concept(pending: list, concept_ref: str) -> dict | None:
     return None
 
 
+def _resolve_concept_anywhere(pending: list, matrix: dict, concept_ref: str) -> dict | None:
+    """The entry the reviewer named, whether or not it is pending.
+
+    One home for that question. An entry the class policy blocks is
+    accepted, not pending, and changing its target is the repair, so a
+    resolver that sees pending items only makes the blocker unclearable
+    from the CLI.
+    """
+    entry = _resolve_concept(pending, concept_ref)
+    if entry:
+        return entry
+    suffix = f":{concept_ref}"
+    for m in matrix.get("mappings", []):
+        if m["sourceConcept"] == concept_ref or m["sourceConcept"].endswith(suffix):
+            return m
+    return None
+
+
 def _build_pending_summary(pending: list) -> str:
     """Build a compact summary of pending items for the LLM prompt."""
     lines = []
@@ -351,13 +369,7 @@ def _dispatch_review_action(
 
     elif action_type == "detail":
         concept_ref = action.get("concept", "")
-        entry = _resolve_concept(pending, concept_ref)
-        if not entry:
-            # Also check all mappings (not just pending)
-            for m in matrix["mappings"]:
-                if m["sourceConcept"] == concept_ref or m["sourceConcept"].endswith(f":{concept_ref}"):
-                    entry = m
-                    break
+        entry = _resolve_concept_anywhere(pending, matrix, concept_ref)
         if not entry:
             return f"Concept not found: {concept_ref}", applied, cascade_context
         detail = format_review_item(entry)
@@ -370,7 +382,7 @@ def _dispatch_review_action(
     elif action_type == "change_target":
         concept_ref = action.get("concept", "")
         new_target = action.get("new_target_type", "")
-        entry = _resolve_concept(pending, concept_ref)
+        entry = _resolve_concept_anywhere(pending, matrix, concept_ref)
         if not entry:
             return f"Concept not found: {concept_ref}", applied, cascade_context
         if not new_target:

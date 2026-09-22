@@ -130,21 +130,19 @@ def invalid_class_targets(matrix, target_ontology, catalog):
         fields = fields_by_action.get(entry.get("action"))
         if not fields:
             continue
-        seen = set()
+        # Grouped by target, not by field: extend and augment normally
+        # repeat the class in their scaffolding, so one rejected value
+        # is one blocker — but it names every field holding it, because
+        # the reviewer selects a class and stored scaffolding is not one.
+        fields_by_target = {}
         for field in fields:
-            target = entry.get(field)
-            if target in seen:
-                continue
-            seen.add(target)
+            fields_by_target.setdefault(entry.get(field), []).append(field)
+        for target, holders in fields_by_target.items():
             try:
                 canonical_class_target(target, target_ontology, catalog)
             except ClassTargetError as exc:
-                # Name the field. The reviewer selects a class, so a
-                # message naming only a type they never chose leaves
-                # them nothing to act on when stored scaffolding is the
-                # offender.
                 invalid.append((entry.get("sourceConcept", ""), target,
-                                f"{field} {exc}"))
+                                f"{'/'.join(holders)} {exc}"))
     return invalid
 
 

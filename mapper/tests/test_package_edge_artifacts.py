@@ -286,3 +286,32 @@ class TestCreatedPropertyNamespaces:
         catalog = build_extension_catalog(self._matrix_with("abc:flag"),
                                           self._context(), self._inventory(), {})
         assert catalog["extensions"][0]["properties"] == ["https://abc.test/ns#flag"]
+
+
+class TestUnqualifiableDecisionsAreCountedPerRun:
+    """The reviewer reopens review once, not once per offending mapping."""
+
+    def test_every_offending_mapping_is_named_in_one_refusal(self):
+        from pathlib import Path
+        from ontology_mapper.pipeline_context import PipelineContext
+        context = PipelineContext(Path("run"), Path("run/edge-package"),
+                                  "example", "source", "niem", "6.0")
+        inventory = {"classes": [{"qname": "src:A", "iri": "https://src.test/ns#A"},
+                                 {"qname": "src:B", "iri": "https://src.test/ns#B"}],
+                     "namespaceMap": {"https://src.test/ns#": "src:"},
+                     "objectProperties": [],
+                     "datatypeProperties": [{"qname": "src:flag"},
+                                            {"qname": "abc:flag"}]}
+        def _entry(concept, source_property):
+            return _mapping(concept, "extend", "nc:PersonType",
+                            baseType="nc:PersonType",
+                            propertyMappings=[{"sourceProperty": source_property,
+                                               "action": "create-property",
+                                               "reviewStatus": "accepted"}])
+        matrix = _matrix([_entry("src:A", "ghost1:flag"),
+                          _entry("src:B", "ghost2:flag")])
+        with pytest.raises(ValueError) as caught:
+            build_extension_catalog(matrix, context, inventory, {})
+        message = str(caught.value)
+        assert message.startswith("2 accepted created-property")
+        assert "src:A" in message and "src:B" in message

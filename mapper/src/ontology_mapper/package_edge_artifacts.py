@@ -144,12 +144,6 @@ def build_extension_catalog(matrix, ctx, inventory, target_ns_map):
                 continue
             properties.add(component_iri(namespace, name))
 
-        if unresolved:
-            raise ValueError(
-                f"{len(unresolved)} accepted created-property decision(s) name a "
-                f"source property this run cannot qualify; reopen review:\n"
-                + "\n".join(unresolved))
-
         extensions.append({
             "extensionIRI": component_iri(ctx.extension_namespace, ext_name),
             "name": ext_name,
@@ -160,6 +154,15 @@ def build_extension_catalog(matrix, ctx, inventory, target_ns_map):
             "sourceConceptIRI": classes[concept]["iri"],
             "mappingEntryRef": concept,
         })
+
+    # After the loop, not inside it: the count is the run's, and a
+    # reviewer who fixes the first offender must not be refused again by
+    # the second.
+    if unresolved:
+        raise ValueError(
+            f"{len(unresolved)} accepted created-property decision(s) name a "
+            f"source property this run cannot qualify; reopen review:\n"
+            + "\n".join(unresolved))
 
     return {"extensions": sorted(extensions, key=lambda e: e["extensionIRI"])}
 

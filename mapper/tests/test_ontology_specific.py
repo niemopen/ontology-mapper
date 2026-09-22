@@ -1152,3 +1152,28 @@ class TestInvalidClassTargets:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestOneBlockerPerRejectedTarget:
+    """Extend and augment normally repeat the class in their scaffolding,
+    so a rejected class is one blocker — naming every field that holds it,
+    because the reviewer selects a class and scaffolding is not one."""
+
+    def _catalog(self):
+        import json
+        from ontology_mapper.run_dir_utils import resolve_specs_dir
+        return json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json")
+                          .read_text(encoding="utf-8"))
+
+    def test_a_class_repeated_in_scaffolding_reports_once_naming_both_fields(self):
+        from ontology_mapper.ontology_specific import invalid_class_targets
+        matrix = {"mappings": [
+            {"sourceConcept": "src:Ext", "action": "extend",
+             "targetType": "niem-xs:token", "baseType": "niem-xs:token"},
+            {"sourceConcept": "src:Aug", "action": "augment",
+             "targetType": "niem-xs:token", "augmentsType": "niem-xs:token"},
+        ]}
+        reported = invalid_class_targets(matrix, "niem", self._catalog())
+        assert len(reported) == 2
+        assert reported[0][2].startswith("targetType/baseType ")
+        assert reported[1][2].startswith("targetType/augmentsType ")

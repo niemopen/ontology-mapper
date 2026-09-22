@@ -668,11 +668,18 @@ def complete_stage_5(run_dir):
 
     run_dir = Path(run_dir)
     try:
-        _, matrix, _ = load_inputs(run_dir)
-        cascade = load_cascade_context(run_dir)
+        # The matrix alone, not `load_inputs`: the exit criteria never
+        # consult the decision log, and naming it in a failure message
+        # would point the operator at the wrong file. Reading it and
+        # asking the question sit together inside the guard because a
+        # matrix edited outside review — the premise this check exists
+        # for — is exactly the input whose shape may not hold.
+        matrix = json.loads(
+            (run_dir / "mapping-matrix.json").read_text(encoding="utf-8"))
+        can_exit, blockers = check_stage_5_exit(matrix,
+                                                load_cascade_context(run_dir))
     except Exception as exc:
         return False, f"Stage 5 exit criteria could not be checked: {exc}"
-    can_exit, blockers = check_stage_5_exit(matrix, cascade)
     if not can_exit:
         return False, ("Stage 5 exit criteria not met:\n  - "
                        + "\n  - ".join(blockers))

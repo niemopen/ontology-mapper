@@ -1573,3 +1573,48 @@ class TestScaffoldingRepair:
                                     "niem", catalog)
         assert entry["baseType"] == "nc:PersonType"
         assert entry["reviewStatus"] == "accepted"
+
+
+@pytest.mark.parametrize("matrix", [
+    {"mappings": [{"sourceConcept": "src:A", "action": "reuse",
+                   "targetType": "nc:PersonType"}]},        # no reviewStatus
+    {"mappings": {"src:A": {}}},                            # not a list
+    {"mappings": [{"sourceConcept": "src:A", "action": "reuse",
+                   "targetType": "nc:PersonType", "reviewStatus": "accepted",
+                   "propertyMappings": None}]},             # null decisions
+    {"mappings": [None]},
+])
+def test_an_unreadable_matrix_blocks_exit_rather_than_raising(tmp_path, matrix):
+    """The premise of this check is a matrix edited outside review, so the
+    shape it reads is exactly the shape that may not hold. Reading it and
+    asking the question belong inside one guard."""
+    import json
+    from runner_tools._present_and_apply_human_review import complete_stage_5
+    (tmp_path / ".mapper-state.json").write_text(json.dumps(
+        {"inputs": {"target_ontology": "niem", "target_version": "6.0"}}),
+        encoding="utf-8")
+    (tmp_path / "mapping-matrix.json").write_text(json.dumps(matrix), encoding="utf-8")
+    # The decision log exists: this run reaches the exit check, which is
+    # the reader whose guard is under test.
+    (tmp_path / "decision-log.json").write_text(json.dumps({"decisions": []}),
+                                                encoding="utf-8")
+    success, error = complete_stage_5(tmp_path)
+    assert not success and "could not be checked" in error
+
+
+def test_the_exit_check_does_not_need_the_decision_log(tmp_path):
+    """The exit criteria never consult it, so a message naming it would
+    point the operator at the wrong file."""
+    import json
+    from runner_tools._present_and_apply_human_review import complete_stage_5
+    (tmp_path / ".mapper-state.json").write_text(json.dumps(
+        {"inputs": {"target_ontology": "niem", "target_version": "6.0"}}),
+        encoding="utf-8")
+    (tmp_path / "mapping-matrix.json").write_text(json.dumps(
+        {"mappings": [{"sourceConcept": "src:A", "action": "extend",
+                       "targetType": "nc:PersonType", "baseType": "niem-xs:token",
+                       "reviewStatus": "accepted", "propertyMappings": []}]}),
+        encoding="utf-8")
+    success, error = complete_stage_5(tmp_path)
+    assert not success
+    assert "decision-log" not in error and "baseType" in error

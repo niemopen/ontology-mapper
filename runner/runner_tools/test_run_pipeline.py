@@ -647,3 +647,26 @@ def test_stage_6_reports_an_unprovable_matrix_as_a_stage_failure(tmp_path, state
     with pytest.raises(StageError, match="validat"):
         runner.refuse_invalid_class_targets(tmp_path)
 
+
+def test_change_target_reaches_an_entry_that_is_not_pending():
+    """An entry the class policy blocks is accepted, not pending, and
+    changing its target is the repair: a resolver that sees pending items
+    only leaves the reviewer no way to clear the blocker from the CLI."""
+    import json as _json
+    from pathlib import Path
+    from ontology_mapper.run_dir_utils import resolve_specs_dir
+    from runner_tools.run_pipeline import _dispatch_review_action
+
+    catalog = _json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json")
+                          .read_text(encoding="utf-8"))
+    entry = {"sourceConcept": "src:A", "action": "extend",
+             "targetType": "nc:PersonType", "baseType": "niem-xs:token",
+             "reviewStatus": "accepted", "propertyMappings": []}
+    matrix = {"mappings": [entry]}
+    message, applied, _ = _dispatch_review_action(
+        {"action": "change_target", "concept": "src:A",
+         "new_target_type": "nc:PersonType"},
+        Path("."), matrix, {"decisions": []}, [], ("niem", catalog))
+    assert "not found" not in message
+    assert matrix["mappings"][0].get("baseType") != "niem-xs:token"
+    assert len(applied) == 1

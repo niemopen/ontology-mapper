@@ -146,7 +146,10 @@ The extension catalog is the one artifact built by walking the decisions
 rather than the inventory, so it alone meets a recorded property name the
 resolver could not resolve. A prefix bound to no namespace has no IRI to
 mint, and the OWL and CMF emitters never wrote one for it, so the catalog
-names the decision and refuses rather than inventing a namespace.
+names the decision and refuses rather than inventing a namespace. One
+refusal covers the run: every unqualifiable decision is named and counted
+together, so a reviewer who fixes the first is not refused again by the
+second.
 
 Global properties — those belonging to no active class — are emitted for the
 primary source namespace only, and `emit_global_properties` applies that

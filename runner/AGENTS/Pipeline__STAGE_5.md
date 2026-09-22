@@ -68,9 +68,12 @@ Each driver meets that check at a different point. The web asks it through
 has no gate of its own, and `verify_stage` reads pending status only, so
 `complete_stage_5` — the step that marks the stage complete for both — runs
 the check itself and returns the blockers instead of completing. The
-blocker names the field, because the reviewer selects a class and stored
-`baseType`/`augmentsType` is not one: re-accepting the same class rebuilds
-scaffolding the policy rejects, so the message names something the reviewer
-can act on. The Stage 6 entry answers the
+blocker names every field holding the rejected class, because the reviewer
+selects a class and stored `baseType`/`augmentsType` is not one:
+re-accepting the same class rebuilds scaffolding the policy rejects, so the
+message names something the reviewer can act on. A blocked entry is
+accepted rather than pending, so the CLI resolves a named concept over
+every mapping, not the pending list alone; otherwise the repair the
+blocker asks for could not be typed. The Stage 6 entry answers the
 same way: an unreadable catalog or matrix shape fails the stage
 (`StageError`), never escaping as a traceback the driver does not present.
