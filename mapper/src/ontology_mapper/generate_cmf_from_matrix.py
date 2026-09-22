@@ -514,9 +514,12 @@ class MatrixToCmfBuilder:
                 continue
 
             for hp in cmf_cls.properties:
-                # Skip reuse-property refs (they're already on the target)
-                prop_prefix = hp.property_ref.split(".")[0] if "." in hp.property_ref else ""
-                if prop_prefix == self._edge_prefix:
+                # Skip reuse-property refs (they're already on the target).
+                # A created property is one this model declares, whichever
+                # namespace it was emitted under: a property owned by an
+                # augmenting source namespace is declared under that
+                # namespace's prefix, not the edge prefix.
+                if hp.property_ref in declared:
                     record(target_id, hp.property_ref, hp.is_object,
                            hp.min_occurs, hp.max_occurs)
 

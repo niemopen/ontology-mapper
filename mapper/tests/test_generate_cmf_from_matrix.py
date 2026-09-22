@@ -1297,6 +1297,29 @@ class TestDeclaredPrimaryNamespace:
                             "nc": "http://example.org/niem-core/6.0"}
         assert "dbpi" not in {n.ns_id for n in model.namespaces}
 
+    def test_created_augmenting_namespace_property_on_reuse_class_gets_augmentation_record(self):
+        """Every property this model declares for a reuse class augments the target,
+        including one emitted under an augmenting source namespace's prefix."""
+        inv = _make_inventory(
+            classes=[_make_class("dbpi:Fee")],
+            dt_props=[_make_dt_prop("dbpi:amount", domain=["dbpi:Fee"]),
+                      _make_dt_prop("abc:note", domain=["dbpi:Fee"]),
+                      _make_dt_prop("dbpi:paid", domain=["dbpi:Fee"])])
+        inv["primaryNamespace"] = {"prefix": "dbpi", "uri": "https://example.test/dbpi#"}
+        inv["namespaceMap"] = {"https://example.test/dbpi#": "dbpi:",
+                               "https://example.test/abc#": "abc:"}
+        matrix = _make_matrix([_make_mapping("dbpi:Fee", "reuse", "nc:FeeType", property_mappings=[
+            _make_prop_mapping("dbpi:amount"),
+            _make_prop_mapping("abc:note"),
+            _make_prop_mapping("dbpi:paid", action="reuse-property", target_prop="nc:AmountValue")])])
+
+        model = _build(matrix, inv)
+
+        records = {(a.class_ref, a.property_ref)
+                   for n in model.namespaces for a in n.augmentations}
+        assert records == {("nc.FeeType", "test-edge.amount"), ("nc.FeeType", "abc.note")}
+        assert not any(r[1] == "nc.AmountValue" for r in records)
+
 
 class TestFullIriTargets:
     """Accepted full-IRI targets are emitted as CMF ids bound to catalog namespaces."""
