@@ -20,7 +20,8 @@ from ontology_mapper.pipeline_context import load_context
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-from ontology_mapper.generation_utils import XSD, shape_target_classes, source_prefix
+from ontology_mapper.generation_utils import (XSD, colliding_edge_class_names,
+                                              shape_target_classes, source_prefix)
 SKOS_CONCEPT = "http://www.w3.org/2004/02/skos/core#Concept"
 OWL_CLASS = "http://www.w3.org/2002/07/owl#Class"
 
@@ -30,6 +31,7 @@ OWL_CLASS = "http://www.w3.org/2002/07/owl#Class"
 # ---------------------------------------------------------------------------
 from ontology_mapper.run_dir_utils import utc_stamp
 from ontology_mapper.generation_utils import (
+    component_iri,
     is_full_iri,
     local_name,
     edge_class_name,
@@ -298,6 +300,15 @@ def main():
         | {q for q, _, _, _, _ in augment_classes}
     )
 
+    collisions = colliding_edge_class_names(all_active_qnames)
+    if collisions:
+        details = "\n".join(f"  - {name}: {', '.join(qnames)}"
+                            for name, qnames in collisions.items())
+        raise ValueError(
+            f"{len(collisions)} edge class name(s) would be emitted for more "
+            f"than one source concept; exclude one or rename the source "
+            f"class:\n" + details)
+
     # Infer property domains from SHACL shapes
     shape_domains = infer_domains_from_shapes(
         inv["objectProperties"] + inv["datatypeProperties"],
@@ -444,6 +455,13 @@ def main():
             base = m.get("baseType")
             if base:
                 qnames_to_check.append(base)
+            # Independently settable, and the emitters read it: without
+            # its prefix bound, an augmentation whose `augmentsType`
+            # differs from `targetType` loses its SHACL constraint and
+            # its property is emitted with no domain.
+            augmented = m.get("augmentsType")
+            if augmented:
+                qnames_to_check.append(augmented)
             for pm in (m.get("propertyMappings") or []):
                 target_prop = pm.get("targetProperty")
                 if target_prop:
@@ -473,10 +491,16 @@ def main():
     PREFIXES = build_prefixes()
 
     def target_ref_identity(ref):
-        """Expand a rendered target QName so aliases and IRIs compare equally."""
+        """Expand a rendered target QName so aliases and IRIs compare equally.
+
+        Through `component_iri`, the one home for namespace + name: three
+        of the eight namespaces the NODS catalog binds do not end in a
+        separator, and concatenating there produced a second spelling of
+        one target in the same file.
+        """
         prefix, _, name = ref.partition(":")
         namespace = target_ns_map.get(prefix)
-        return URIRef(namespace + name).n3() if namespace else ref
+        return URIRef(component_iri(namespace, name)).n3() if namespace else ref
 
     # Every action can place instances under a base target's shapes. Extension
     # shapes still target their own types and retain their specific constraints.
@@ -706,41 +730,61 @@ def main():
                 # context; an explicit child decision still takes precedence.
                 contexts = ([target_src] if (target_src, prop["path"]) in _prop_mapping_lookup
                             else declaring_sources)
-                path_refs = {
-                    resolve_property_ref(prop["path"], context, classify_concept(context)[0])
-                    for context in contexts
-                }
-                for path_ref in sorted(ref for ref in path_refs if ref is not None):
-                    emittable.append((prop, path_ref))
+                path_refs = set()
+                for context in contexts:
+                    action = classify_concept(context)[0]
+                    if action not in ("reuse", "extend", "augment"):
+                        # A parent the reviewer excluded — or one with no
+                        # decision at all — mints nothing. The identity of
+                        # an inherited property belongs to the class that
+                        # emits it: minting `ext:` here while the emitting
+                        # reuse class declares `edge:` ships shapes that
+                        # reject every conformant instance and accept one
+                        # carrying a term no file declares.
+                        action = classify_concept(target_src)[0]
+                    path_refs.add(
+                        resolve_property_ref(prop["path"], context, action))
+                refs = sorted(ref for ref in path_refs if ref is not None)
+                if refs:
+                    emittable.append((prop, refs))
         if not emittable:
             lines[-1] = lines[-1].removesuffix(" ;") + " ."
-        for i, (prop, path_ref) in enumerate(emittable):
-            path_local = local_name(prop["path"])
-            min_count = prop.get("minCount")
-            max_count = prop.get("maxCount")
-            dt = prop.get("datatype")
-            cls = prop.get("class")
-            is_last = (i == len(emittable) - 1)
-            terminator = " ." if is_last else " ;"
-            constraint_parts = []
-            constraint_parts.append(f"        sh:path {path_ref}")
-            constraint_parts.append(f'        sh:name "{path_local}"')
+        def constraint_parts_for(prop, refs, indent):
+            """The SHACL constraints for one source property.
+
+            Several emitted identities — two declaring parents that
+            mapped the property to different target properties — are one
+            `sh:alternativePath`: the source model states the bounds for
+            the source property, so they apply across the alternatives
+            together, not once per emitted form.
+            """
+            pad = " " * indent
+            path = (refs[0] if len(refs) == 1
+                    else "[ sh:alternativePath (" + " ".join(refs) + ") ]")
+            parts = [f"{pad}sh:path {path}",
+                     f'{pad}sh:name "{local_name(prop["path"])}"']
             severity = prop.get("severity")
             if severity:
-                severity_iri = severity if ":" in severity else "http://www.w3.org/ns/shacl#" + severity
-                constraint_parts.append(f"        sh:severity {URIRef(severity_iri).n3()}")
-            if dt:
-                constraint_parts.append(f"        sh:datatype {source_term_ref(xsd_qname(dt))}")
-            elif cls:
-                mapped_cls = map_range_ref(cls)
+                severity_iri = (severity if ":" in severity
+                                else "http://www.w3.org/ns/shacl#" + severity)
+                parts.append(f"{pad}sh:severity {URIRef(severity_iri).n3()}")
+            if prop.get("datatype"):
+                parts.append(
+                    f'{pad}sh:datatype {source_term_ref(xsd_qname(prop["datatype"]))}')
+            elif prop.get("class"):
+                mapped_cls = map_range_ref(prop["class"])
                 if mapped_cls:
-                    constraint_parts.append(f"        sh:class {mapped_cls}")
-            if min_count is not None:
-                constraint_parts.append(f"        sh:minCount {min_count}")
-            if max_count is not None:
-                constraint_parts.append(f"        sh:maxCount {max_count}")
-            lines.append(f"    sh:property [")
-            lines.append(f" ;\n".join(constraint_parts))
+                    parts.append(f"{pad}sh:class {mapped_cls}")
+            if prop.get("minCount") is not None:
+                parts.append(f'{pad}sh:minCount {prop["minCount"]}')
+            if prop.get("maxCount") is not None:
+                parts.append(f'{pad}sh:maxCount {prop["maxCount"]}')
+            return parts
+
+        for i, (prop, refs) in enumerate(emittable):
+            terminator = " ." if i == len(emittable) - 1 else " ;"
+            lines.append("    sh:property [")
+            lines.append(" ;\n".join(constraint_parts_for(prop, refs, 8)))
             lines.append(f"    ]{terminator}")
 
         lines.append("")

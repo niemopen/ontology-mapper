@@ -31,7 +31,15 @@ _XSD_TYPES = frozenset("""
 
 
 def load_reference_cmf(target_ontology: str, target_version: str):
-    """Read the configured reference, if installed; never fetch during a run."""
+    """Read the configured reference, if installed; never fetch during a run.
+
+    Cached: the class policy asks about one target at a time — per matrix
+    entry at review exit, per concept during collection — and this is a
+    2 MB gzip that expands to 24 MB. Reading it per call made a 50-entry
+    matrix check take ~6 seconds, and the three web review routes pay it
+    inside the request. The file ships inside the installed package and
+    does not change while a process runs.
+    """
     root = resolve_specs_dir().resolve()
     path = root / f"{target_ontology}_reference_model_{target_version}.cmf.gz"
 
@@ -46,6 +54,18 @@ def load_reference_cmf(target_ontology: str, target_version: str):
         raise ValueError("CMF reference path escapes the configured specs directory")
     if not path.exists():
         return None
+    return _read_reference_cmf(str(path), path.stat().st_mtime_ns)
+
+
+@lru_cache(maxsize=2)
+def _read_reference_cmf(path: str, mtime_ns: int):
+    """The decompressed reference, cached by file identity.
+
+    Keyed by the resolved path and its mtime, never by ontology name: the
+    specs directory is resolved per call, so a cache on the name would
+    answer for a directory the caller is no longer pointing at and would
+    skip the containment check its caller performs.
+    """
     with gzip.open(path, "rt", encoding="utf-8") as stream:
         return stream.read()
 

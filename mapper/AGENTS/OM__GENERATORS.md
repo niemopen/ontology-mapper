@@ -157,6 +157,29 @@ filter itself. A property with no class and a namespace this package does
 not mint into is not part of the edge model; emitting it under the edge
 prefix would declare a term the CMF model never declares.
 
+Two active source concepts must not emit one edge class name.
+`edge_class_name` is namespace-blind, so a local name shared across source
+namespaces — ordinary once augmenting namespaces are first-class — would
+collapse into one type carrying both superclasses, both labels and both
+property sets. `generation_utils.colliding_edge_class_names` asks this and
+generation refuses before writing anything.
+
+A property inherited from a class the reviewer excluded is named by the
+class that emits it, not by the declaring one: an excluded parent mints
+nothing, and minting `ext:` there while the emitting reuse class declares
+`edge:` ships shapes that reject every conformant instance and accept one
+carrying a term no file declares. Where two declaring parents mapped one
+source property to different target properties, the shape offers them as a
+single `sh:alternativePath` — one source property, either identity, the
+source model's bounds counted across both.
+
+The extension catalog lists what the model declares. The emitters walk the
+inventory and declare a created term for any property with no accepted
+reuse target, pending decision or not, so the catalog asks the same
+question (`generation_utils.created_property_is_declared`) and names — in
+the same refusal as an unqualifiable prefix — a decision whose property
+this run's inventory does not carry.
+
 Generation refuses a saved class target the target ontology's class policy
 rejects (`ontology_specific.invalid_class_targets`) before writing any artifact,
 so a matrix accepted before the policy existed reopens review instead of

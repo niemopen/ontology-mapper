@@ -26,6 +26,7 @@ from ontology_mapper.run_dir_utils import utc_stamp
 
 from ontology_mapper.pipeline_context import load_context
 from ontology_mapper.generation_utils import (
+    created_property_is_declared,
     component_iri, created_property_qname, edge_class_name,
     property_qname_resolver, source_namespace_bindings, source_prefix,
 )
@@ -104,6 +105,9 @@ def build_extension_catalog(matrix, ctx, inventory, target_ns_map):
                   "ext": ctx.extension_namespace}
     namespaces.update({prefix: uri for prefix, uri in bindings.values()})
     primary = source_prefix(inventory)
+    declared_properties = {p.get("qname") for p in
+                           (inventory.get("objectProperties") or [])
+                           + (inventory.get("datatypeProperties") or [])}
     unresolved = []
     extensions = []
     for m in matrix["mappings"]:
@@ -111,6 +115,12 @@ def build_extension_catalog(matrix, ctx, inventory, target_ns_map):
             continue
 
         concept = m["sourceConcept"]
+        if concept not in classes:
+            # Same answer as an unqualifiable decision below: the catalog
+            # cannot write a source IRI for a concept this run's inventory
+            # does not carry, and a bare KeyError names no mapping.
+            unresolved.append(f"  - {concept}: not in this run's concept inventory")
+            continue
         short_name = concept.split(":")[-1] if ":" in concept else concept
 
         if m["action"] == "augment":
@@ -122,11 +132,22 @@ def build_extension_catalog(matrix, ctx, inventory, target_ns_map):
 
         properties = set()
         for decision in m.get("propertyMappings") or []:
-            if decision.get("action") != "create-property" or decision.get("reviewStatus") != "accepted":
+            if decision.get("action") != "create-property":
+                continue
+            if not created_property_is_declared(decision):
+                continue
+            recorded = resolve_property(decision["sourceProperty"])
+            if declared_properties and recorded not in declared_properties:
+                # The OWL and CMF emitters walk the inventory, so a
+                # decision on a property it does not carry produces no
+                # term anywhere; inventing one here would make the
+                # catalog claim a term the model never declares.
+                unresolved.append(
+                    f"  - {concept}: {decision['sourceProperty']} "
+                    f"is not in this run's concept inventory")
                 continue
             qname = created_property_qname(
-                resolve_property(decision["sourceProperty"]), m["action"],
-                primary, bindings, ctx.edge_prefix)
+                recorded, m["action"], primary, bindings, ctx.edge_prefix)
             prefix, name = qname.split(":", 1)
             # This is the only artifact built by walking the decisions
             # rather than the inventory, so it alone must qualify a
@@ -160,8 +181,8 @@ def build_extension_catalog(matrix, ctx, inventory, target_ns_map):
     # the second.
     if unresolved:
         raise ValueError(
-            f"{len(unresolved)} accepted created-property decision(s) name a "
-            f"source property this run cannot qualify; reopen review:\n"
+            f"{len(unresolved)} accepted mapping(s) name something this run "
+            f"cannot qualify; reopen review:\n"
             + "\n".join(unresolved))
 
     return {"extensions": sorted(extensions, key=lambda e: e["extensionIRI"])}
@@ -304,9 +325,15 @@ def main():
     artifacts_written += 1
 
     # ── 5. Extension catalog ──────────────────────────────────────────────
-    from ontology_mapper.run_dir_utils import resolve_specs_dir
+    from ontology_mapper.build_strategy_reports import resolve_catalog_path
     inventory = json.loads((run_dir / "concept-inventory.json").read_text(encoding="utf-8"))
-    catalog_path = resolve_specs_dir() / f"{ctx.target_ontology}_reference_catalog_{ctx.target_version}.json"
+    # One home for "where is this run's reference catalog": the resolver
+    # the strategy reports, the review cascade and the generators use, so
+    # an install layout it handles is not one this path misses.
+    catalog_path = resolve_catalog_path(ctx.target_ontology, ctx.target_version)
+    if catalog_path is None:
+        raise ValueError(f"No reference catalog for {ctx.target_ontology} "
+                         f"{ctx.target_version}")
     target_catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
     ext_catalog = build_extension_catalog(matrix, ctx, inventory, target_catalog.get("namespaces", {}))
     ext_catalog_path = pkg / "extensions" / "extension-catalog.json"

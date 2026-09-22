@@ -1177,3 +1177,34 @@ class TestOneBlockerPerRejectedTarget:
         assert len(reported) == 2
         assert reported[0][2].startswith("targetType/baseType ")
         assert reported[1][2].startswith("targetType/augmentsType ")
+
+
+class TestReferenceIsReadOncePerProcess:
+    """The policy asks about one target at a time — per matrix entry at
+    review exit, per concept during collection — and the reference is a 2 MB
+    gzip that expands to 24 MB. Reading it per question put seconds inside a
+    web request."""
+
+    def test_many_targets_read_the_reference_once(self, monkeypatch):
+        import gzip
+        import json
+        from ontology_mapper import cmf_reference
+        from ontology_mapper.ontology_specific import invalid_class_targets
+        from ontology_mapper.run_dir_utils import resolve_specs_dir
+
+        cmf_reference._read_reference_cmf.cache_clear()
+        opened = []
+        real_open = gzip.open
+
+        def counting_open(*args, **kwargs):
+            opened.append(args[0] if args else kwargs.get('filename'))
+            return real_open(*args, **kwargs)
+
+        monkeypatch.setattr(cmf_reference.gzip, "open", counting_open)
+        catalog = json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json")
+                             .read_text(encoding="utf-8"))
+        matrix = {"mappings": [{"sourceConcept": f"src:C{i}", "action": "reuse",
+                                "targetType": "nc:PersonType"} for i in range(25)]}
+
+        assert invalid_class_targets(matrix, "niem", catalog) == []
+        assert len(opened) == 1

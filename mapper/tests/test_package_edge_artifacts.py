@@ -101,7 +101,8 @@ class TestBuildExtensionCatalog:
         inventory = {
             "classes": [{"qname": "src:A", "iri": "urn:source#A"},
                         {"qname": "src:B", "iri": "urn:source#B"}],
-            "datatypeProperties": [{"qname": "src:value"}, {"qname": "extra:code"}],
+            "datatypeProperties": [{"qname": "src:value"}, {"qname": "extra:code"},
+                                   {"qname": "src:pending"}],
             "objectProperties": [],
             "namespaceMap": {"https://source.example/extra#": "extra:"},
         }
@@ -109,6 +110,9 @@ class TestBuildExtensionCatalog:
             {"sourceProperty": "src:value", "action": "create-property", "reviewStatus": "accepted"},
             {"sourceProperty": "extra:code", "action": "create-property", "reviewStatus": "accepted"},
             {"sourceProperty": "src:reused", "action": "reuse-property", "reviewStatus": "accepted", "targetProperty": "nc:Name"},
+            # The emitters declare a term for this too — it carries no
+            # accepted reuse target — so the catalog lists it rather
+            # than omitting a term the package adds.
             {"sourceProperty": "src:pending", "action": "create-property", "reviewStatus": "pending-review"},
         ]
         matrix = _matrix([_mapping("src:A", "extend", "nc:RecordType", propertyMappings=properties),
@@ -118,7 +122,9 @@ class TestBuildExtensionCatalog:
             assert entry["extensionIRI"].startswith(context.extension_namespace)
             assert entry["sourceConceptIRI"] in {"urn:source#A", "urn:source#B"}
             assert entry["properties"] == sorted([
-                context.extension_namespace + "value", "https://source.example/extra#code"])
+                context.extension_namespace + "value",
+                context.extension_namespace + "pending",
+                "https://source.example/extra#code"])
 
     def test_extend_uses_baseType(self):
         matrix = _matrix([
@@ -313,5 +319,23 @@ class TestUnqualifiableDecisionsAreCountedPerRun:
         with pytest.raises(ValueError) as caught:
             build_extension_catalog(matrix, context, inventory, {})
         message = str(caught.value)
-        assert message.startswith("2 accepted created-property")
+        assert message.startswith("2 accepted mapping(s)")
         assert "src:A" in message and "src:B" in message
+
+
+class TestConceptsMissingFromTheInventory:
+    """A matrix entry whose concept this run's inventory does not carry has
+    no source IRI to write, and a bare KeyError names no mapping."""
+
+    def test_a_concept_absent_from_the_inventory_is_named(self):
+        from pathlib import Path
+        from ontology_mapper.pipeline_context import PipelineContext
+        context = PipelineContext(Path("run"), Path("run/edge-package"),
+                                  "example", "source", "niem", "6.0")
+        inventory = {"classes": [{"qname": "src:Here", "iri": "https://src.test/ns#Here"}],
+                     "namespaceMap": {"https://src.test/ns#": "src:"},
+                     "objectProperties": [], "datatypeProperties": []}
+        matrix = _matrix([_mapping("src:Gone", "extend", "nc:PersonType",
+                                   baseType="nc:PersonType", propertyMappings=[])])
+        with pytest.raises(ValueError, match="src:Gone"):
+            build_extension_catalog(matrix, context, inventory, {})

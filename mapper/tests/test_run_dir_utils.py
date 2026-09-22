@@ -184,7 +184,10 @@ def test_no_module_parses_a_shared_timestamp_with_the_stdlib_parser():
     offenders = []
     for folder in ("mapper/src", "mapper/tests", "runner", "web/backend"):
         for path in (root / folder).rglob("*.py"):
-            if path in allowed or "build" in path.parts or "node_modules" in path.parts:
+            # A virtualenv under either tree is a developer's, not this
+            # repo's: pydantic and pytest both call `fromisoformat`.
+            skipped = {"build", "node_modules", "site-packages", ".venv", "venv"}
+            if path in allowed or skipped & set(path.parts):
                 continue
             if re.search(r"\bfromisoformat\s*\(", path.read_text(encoding="utf-8")):
                 offenders.append(str(path.relative_to(root)))

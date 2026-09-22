@@ -736,3 +736,44 @@ class TestEndToEnd:
         assert report["matchingMethod"] == "semantic"
         assert report["summary"]["totalConcepts"] == 2
         assert all(e["action"] == "reuse" for e in report["entries"])
+
+
+class TestCollectionRefusesOnceNamingEveryConcept:
+    """Search results evaluated before the class policy existed can name a
+    datatype. Letting the first one escape loses the whole alignment report
+    and names a target type the operator cannot trace to a concept."""
+
+    def _catalog(self):
+        import json
+        from ontology_mapper.run_dir_utils import resolve_specs_dir
+        return json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json")
+                          .read_text(encoding="utf-8"))
+
+    def _evaluation(self, concept, target):
+        return {"sourceConcept": concept, "sourceDefinition": "", "sourcePath": "",
+                "targetType": target, "targetDefinition": "", "rationale": "",
+                "properties": []}
+
+    def test_every_rejected_concept_is_named_in_one_refusal(self):
+        from ontology_mapper.collect_alignments import collect_and_resolve
+        from ontology_mapper.ontology_specific import ClassTargetError
+        import pytest as _pytest
+
+        evaluations = [
+            self._evaluation("src:A", "niem-xs:token"),
+            self._evaluation("src:Fine", "nc:PersonType"),
+            self._evaluation("src:B", "hs:PersonRoleCodeSimpleType"),
+        ]
+        with _pytest.raises(ClassTargetError) as caught:
+            collect_and_resolve(evaluations, "niem", self._catalog())
+        message = str(caught.value)
+        assert message.startswith("2 evaluated concept(s)")
+        assert "src:A" in message and "src:B" in message
+
+    def test_a_clean_evaluation_set_still_resolves(self):
+        """The legitimate flow: refusing nothing a reviewer can act on."""
+        from ontology_mapper.collect_alignments import collect_and_resolve
+        resolved = collect_and_resolve([self._evaluation("src:Fine", "nc:PersonType")],
+                                       "niem", self._catalog())
+        assert [e["sourceConcept"] for e in resolved] == ["src:Fine"]
+        assert resolved[0]["action"] in {"reuse", "extend", "augment"}

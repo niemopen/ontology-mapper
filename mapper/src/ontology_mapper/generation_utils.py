@@ -60,6 +60,7 @@ def property_qname_resolver(inventory):
     """
     known = set()
     by_local = {}
+    domains = {}
     inventory = inventory or {}
     for prop in ((inventory.get("objectProperties") or [])
                  + (inventory.get("datatypeProperties") or [])):
@@ -68,24 +69,59 @@ def property_qname_resolver(inventory):
             continue
         known.add(qname)
         by_local.setdefault(local_name(qname), []).append(qname)
+        domains[qname] = set(prop.get("domain") or [])
 
-    def resolve(name):
+    def resolve(name, concept=None):
         if not known or name in known:
             return name
         candidates = by_local.get(local_name(name), [])
+        if concept is not None and any(domains.get(q) for q in candidates):
+            # The mis-qualification this fallback exists for is a
+            # namespace error on the concept's own property; a unique
+            # local name on a DIFFERENT class is a different property,
+            # and renaming the decision onto it invents a mapping. Only
+            # where the inventory states domains: a property associated
+            # through a SHACL shape declares none, and scoping by an
+            # absent domain would drop the very case this resolves.
+            candidates = [q for q in candidates if concept in domains.get(q, set())]
         return candidates[0] if len(candidates) == 1 else name
 
     return resolve
 
 
 def property_mapping_index(matrix, inventory=None):
-    """Index decisions by (class QName, resolved source-property QName)."""
+    """Index decisions by (class QName, resolved source-property QName).
+
+    Two rows can resolve to one key — a legacy spelling beside the
+    declared one in a matrix saved before the identity rule, or edited by
+    hand. Last-write-wins there would let row order decide whether an
+    accepted reuse decision or a pending created property reaches the
+    emitters, so an accepted decision always wins and the loser is
+    reported rather than dropped in silence.
+    """
     resolve = property_qname_resolver(inventory)
     index = {}
+    collisions = []
     for entry in matrix.get("mappings", []):
         concept = entry.get("sourceConcept")
         for pm in entry.get("propertyMappings") or []:
-            index[(concept, resolve(pm.get("sourceProperty", "")))] = pm
+            key = (concept, resolve(pm.get("sourceProperty", ""), concept))
+            previous = index.get(key)
+            if previous is None:
+                index[key] = pm
+                continue
+            collisions.append((key, previous, pm))
+            if (previous.get("reviewStatus") != "accepted"
+                    and pm.get("reviewStatus") == "accepted"):
+                index[key] = pm
+    if collisions:
+        raise ValueError(
+            f"{len(collisions)} property decision(s) resolve to a decision "
+            f"another row already made; reopen review:\n"
+            + "\n".join(
+                f"  - {concept}: {previous.get('sourceProperty')} and "
+                f"{pm.get('sourceProperty')} both resolve to {resolved}"
+                for (concept, resolved), previous, pm in collisions))
     return index
 
 
@@ -98,6 +134,19 @@ def accepted_reuse_target(pm):
         return None
     target = pm.get("targetProperty")
     return target if target and target != "[undecided]" else None
+
+
+def created_property_is_declared(pm):
+    """Whether the emitters declare a created term for this decision.
+
+    The OWL and CMF emitters walk the inventory: a source property with
+    no accepted reuse target is declared as a new term, whether its
+    decision is still pending or absent. The extension catalog walks the
+    decisions instead, so it asks the same question here — otherwise the
+    package's own inventory of what it adds omits terms its model
+    declares.
+    """
+    return accepted_reuse_target(pm) is None
 
 
 def source_prefix(inventory):
@@ -219,6 +268,25 @@ def local_name(qname_or_iri):
 def edge_class_name(qname):
     """Map source class qname to edge type name (e.g. prefix:Permit → PermitType)."""
     return local_name(qname) + "Type"
+
+
+def colliding_edge_class_names(concepts):
+    """Source concepts that would emit one edge class name.
+
+    `edge_class_name` is namespace-blind, so two active classes sharing a
+    local name across source namespaces — which augmenting and other
+    non-primary namespaces make ordinary — collapse into a single emitted
+    type carrying both superclasses, both labels and both property sets.
+    No emitter can tell them apart afterwards, so the generators ask this
+    first and refuse.
+
+    Returns {emitted name: [source concepts]} for the colliding names only.
+    """
+    by_name = {}
+    for qname in concepts:
+        by_name.setdefault(edge_class_name(qname), []).append(qname)
+    return {name: sorted(qnames) for name, qnames in sorted(by_name.items())
+            if len(qnames) > 1}
 
 
 def target_to_qname(target_type):

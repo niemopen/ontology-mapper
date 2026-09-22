@@ -670,3 +670,17 @@ def test_change_target_reaches_an_entry_that_is_not_pending():
     assert "not found" not in message
     assert matrix["mappings"][0].get("baseType") != "niem-xs:token"
     assert len(applied) == 1
+
+
+def test_stage_6_reports_an_unparseable_matrix_as_a_stage_failure(tmp_path):
+    """A truncated matrix is the same class of input as a malformed one:
+    the stage fails with it named, not a raw JSON traceback."""
+    import json as _json
+    import runner_tools.run_pipeline as runner
+
+    (tmp_path / ".mapper-state.json").write_text(_json.dumps(
+        {"inputs": {"target_ontology": "niem", "target_version": "6.0"}}),
+        encoding="utf-8")
+    (tmp_path / "mapping-matrix.json").write_text('{"mappings": [', encoding="utf-8")
+    with pytest.raises(StageError, match="not readable for validation"):
+        runner.refuse_invalid_class_targets(tmp_path)

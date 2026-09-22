@@ -33,11 +33,21 @@ def _load_matrix(run_dir: Path) -> dict:
             status_code=404,
             detail="mapping-matrix.json not found. Run stages 1-4 first.",
         )
-    # Snapshot Stage 4 output on first access so we can reset later
-    snapshot = run_dir / STAGE4_SNAPSHOT
-    if not snapshot.exists():
-        shutil.copy2(f, snapshot)
     return json.loads(f.read_text(encoding="utf-8"))
+
+
+def snapshot_stage_4(run_dir: Path) -> None:
+    """Record Stage 4's matrix as the state `reset` restores.
+
+    Taken when Stage 4 runs, not on first review read: a run reviewed
+    outside the web arrives with decisions already in the matrix, and
+    snapshotting that made `reset` restore a reviewed matrix while
+    answering "reset" — leaving the execute gate refusing with no way
+    out that the web offers.
+    """
+    matrix = run_dir / "mapping-matrix.json"
+    if matrix.exists():
+        shutil.copy2(matrix, run_dir / STAGE4_SNAPSHOT)
 
 
 def _load_decision_log(run_dir: Path) -> dict:
@@ -378,8 +388,19 @@ async def reset_review(run_id: str, user: dict = Depends(require_auth), org: str
     # Reload to return fresh state
     matrix = json.loads(matrix_file.read_text(encoding="utf-8"))
     total = len(matrix.get("mappings", []))
+    # A snapshot taken before this rule, or a run reviewed elsewhere,
+    # can itself carry decisions. Say so: "reset" alone would tell the
+    # operator the execute gate is now clear when it is not.
+    restored_decisions = sum(
+        1 for m in matrix.get("mappings", [])
+        if m.get("reviewStatus") == "accepted" or m.get("humanReviewApplied"))
 
     return {
         "status": "reset",
         "totalConcepts": total,
+        "restoredDecisions": restored_decisions,
+        "note": ("The Stage 4 snapshot itself carries review decisions, so "
+                 "stages 1-4 still refuse to overwrite it; rebuild the matrix "
+                 "with `om-build-matrix --force` to start the review over."
+                 if restored_decisions else ""),
     }

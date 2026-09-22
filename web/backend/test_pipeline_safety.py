@@ -178,5 +178,41 @@ def test_continue_blocks_on_a_saved_target_the_policy_rejects(run_context, monke
     assert response.status_code == (409 if blocked else 200), response.text
     assert thread.called is (not blocked)
     if blocked:
-        assert any("src:A" in b for b in response.json()["detail"]["blockers"])
+        # A string, like the review routes: the frontend renders `detail`
+        # directly and JSON-stringifies anything else.
+        detail = response.json()["detail"]
+        assert isinstance(detail, str) and "src:A" in detail
 
+
+def test_reset_without_a_stage_4_snapshot_does_not_claim_to_reset(run_context):
+    """The snapshot is Stage 4's output, written when Stage 4 runs. Reading
+    the review used to create it from whatever was on disk, so a run
+    reviewed outside the web got its reviewed matrix snapshotted and
+    `reset` restored it while answering "reset"."""
+    run_dir, client, _ = run_context
+    (run_dir / "mapping-matrix.json").write_text(json.dumps({"mappings": [
+        {"sourceConcept": "src:A", "action": "reuse", "targetType": "nc:PersonType",
+         "reviewStatus": "accepted", "propertyMappings": []}]}), encoding="utf-8")
+
+    assert client.get("/runs/sample/review").status_code in (200, 409)
+    assert not (run_dir / "mapping-matrix.stage4.json").exists()
+
+    response = client.post("/runs/sample/review/reset")
+    assert response.status_code == 404, response.text
+
+
+def test_reset_reports_a_snapshot_that_itself_carries_decisions(run_context):
+    """A snapshot written before this rule can carry decisions; saying only
+    "reset" would tell the operator the execute gate is clear when it is not."""
+    run_dir, client, _ = run_context
+    reviewed = json.dumps({"mappings": [
+        {"sourceConcept": "src:A", "action": "reuse", "targetType": "nc:PersonType",
+         "reviewStatus": "accepted", "propertyMappings": []}]})
+    (run_dir / "mapping-matrix.json").write_text(reviewed, encoding="utf-8")
+    (run_dir / "mapping-matrix.stage4.json").write_text(reviewed, encoding="utf-8")
+
+    body = client.post("/runs/sample/review/reset").json()
+
+    assert body["status"] == "reset"
+    assert body["restoredDecisions"] == 1
+    assert "om-build-matrix --force" in body["note"]

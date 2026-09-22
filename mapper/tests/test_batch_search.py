@@ -136,9 +136,14 @@ def test_requalified_legacy_file_is_matched_exactly_on_the_next_resume(tmp_path)
     assert kept["source"]["qname"] == "other:flag" and kept["evaluation"]["targetProperty"] == "nc:Saved"
 
 
-def test_ambiguous_legacy_local_name_is_not_guessed(tmp_path):
-    """Two legacy files share a local name under one parent; neither is claimed."""
-    _write_evaluated_property_file(tmp_path, "src_flag.json", "src:A", "src:flag", "nc:One")
+def test_a_file_recorded_under_another_namespace_is_never_claimed(tmp_path):
+    """Only the mis-qualification the rule exists for is claimed.
+
+    `aux:flag` is not what `_property_qname` would have manufactured for
+    a property on `src:A`; it is a different property that happens to
+    share a local name, and claiming its file would transplant its
+    reviewer's decision — and its stale definition — onto `other:flag`.
+    """
     _write_evaluated_property_file(tmp_path, "aux_flag.json", "src:A", "aux:flag", "nc:Two")
     concepts = [{"qname": "src:A", "definition": "", "properties": [{"name": "flag", "qname": "other:flag"}]}]
 
@@ -146,7 +151,11 @@ def test_ambiguous_legacy_local_name_is_not_guessed(tmp_path):
 
     props_dir = tmp_path / "search-results" / "properties"
     assert counts["props_written"] == 1
-    assert sorted(p.name for p in props_dir.glob("*.json")) == ["aux_flag.json", "other_flag.json", "src_flag.json"]
+    # The unrelated file is left alone and the current property gets its own.
+    assert sorted(p.name for p in props_dir.glob("*.json")) == ["aux_flag.json", "other_flag.json"]
+    kept = json.loads((props_dir / "aux_flag.json").read_text(encoding="utf-8"))
+    assert kept["source"]["qname"] == "aux:flag"
+    assert kept["evaluation"]["targetProperty"] == "nc:Two"
 
 
 def test_two_current_properties_sharing_a_local_name_do_not_share_one_legacy_file(tmp_path):
@@ -642,3 +651,19 @@ class TestDisambiguateIds:
         disambiguate_ids(cands)
         assert cands[0]["id"] == "A"
         assert cands[1]["id"] == "A"
+
+
+def test_an_unreadable_property_file_does_not_end_the_stage(tmp_path):
+    """A locked or unreadable file is one this pass cannot reuse. Ending the
+    stage on it loses every other concept's search results."""
+    props_dir = tmp_path / "search-results" / "properties"
+    props_dir.mkdir(parents=True, exist_ok=True)
+    # A directory named like a result file: reading it raises OSError.
+    (props_dir / "locked.json").mkdir()
+    concepts = [{"qname": "src:A", "definition": "",
+                 "properties": [{"name": "flag", "qname": "other:flag"}]}]
+
+    counts = write_search_results(tmp_path, concepts, {}, {"src:A": {"other:flag": [PROP_CANDIDATE]}})
+
+    assert counts["props_written"] == 1
+    assert any(p.is_file() for p in props_dir.glob("*.json"))

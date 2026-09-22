@@ -630,3 +630,37 @@ class TestSeedDataIdentity:
         ), tmp_path)
 
         assert "CREATE (:" not in out
+
+
+def test_a_seed_file_matching_no_active_class_says_so(tmp_path):
+    """Silence reads as "no seed data to load": the operator ships and
+    deploys believing the sample data loaded."""
+    from ontology_mapper.generate_kg_artifacts import generate_seed_cypher
+
+    seed = tmp_path / "seed.ttl"
+    seed.write_text('<urn:one> a <https://sample.test/src/Record> .',
+                    encoding="utf-8")
+    active = [{"qname": "src:Record", "label": "Record",
+               "iri": "https://sample.test/src/Record/",  # trailing slash
+               "datatypeProps": [], "objectProps": []}]
+    cypher = generate_seed_cypher(active, [], seed, "sample")
+
+    assert "No seed instance matches an active class" in cypher
+    assert "https://sample.test/src/Record" in cypher
+
+
+def test_a_matching_seed_file_still_seeds_without_the_note(tmp_path):
+    """The legitimate flow: the note appears only when nothing matched."""
+    from ontology_mapper.generate_kg_artifacts import generate_seed_cypher
+
+    seed = tmp_path / "seed.ttl"
+    seed.write_text('<urn:one> a <https://sample.test/src/Record> .',
+                    encoding="utf-8")
+    active = [{"qname": "src:Record", "label": "Record",
+               "iri": "https://sample.test/src/Record",
+               "datatypeProps": [], "objectProps": []}]
+    cypher = generate_seed_cypher(active, [], seed, "sample")
+
+    # Only the note is under test here: an instance whose type the inventory
+    # records is a match, whatever the node emitter then writes for it.
+    assert "No seed instance matches an active class" not in cypher

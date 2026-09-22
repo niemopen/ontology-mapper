@@ -426,3 +426,38 @@ class TestComponentIriRoundTrip:
                           "urn:example:model", "urn:example:model:",
                           "urn:example:model/v1", "urn:example:model/v1/"):
             assert local_name(component_iri(namespace, "Thing")) == "Thing", namespace
+
+
+class TestCollidingPropertyDecisions:
+    """Two rows that resolve to one decision are a matrix defect, not a
+    race between row orders."""
+
+    def _inventory(self):
+        return {"datatypeProperties": [{"qname": "dbpi:code", "domain": ["dbpi:Fee"]}],
+                "objectProperties": []}
+
+    def _matrix(self, rows):
+        return {"mappings": [{"sourceConcept": "dbpi:Fee", "propertyMappings": rows}]}
+
+    def test_a_resolved_collision_is_reported_not_silently_dropped(self):
+        from ontology_mapper.generation_utils import property_mapping_index
+        accepted = {"sourceProperty": "dbpi:code", "action": "reuse-property",
+                    "reviewStatus": "accepted", "targetProperty": "nc:CodeText"}
+        legacy = {"sourceProperty": "fin:code", "action": "create-property",
+                  "reviewStatus": "pending-review"}
+        for rows in ([legacy, accepted], [accepted, legacy]):
+            with pytest.raises(ValueError, match="resolve to a decision"):
+                property_mapping_index(self._matrix(rows), self._inventory())
+
+    def test_a_legacy_name_is_not_resolved_onto_another_class_property(self):
+        """The fallback exists for a namespace error on the concept's own
+        property; a unique local name on a different class is a different
+        property, and renaming a decision onto it invents a mapping."""
+        from ontology_mapper.generation_utils import property_mapping_index
+        inventory = {"objectProperties": [],
+                     "datatypeProperties": [{"qname": "other:widgetId",
+                                             "domain": ["other:Widget"]}]}
+        index = property_mapping_index(self._matrix([
+            {"sourceProperty": "dbpi:widgetId", "action": "create-property",
+             "reviewStatus": "accepted"}]), inventory)
+        assert set(index) == {("dbpi:Fee", "dbpi:widgetId")}

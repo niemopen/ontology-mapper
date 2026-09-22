@@ -958,9 +958,13 @@ class TestSharedSourceProfiles:
         assert not self._conforms(files, {"PText": [1, 2], child_prop: [1, 2]}, target)
 
     @pytest.mark.parametrize("p_count,q_count,expected", [
-        (1, 1, True), (0, 1, False), (1, 0, False), (2, 1, False), (1, 2, False),
+        # One source property bounded at exactly one value, emitted under
+        # two target identities: either identity satisfies it, and the
+        # bound counts across both rather than once per identity.
+        (1, 0, True), (0, 1, True), (0, 0, False), (1, 1, False),
+        (2, 0, False), (2, 1, False), (1, 2, False),
     ])
-    def test_inherited_multitarget_shape_retains_each_declaring_context(self, p_count, q_count, expected):
+    def test_inherited_multitarget_shape_offers_each_declaring_context(self, p_count, q_count, expected):
         files = self._generate('''
             src:Shared a sh:NodeShape; sh:targetClass src:A, src:C;
                 sh:property [sh:path src:p; sh:minCount 1; sh:maxCount 1].
@@ -968,7 +972,10 @@ class TestSharedSourceProfiles:
                 sh:property [sh:path src:q; sh:minCount 1].
         ''', actions={"B": "extend"}, parents={"B": ["A", "C"]},
             property_targets={("C", "p"): "QText", ("B", "q"): "Link"})
-        assert self._conforms(files, {"PText": list(range(p_count)), "QText": list(range(q_count)),
+        # Distinct values per identity: SHACL value nodes are a set, so
+        # reusing one literal would hide the bound this case is about.
+        assert self._conforms(files, {"PText": [f"p{i}" for i in range(p_count)],
+                                      "QText": [f"q{i}" for i in range(q_count)],
                                       "Link": ["one"]}, self.EXT + "BType") == expected
 
 
@@ -1036,3 +1043,106 @@ def test_generation_refuses_a_saved_class_target_the_policy_rejects(tmp_path, mo
         generate()
 
     assert not (tmp_path / "edge-package" / "ontology").exists()
+
+
+class TestEmittedIdentityAcrossFiles:
+    """A term the shapes constrain must be a term some file declares."""
+
+    SRC = TestSharedSourceProfiles.SRC
+    TARGET = TestSharedSourceProfiles.TARGET
+
+    def test_a_property_inherited_from_an_excluded_parent_uses_the_emitting_identity(self):
+        """The declaring parent is excluded, so it mints nothing; the reuse
+        class that emits the property declares it under the edge prefix, and
+        the shape has to constrain that same term."""
+        files = TestSharedSourceProfiles._generate('''
+            src:A a sh:NodeShape; sh:targetClass src:A;
+                sh:property [sh:path src:p; sh:minCount 1].
+        ''', actions={"A": "exclude"}, parents={"B": ["A"]},
+            targets={"C": "BaseType"},
+            property_overrides={("A", "p"): {"action": "create-property",
+                                             "targetProperty": None},
+                                ("B", "p"): {"action": "create-property",
+                                             "targetProperty": None}})
+        shapes = files["test-edge-shapes.ttl"]
+        declared = files["test-edge-core.ttl"] + files["test-edge-extensions.ttl"]
+        for term in ("test-edge:p", "ext:p"):
+            if term in shapes:
+                assert term in declared, (term, shapes)
+
+    def test_two_source_classes_with_one_local_name_are_refused(self, tmp_path, monkeypatch):
+        """`edge_class_name` is namespace-blind: emitting both would produce
+        one type carrying both superclasses, both labels and both property
+        sets, and no emitter could tell them apart afterwards."""
+        import json as _json
+        from ontology_mapper import generate_edge_ontology
+
+        inventory = {"classes": [
+            {"qname": "src:Thing", "iri": "https://sample.test/src/Thing",
+             "label": "Source Thing", "comment": "", "subClassOf": []},
+            {"qname": "aug:Thing", "iri": "https://aug.test/ns#Thing",
+             "label": "Augmenting Thing", "comment": "", "subClassOf": []}],
+            "datatypeProperties": [], "objectProperties": [], "shaclShapes": [],
+            "codelistSchemes": [],
+            "augmentingNamespaces": [{"prefix": "aug:", "namespace": "https://aug.test/ns#"}],
+            "primaryNamespace": {"prefix": "src", "namespace": "https://sample.test/src/"},
+            "namespaceMap": {"https://sample.test/src/": "src:"}}
+        matrix = {"mappings": [
+            {"sourceConcept": "src:Thing", "action": "reuse", "targetType": "nc:PersonType",
+             "reviewStatus": "accepted", "propertyMappings": []},
+            {"sourceConcept": "aug:Thing", "action": "reuse", "targetType": "nc:PersonType",
+             "reviewStatus": "accepted", "propertyMappings": []}]}
+        (tmp_path / "concept-inventory.json").write_text(_json.dumps(inventory), encoding="utf-8")
+        (tmp_path / "mapping-matrix.json").write_text(_json.dumps(matrix), encoding="utf-8")
+        (tmp_path / ".mapper-state.json").write_text(_json.dumps({"inputs": {
+            "organization": "sample", "source": "sample",
+            "target_ontology": "niem", "target_version": "6.0"}}), encoding="utf-8")
+        monkeypatch.setattr("sys.argv", ["om-generate-ontology", "--run-dir", str(tmp_path)])
+        # The generator's own refusal, named: the CMF builder further down
+        # also rejects the duplicate, but only after seven OWL, SHACL and
+        # vocab files are already on disk.
+        with pytest.raises(ValueError, match="more than one source concept"):
+            generate_edge_ontology.main()
+
+    def test_a_target_namespace_without_a_separator_has_one_spelling(self):
+        """Three of the eight namespaces the NODS catalog binds do not end
+        in a separator. Concatenating there produced a second spelling of
+        one target in the same file, matching no term the catalog names."""
+        inv = TestNiemOWLPatterns._minimal_inventory(
+            [{"qname": "src:A", "label": "A", "comment": "", "subClassOf": []},
+             {"qname": "src:B", "label": "B", "comment": "", "subClassOf": []}])
+        # One target, two stored spellings — the QName and the full IRI a
+        # pre-policy matrix carries. Identity comparison has to see them as
+        # one class, and both must render the same way.
+        matrix = {"mappings": [
+            {"sourceConcept": "src:A", "action": "reuse",
+             "targetType": "nods:CaseType", "reviewStatus": "accepted",
+             "propertyMappings": []},
+            {"sourceConcept": "src:B", "action": "reuse",
+             "targetType": "http://ncsc.org/nods/nods/CaseType",
+             "reviewStatus": "accepted", "propertyMappings": []}]}
+        files = TestNiemOWLPatterns._run_generation(
+            inv, matrix, catalog={"namespaces": {"nods": "http://ncsc.org/nods/nods"}})
+        text = " ".join(files.values())
+        assert "http://ncsc.org/nods/nodsCaseType" not in text
+
+    def test_an_augments_type_in_another_namespace_keeps_its_prefix(self):
+        """`augmentsType` is settable independently of `targetType`, and the
+        emitters read it: unbound, the augmentation loses its SHACL
+        constraint and its property is emitted with no domain."""
+        inv = TestNiemOWLPatterns._minimal_inventory(
+            [{"qname": "src:A", "label": "A", "comment": "", "subClassOf": []}],
+            dt_props=[{"qname": "src:p", "label": "p", "domain": ["src:A"], "range": []}])
+        matrix = {"mappings": [{"sourceConcept": "src:A", "action": "augment",
+                                "targetType": "nc:BaseType", "augmentsType": "j:CaseType",
+                                "augmentationType": "AAugmentationType",
+                                "reviewStatus": "accepted",
+                                "propertyMappings": [{"sourceProperty": "src:p",
+                                                      "action": "create-property",
+                                                      "reviewStatus": "accepted"}]}]}
+        files = TestNiemOWLPatterns._run_generation(
+            inv, matrix, catalog={"namespaces": {"nc": "https://example.org/target/",
+                                                 "j": "https://example.org/j/"}})
+        text = " ".join(files.values())
+        assert "@prefix j:" in text
+        assert "j:CaseType" in text

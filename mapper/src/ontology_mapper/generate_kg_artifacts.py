@@ -321,6 +321,15 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source):
         return "\n".join(header)
 
     active_labels = {URIRef(cls["iri"]): cls for cls in active_classes}
+    seeded_types = {t for _, _, t in g.triples((None, RDF.type, None))}
+    if not seeded_types & set(active_labels):
+        # Silence here reads as "no seed data to load". Name one of each
+        # so the mismatch (a trailing slash, http vs https) is visible.
+        example_active = sorted(str(iri) for iri in active_labels)[0]
+        example_seed = sorted(str(t) for t in seeded_types)[0] if seeded_types else "(none)"
+        header.append("// No seed instance matches an active class. The seed "
+                      "file types instances as " + example_seed + "; this run's "
+                      "inventory records " + example_active + ".")
 
     # Collect datatype property label lookups
     dt_prop_labels = {}

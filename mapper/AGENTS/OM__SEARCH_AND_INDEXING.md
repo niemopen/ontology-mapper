@@ -26,8 +26,13 @@ result belongs to `(source.parentType, source.qname)`. Shared properties receive
 separate files per parent, and resumption retains existing evaluated files,
 including legacy filenames. A file written before the declared `qname`
 existed recorded every property under its parent's prefix; resumption reuses
-such a file when its local name is unique for that parent on both sides (one
-unclaimed legacy file, one current property), never guesses between two, and
+such a file when it carries exactly that shape — the parent's own prefix on
+the property's local name — and its local name is unique for that parent on
+both sides (one unclaimed legacy file, one current property). A file
+recorded under any other namespace is a different property that happens to
+share a local name, and claiming it would transplant its reviewer's
+decision, and its stale definition, onto the current one. A claimed file is
+never guessed between two, and
 rewrites the file's `source.qname` and `evaluation.sourceProperty` to the
 declared identity so the mis-qualified name does not leave this stage —
 downstream local-name resolution is inventory-wide, not per parent, and would

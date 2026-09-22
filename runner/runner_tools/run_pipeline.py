@@ -700,7 +700,6 @@ def refuse_invalid_class_targets(run_dir: Path):
     matrix_path = run_dir / "mapping-matrix.json"
     if not matrix_path.exists():
         return
-    matrix = json.loads(matrix_path.read_text(encoding="utf-8"))
     try:
         target_ontology, catalog = load_cascade_context(run_dir)
     except Exception as exc:
@@ -708,8 +707,12 @@ def refuse_invalid_class_targets(run_dir: Path):
         # blocker, and the stage fails here for the same reason.
         raise StageError("6", f"saved class targets could not be validated: {exc}") from exc
     try:
+        # The read is inside the guard, like `complete_stage_5`: a matrix
+        # edited outside review is the premise of this check, so a file
+        # that will not parse is a stage failure, not a traceback.
+        matrix = json.loads(matrix_path.read_text(encoding="utf-8"))
         invalid = invalid_class_targets(matrix, target_ontology, catalog)
-    except (AttributeError, TypeError) as exc:
+    except (AttributeError, TypeError, ValueError, OSError) as exc:
         raise StageError("6", f"mapping matrix is not readable for validation: {exc}") from exc
     if invalid:
         details = "\n".join(f"  - {concept}: {message}" for concept, _, message in invalid)

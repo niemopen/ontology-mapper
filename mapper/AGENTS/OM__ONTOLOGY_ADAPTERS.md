@@ -73,6 +73,12 @@ Without an installed native reference, existing catalog behavior and the
 selection's spelling are preserved; this is not a claim of native class
 validation.
 
+The installed reference is read once per process: `load_reference_cmf`
+validates the specs path on every call and caches the decompressed text by
+resolved path and mtime, because the class policy asks about one target at
+a time — per matrix entry at review exit, per concept during collection —
+and the file is a 2 MB gzip that expands to 24 MB.
+
 The URI + name rule that builds component IRIs lives in
 `generation_utils.component_iri`; its inverse, `generation_utils.target_qname`,
 is what the policy and the CMF builder both ground with. The CMF builder

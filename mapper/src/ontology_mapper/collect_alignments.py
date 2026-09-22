@@ -24,7 +24,7 @@ from pathlib import Path
 from ontology_mapper.generation_utils import definition_hash
 from ontology_mapper.pipeline_context import load_context
 from ontology_mapper.build_strategy_reports import resolve_catalog_path
-from ontology_mapper.ontology_specific import resolve_alignment
+from ontology_mapper.ontology_specific import ClassTargetError, resolve_alignment
 
 
 # ---------------------------------------------------------------------------
@@ -192,10 +192,25 @@ def collect_and_resolve(
     """
     type_defs, prop_defs = _build_catalog_def_lookups(catalog)
     resolved = []
+    rejected = []
     for evaluation in evaluations:
-        entry = resolve_alignment(evaluation, target_ontology, catalog)
+        try:
+            entry = resolve_alignment(evaluation, target_ontology, catalog)
+        except ClassTargetError as exc:
+            # One refusal for the run, naming the source concept. Search
+            # results evaluated before the class policy existed can name a
+            # datatype; letting the first one escape loses the whole
+            # alignment report and reports a target type the operator
+            # cannot trace back to a concept.
+            rejected.append(f"  - {evaluation.get('sourceConcept', '(unnamed)')}: {exc}")
+            continue
         _add_definition_hashes(entry, type_defs, prop_defs)
         resolved.append(entry)
+    if rejected:
+        raise ClassTargetError(
+            f"{len(rejected)} evaluated concept(s) name a target the "
+            f"{target_ontology} class policy rejects; re-evaluate or "
+            f"choose class targets:\n" + "\n".join(rejected))
     return resolved
 
 

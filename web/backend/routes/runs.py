@@ -443,6 +443,8 @@ def _run_pipeline_background(run_id: str, run_dir: Path, org_runs_dir: Path, sta
             if not _run_pipeline_stages_1_4(run_id, run_dir, cwd, env):
                 return
             # Stages 1-4 done — Stage 5 (review) happens in the UI
+            from routes.review import snapshot_stage_4
+            snapshot_stage_4(run_dir)
             _pipeline_status[run_id] = {"status": "awaiting-review", "stage": "5", "error": None}
             return
 
@@ -474,8 +476,11 @@ async def execute_pipeline(
     except SystemExit as exc:
         raise HTTPException(
             status_code=409,
-            detail="Saved review decisions would be overwritten. Continue the review, "
-                   "or reset it before executing stages 1-4 again.",
+            detail="Saved review decisions would be overwritten. Continue the "
+                   "review, or reset it before executing stages 1-4 again. If "
+                   "the review came from outside the web, there is no Stage 4 "
+                   "snapshot to reset to: rebuild the matrix with "
+                   "`om-build-matrix --force`.",
         ) from exc
     thread = threading.Thread(
         target=_run_pipeline_background,
@@ -510,7 +515,9 @@ async def continue_pipeline(
 
     can_continue, blockers = stage_5_gate(run_id, run_dir, _load_matrix(run_dir))
     if not can_continue:
-        raise HTTPException(status_code=409, detail={"blockers": blockers})
+        # A string, like the review routes: the frontend renders `detail`
+        # directly and JSON-stringifies anything else.
+        raise HTTPException(status_code=409, detail="; ".join(blockers))
 
     thread = threading.Thread(
         target=_run_pipeline_background,

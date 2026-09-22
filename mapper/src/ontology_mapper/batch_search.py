@@ -343,9 +343,20 @@ def write_search_results(
             source = json.loads(path.read_text(encoding="utf-8")).get("source", {})
             parent, recorded = source.get("parentType"), source.get("qname")
             occurrence_paths[(parent, recorded)] = path
-            if recorded and (parent, recorded) not in identities:
+            # Only the shape `_property_qname` used to manufacture: the
+            # parent concept's own prefix on the property's local name.
+            # Any other non-current qname is a DIFFERENT property that
+            # happens to share a local name, and claiming its file
+            # transplants a reviewer's decision onto a property whose
+            # definition they never saw.
+            parent_prefix = parent.split(":")[0] if parent and ":" in parent else ""
+            misqualified = bool(parent_prefix) and recorded == (
+                f"{parent_prefix}:{local_name(recorded)}")
+            if recorded and misqualified and (parent, recorded) not in identities:
                 legacy_paths.setdefault((parent, local_name(recorded)), []).append(path)
-        except (ValueError, AttributeError):
+        except (ValueError, AttributeError, OSError):
+            # OSError too: a locked or unreadable file is one this pass
+            # cannot reuse, not a reason to end the search stage.
             continue
 
     counts = {
