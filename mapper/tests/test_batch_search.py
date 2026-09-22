@@ -120,6 +120,38 @@ def test_ambiguous_legacy_local_name_is_not_guessed(tmp_path):
     assert sorted(p.name for p in props_dir.glob("*.json")) == ["aux_flag.json", "other_flag.json", "src_flag.json"]
 
 
+def test_two_current_properties_sharing_a_local_name_do_not_share_one_legacy_file(tmp_path):
+    """`a:flag` and `b:flag` on one parent, one legacy `src:flag`: neither may
+    claim it, or the second occurrence would be silently dropped."""
+    _write_evaluated_property_file(tmp_path, "src_flag.json", "src:A", "src:flag", "nc:Saved")
+    concepts = [{"qname": "src:A", "definition": "", "properties": [
+        {"name": "flag", "qname": "a:flag"}, {"name": "flag", "qname": "b:flag"}]}]
+
+    counts = write_search_results(tmp_path, concepts, {}, {"src:A": {
+        "a:flag": [PROP_CANDIDATE], "b:flag": [PROP_CANDIDATE]}})
+
+    props_dir = tmp_path / "search-results" / "properties"
+    assert counts["props_written"] == 2
+    assert sorted(p.name for p in props_dir.glob("*.json")) == ["a_flag.json", "b_flag.json", "src_flag.json"]
+
+
+def test_file_matching_a_current_identity_is_not_offered_as_legacy(tmp_path):
+    """`other:flag` exists exactly and `x:flag` is new: the exact file belongs
+    to `other:flag`; `x:flag` gets its own file."""
+    _write_evaluated_property_file(tmp_path, "other_flag.json", "src:A", "other:flag", "nc:Saved")
+    concepts = [{"qname": "src:A", "definition": "", "properties": [
+        {"name": "flag", "qname": "other:flag"}, {"name": "flag", "qname": "x:flag"}]}]
+
+    counts = write_search_results(tmp_path, concepts, {}, {"src:A": {
+        "other:flag": [PROP_CANDIDATE], "x:flag": [PROP_CANDIDATE]}})
+
+    props_dir = tmp_path / "search-results" / "properties"
+    assert counts["props_skipped"] == 1 and counts["props_written"] == 1
+    assert sorted(p.name for p in props_dir.glob("*.json")) == ["other_flag.json", "x_flag.json"]
+    saved = json.loads((props_dir / "other_flag.json").read_text(encoding="utf-8"))
+    assert saved["evaluation"]["targetProperty"] == "nc:Saved"
+
+
 # ---------------------------------------------------------------------------
 # Sample data
 # ---------------------------------------------------------------------------
