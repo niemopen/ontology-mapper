@@ -12,6 +12,16 @@ XSD = "http://www.w3.org/2001/XMLSchema#"
 _IRI_SCHEMES = ("http://", "https://", "urn:")
 
 
+def is_full_iri(term):
+    """True when a term carries its own scheme rather than a declared prefix.
+
+    Such a term names something in a namespace the source package does not
+    declare, so the generators cannot reference it by prefix and must not
+    mint into it either.
+    """
+    return bool(term) and term.lower().startswith(_IRI_SCHEMES)
+
+
 def definition_hash(definition):
     """Fingerprint a target definition for codebook drift detection.
 
@@ -124,7 +134,7 @@ def target_qname(term, namespaces):
     an IRI, or whose namespace the catalog does not bind, is returned unchanged
     so downstream reference validation still reports it.
     """
-    if not term or not term.startswith(_IRI_SCHEMES):
+    if not is_full_iri(term):
         return term
     best = None
     for prefix, uri in sorted(namespaces.items()):
@@ -148,7 +158,7 @@ def created_property_qname(prop_qname, class_action, primary_prefix, bindings, e
     to split on and no binding to emit under: it is minted here like a primary
     one, never split into the pseudo-prefix `https`.
     """
-    prefix = "" if prop_qname.startswith(_IRI_SCHEMES) else prop_qname.split(":", 1)[0]
+    prefix = "" if is_full_iri(prop_qname) else prop_qname.split(":", 1)[0]
     if not prefix or prefix == primary_prefix:
         prefix = edge_prefix.rstrip(":") if class_action == "reuse" else "ext"
     else:
@@ -194,13 +204,19 @@ def local_name(qname_or_iri):
     IRI's name is the last colon-separated segment, so it is read from the
     right — reading it as a QName would return the whole tail after `urn`.
     """
-    if qname_or_iri.startswith("urn:"):
-        return qname_or_iri.rsplit(":", 1)[-1]
-    if ":" in qname_or_iri and not qname_or_iri.startswith("http"):
+    if is_full_iri(qname_or_iri):
+        # `component_iri` appends after a trailing "/", "#" or ":", and joins
+        # with ":" for urn and "/" otherwise: read back whichever separator
+        # the namespace actually ends with, rightmost first.
+        for separator in ("#", "/", ":"):
+            if separator in qname_or_iri:
+                tail = qname_or_iri.rsplit(separator, 1)[-1]
+                if tail:
+                    return tail
+        return qname_or_iri
+    if ":" in qname_or_iri:
         return qname_or_iri.split(":", 1)[1]
-    if "#" in qname_or_iri:
-        return qname_or_iri.split("#")[-1]
-    return qname_or_iri.rsplit("/", 1)[-1]
+    return qname_or_iri
 
 
 def edge_class_name(qname):

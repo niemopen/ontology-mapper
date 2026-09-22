@@ -30,6 +30,7 @@ OWL_CLASS = "http://www.w3.org/2002/07/owl#Class"
 # ---------------------------------------------------------------------------
 from ontology_mapper.run_dir_utils import utc_stamp
 from ontology_mapper.generation_utils import (
+    is_full_iri,
     local_name,
     edge_class_name,
     target_to_qname,
@@ -61,6 +62,19 @@ def load_stage_data(ctx):
             f"Generate one first (NIEM: om-generate-catalog, OWL: om-generate-owl-catalog)"
         )
     catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+
+    # The generator is the seam every driver passes through — the runner, the
+    # web executor and a by-hand `om-generate-ontology` all start here — so a
+    # saved class target the policy rejects stops the package before any file
+    # is written, whichever driver asked for it.
+    from ontology_mapper.ontology_specific import invalid_class_targets
+    rejected = invalid_class_targets(matrix, ctx.target_ontology, catalog)
+    if rejected:
+        details = "\n".join(f"  - {concept}: {message}" for concept, _, message in rejected)
+        raise ValueError(
+            f"{len(rejected)} saved class target(s) rejected by the "
+            f"{ctx.target_ontology} policy; reopen review:\n{details}")
+
     target_ns_map = catalog.get("namespaces", {})
 
     # Build qname→URI lookup for target types that lack a namespace prefix
@@ -248,7 +262,11 @@ def main():
             dropped_target_terms.append(f"{cls_qname}/{prop_qname} -> {target_prop}")
             return None
 
-        if not prop_qname.startswith(SOURCE_PREFIX):
+        # A declared source namespace is referenced through its binding; a
+        # term carrying its own scheme is one this package does not declare,
+        # so it is minted here exactly as the CMF builder and the extension
+        # catalog mint it — the three must name one identity.
+        if not prop_qname.startswith(SOURCE_PREFIX) and not is_full_iri(prop_qname):
             return source_term_ref(prop_qname)
         return created_property_qname(
             prop_qname, cls_action, _source, source_bindings, EDGE_PREFIX)
@@ -592,7 +610,7 @@ def main():
                 continue
             prop = dt_by_qname[pqname]
             prop_local = local_name(pqname)
-            if not pqname.startswith(SOURCE_PREFIX):
+            if not pqname.startswith(SOURCE_PREFIX) and not is_full_iri(pqname):
                 prop_ref = source_term_ref(pqname)
             else:
                 prop_ref = prefix + prop_local
@@ -609,7 +627,9 @@ def main():
                 continue
             prop = obj_by_qname[pqname]
             prop_local = local_name(pqname)
-            prop_ref = source_term_ref(pqname) if not pqname.startswith(SOURCE_PREFIX) else prefix + prop_local
+            prop_ref = (prefix + prop_local
+                        if pqname.startswith(SOURCE_PREFIX) or is_full_iri(pqname)
+                        else source_term_ref(pqname))
             plabel = prop.get("label", prop_local)
             range_vals = prop["range"]
             if range_vals:

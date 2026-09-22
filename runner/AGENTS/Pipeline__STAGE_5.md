@@ -61,4 +61,6 @@ decisions saved before the policy existed: they make no selection for the
 interactive check to catch, so the exit check and the Stage 6 entry are the
 seams that see them. `check_stage_5_exit(matrix, cascade)` takes the run's
 `(target_ontology, catalog)`; when that cannot be loaded the targets cannot
-be proven valid and that is itself a blocker.
+be proven valid and that is itself a blocker. The Stage 6 entry answers the
+same way: an unreadable catalog or matrix shape fails the stage
+(`StageError`), never escaping as a traceback the driver does not present.

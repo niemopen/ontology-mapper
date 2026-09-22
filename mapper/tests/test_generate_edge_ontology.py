@@ -970,3 +970,69 @@ class TestSharedSourceProfiles:
             property_targets={("C", "p"): "QText", ("B", "q"): "Link"})
         assert self._conforms(files, {"PText": list(range(p_count)), "QText": list(range(q_count)),
                                       "Link": ["one"]}, self.EXT + "BType") == expected
+
+
+def _write_run(tmp_path, matrix, properties):
+    import json as _json
+    inventory = {
+        "classes": [{"qname": "src:Record", "iri": "https://sample.test/src/Record",
+                     "label": "Record", "comment": "", "subClassOf": []}],
+        "datatypeProperties": properties, "objectProperties": [], "shaclShapes": [],
+        "codelistSchemes": [], "augmentingNamespaces": [],
+        "primaryNamespace": {"prefix": "src", "namespace": "https://sample.test/src/"},
+        "namespaceMap": {"https://sample.test/src/": "src:"},
+    }
+    (tmp_path / "concept-inventory.json").write_text(_json.dumps(inventory), encoding="utf-8")
+    (tmp_path / "mapping-matrix.json").write_text(_json.dumps(matrix), encoding="utf-8")
+    (tmp_path / ".mapper-state.json").write_text(_json.dumps({"inputs": {
+        "organization": "sample", "source": "sample",
+        "target_ontology": "niem", "target_version": "6.0"}}), encoding="utf-8")
+
+
+def _emitted(tmp_path, suffix):
+    return " ".join(f.read_text(encoding="utf-8")
+                    for f in (tmp_path / "edge-package").rglob(suffix))
+
+
+def test_all_three_emitters_name_one_identity_for_an_undeclared_namespace_property(tmp_path, monkeypatch):
+    """`make_to_qname` leaves a property whose namespace the manifest does not
+    name as a full IRI. OWL, CMF and the extension catalog must mint the same
+    term for it - the OWL emitter previously declared it in the third party's
+    own namespace while the other two minted `ext`."""
+    import sys as _sys
+    from ontology_mapper.generate_edge_ontology import main as generate
+
+    prop = "https://other.test/ns/value"
+    matrix = {"mappings": [{"sourceConcept": "src:Record", "action": "extend",
+                            "targetType": "nc:TextType", "reviewStatus": "accepted",
+                            "propertyMappings": [{"sourceProperty": prop,
+                                                  "action": "create-property",
+                                                  "reviewStatus": "accepted"}]}]}
+    _write_run(tmp_path, matrix, [{"qname": prop, "iri": prop, "label": "Value", "comment": "",
+                                   "domain": ["src:Record"],
+                                   "range": ["http://www.w3.org/2001/XMLSchema#string"]}])
+    monkeypatch.setattr(_sys, "argv", ["om-generate-ontology", "--run-dir", str(tmp_path)])
+
+    generate()
+
+    ttl = _emitted(tmp_path, "*.ttl")
+    assert "other.test" not in ttl      # never mint into a namespace we do not own
+    assert "ext:value" in ttl
+    assert 'structures:id="ext.value"' in _emitted(tmp_path, "*.cmf")
+
+
+def test_generation_refuses_a_saved_class_target_the_policy_rejects(tmp_path, monkeypatch):
+    """Every driver - runner, web executor, a by-hand CLI - enters here."""
+    import sys as _sys
+    from ontology_mapper.generate_edge_ontology import main as generate
+
+    matrix = {"mappings": [{"sourceConcept": "src:Record", "action": "reuse",
+                            "targetType": "hs:PersonRoleCodeSimpleType",
+                            "reviewStatus": "accepted", "propertyMappings": []}]}
+    _write_run(tmp_path, matrix, [])
+    monkeypatch.setattr(_sys, "argv", ["om-generate-ontology", "--run-dir", str(tmp_path)])
+
+    with pytest.raises(ValueError, match="src:Record"):
+        generate()
+
+    assert not (tmp_path / "edge-package" / "ontology").exists()

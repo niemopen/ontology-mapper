@@ -56,8 +56,12 @@ without a cascade; only a different class triggers reclassification.
 `invalid_class_targets()` asks the same policy of a whole saved matrix: a
 decision accepted before the policy existed makes no selection to check, so
 review exit (`check_stage_5_exit`, all three web routes) reports it as a
-blocker and the generation entry (`run_pipeline.refuse_invalid_class_targets`,
-which a Stage 6 resume also passes through) refuses to generate from it.
+blocker and the generator itself (`generate_edge_ontology.main`, reached by the
+runner's `run_pipeline.refuse_invalid_class_targets`, a Stage 6 resume, the web
+executor and a by-hand `om-generate-ontology`) refuses to generate from it. The
+predicate asks about every field the emitters read as a superclass, not only
+`targetType`: `baseType` for extend and `augmentsType` for augment, which an
+edited matrix can leave naming a different type.
 Datatypes and XSD-only names cannot become superclasses. Literal classes,
 including classes with only inherited properties, remain eligible. Names,
 patterns and property counts do not determine component kind.

@@ -1124,6 +1124,22 @@ class TestInvalidClassTargets:
         assert [c for c, _, _ in reported] == ["src:A", "src:B"]
         assert all("not a class" in message for _, _, message in reported)
 
+    def test_scaffolding_superclass_fields_are_asked_too(self):
+        """The emitters read the superclass from `baseType`/`augmentsType`,
+        falling back to `targetType`; an edited matrix can disagree."""
+        from ontology_mapper.ontology_specific import invalid_class_targets
+        catalog = self._catalog()
+        matrix = {"mappings": [
+            {"sourceConcept": "src:Ext", "action": "extend", "targetType": "nc:PersonType",
+             "baseType": "hs:PersonRoleCodeSimpleType"},
+            {"sourceConcept": "src:Aug", "action": "augment", "targetType": "nc:PersonType",
+             "augmentsType": "hs:PersonRoleCodeSimpleType"},
+            {"sourceConcept": "src:Ok", "action": "extend", "targetType": "nc:PersonType",
+             "baseType": "nc:PersonType"},
+        ]}
+        reported = invalid_class_targets(matrix, "niem", catalog)
+        assert [c for c, _, _ in reported] == ["src:Ext", "src:Aug"]
+        assert all(t == "hs:PersonRoleCodeSimpleType" for _, t, _ in reported)
     def test_clean_matrix_reports_nothing(self):
         from ontology_mapper.ontology_specific import invalid_class_targets
         matrix = {"mappings": [{"sourceConcept": "src:Ok", "action": "reuse", "targetType": "nc:PersonType"}]}

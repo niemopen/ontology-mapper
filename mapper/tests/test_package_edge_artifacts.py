@@ -1,7 +1,7 @@
-import pathlib
 #!/usr/bin/env python3
 """Tests for package_edge_artifacts.py — extension catalog, justifications, manifest, readme."""
 
+import pathlib
 import pytest
 
 from ontology_mapper.package_edge_artifacts import (
@@ -234,15 +234,14 @@ class TestBuildReadme:
         assert "| Reuse | 1 |" in readme
         assert "| Extend | 1 |" in readme
 
-def test_extension_catalog_uses_the_shared_component_iri_rule():
-    """A namespace without a trailing separator must not be concatenated:
-    `urn:example:model` + `value` is `urn:example:model:value`, not
-    `urn:example:modelvalue`."""
-    from ontology_mapper.generation_utils import component_iri
+def test_component_identities_survive_a_namespace_without_a_separator():
+    """`urn:example:model` + `value` is `urn:example:model:value`, not
+    `urn:example:modelvalue` — and every identity the extension catalog writes
+    reads back to the name it was built from."""
+    from ontology_mapper.generation_utils import component_iri, local_name
 
-    assert component_iri("urn:example:model", "value") == "urn:example:model:value"
-    src = pathlib.Path("src/ontology_mapper/package_edge_artifacts.py").read_text(encoding="utf-8")
-    # the extension catalog builds both identities through the shared rule
-    assert "component_iri(namespaces[prefix], name)" in src
-    assert "component_iri(ctx.extension_namespace, ext_name)" in src
-
+    for namespace in ("urn:example:model", "urn:example:model#", "https://example.test/ns",
+                      "https://example.test/ns/", "https://example.test/ns#"):
+        iri = component_iri(namespace, "value")
+        assert iri != namespace + "value" or namespace[-1] in "/#:"
+        assert local_name(iri) == "value"

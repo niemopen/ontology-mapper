@@ -629,3 +629,21 @@ def test_stage_6_without_a_matrix_does_not_refuse(tmp_path, monkeypatch):
                         lambda run_dir: pytest.fail("no matrix: the catalog must not be loaded"))
     runner.refuse_invalid_class_targets(tmp_path)
 
+@pytest.mark.parametrize("state,matrix", [
+    ({}, {"mappings": []}),                                     # no inputs at all
+    ({"inputs": {}}, {"mappings": []}),                         # no target ontology
+    ({"inputs": {"target_ontology": "acme", "target_version": "9.9"}}, {"mappings": []}),
+    ({"inputs": {"target_ontology": "niem", "target_version": "6.0"}}, {"mappings": [None]}),
+])
+def test_stage_6_reports_an_unprovable_matrix_as_a_stage_failure(tmp_path, state, matrix):
+    """A catalog that will not load, or a matrix that will not read, is not the
+    same as a valid one: the web gate makes it a blocker and the stage fails
+    here rather than escaping as a raw traceback the driver does not catch."""
+    import json as _json
+    import runner_tools.run_pipeline as runner
+
+    (tmp_path / ".mapper-state.json").write_text(_json.dumps(state), encoding="utf-8")
+    (tmp_path / "mapping-matrix.json").write_text(_json.dumps(matrix), encoding="utf-8")
+    with pytest.raises(StageError, match="validat"):
+        runner.refuse_invalid_class_targets(tmp_path)
+

@@ -134,9 +134,18 @@ A created property whose source namespace the package manifest does not name
 is left as a full IRI by extraction; it has no prefix to split and no binding
 to emit under, so it is minted in the edge (reuse) or ext namespace like a
 primary-namespace property rather than split into a pseudo-prefix.
+`created_property_qname` is the one home for that identity, so the OWL, CMF and
+extension-catalog names agree; an emitter that short-circuits on the source
+prefix excludes full IRIs from the short circuit rather than emitting the IRI.
 `generation_utils.component_iri` writes every component IRI — the extension
 catalog included — and `local_name` reads each separator it writes back,
 `urn:` names from the right.
+
+Generation refuses a saved class target the target ontology's class policy
+rejects (`ontology_specific.invalid_class_targets`) before writing any artifact,
+so a matrix accepted before the policy existed reopens review instead of
+producing a package. The policy lives in the adapter; the generator only
+enforces and reports it.
 
 Source namespace prefixes that collide with a different target URI receive
 deterministic aliases from `source_namespace_bindings`; declarations and

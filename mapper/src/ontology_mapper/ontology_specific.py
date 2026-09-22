@@ -114,18 +114,32 @@ def invalid_class_targets(matrix, target_ontology, catalog):
     reaches generation with no selection event to check. Both the review
     exit and the generation entry ask this instead of repeating the rule.
 
-    Returns a list of ``(sourceConcept, targetType, message)``; empty when
-    every accepted class decision names a class the policy allows.
+    The emitters read the superclass from `baseType` (extend) and
+    `augmentsType` (augment), falling back to `targetType`; an edited matrix
+    can disagree between them, so each is asked rather than `targetType`
+    alone.
+
+    Returns a list of ``(sourceConcept, target, message)``; empty when every
+    class decision names a class the policy allows.
     """
+    fields_by_action = {"reuse": ("targetType",),
+                        "extend": ("targetType", "baseType"),
+                        "augment": ("targetType", "augmentsType")}
     invalid = []
     for entry in matrix.get("mappings", []):
-        if entry.get("action") not in ("reuse", "extend", "augment"):
+        fields = fields_by_action.get(entry.get("action"))
+        if not fields:
             continue
-        target = entry.get("targetType")
-        try:
-            canonical_class_target(target, target_ontology, catalog)
-        except ClassTargetError as exc:
-            invalid.append((entry.get("sourceConcept", ""), target, str(exc)))
+        seen = set()
+        for field in fields:
+            target = entry.get(field)
+            if target in seen:
+                continue
+            seen.add(target)
+            try:
+                canonical_class_target(target, target_ontology, catalog)
+            except ClassTargetError as exc:
+                invalid.append((entry.get("sourceConcept", ""), target, str(exc)))
     return invalid
 
 

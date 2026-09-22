@@ -1,6 +1,6 @@
-import pathlib
 """Tests for run_dir_utils — run directory resolution and org detection."""
 
+import pathlib
 import json
 import pytest
 from datetime import datetime
@@ -186,7 +186,7 @@ def test_no_module_parses_a_shared_timestamp_with_the_stdlib_parser():
         for path in (root / folder).rglob("*.py"):
             if path in allowed or "build" in path.parts or "node_modules" in path.parts:
                 continue
-            if re.search(r"fromisoformat\s*\(", path.read_text(encoding="utf-8")):
+            if re.search(r"\bfromisoformat\s*\(", path.read_text(encoding="utf-8")):
                 offenders.append(str(path.relative_to(root)))
     assert offenders == [], f"use run_dir_utils.parse_stamp instead: {offenders}"
 

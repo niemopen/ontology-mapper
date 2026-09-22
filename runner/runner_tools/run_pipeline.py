@@ -689,8 +689,16 @@ def refuse_invalid_class_targets(run_dir: Path):
     if not matrix_path.exists():
         return
     matrix = json.loads(matrix_path.read_text(encoding="utf-8"))
-    target_ontology, catalog = load_cascade_context(run_dir)
-    invalid = invalid_class_targets(matrix, target_ontology, catalog)
+    try:
+        target_ontology, catalog = load_cascade_context(run_dir)
+    except Exception as exc:
+        # Unprovable is not the same as valid: the web gate reports this as a
+        # blocker, and the stage fails here for the same reason.
+        raise StageError("6", f"saved class targets could not be validated: {exc}") from exc
+    try:
+        invalid = invalid_class_targets(matrix, target_ontology, catalog)
+    except (AttributeError, TypeError) as exc:
+        raise StageError("6", f"mapping matrix is not readable for validation: {exc}") from exc
     if invalid:
         details = "\n".join(f"  - {concept}: {message}" for concept, _, message in invalid)
         raise StageError("6", f"{len(invalid)} saved class target(s) rejected by the "
