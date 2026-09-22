@@ -76,27 +76,6 @@ def property_qname_resolver(inventory):
     # is an ordinary source shape, and a domain-only test drops exactly
     # the population this fallback exists for.
     class_properties = build_class_properties(inventory)
-    parents = {c.get("qname"): list(c.get("subClassOf") or [])
-               for c in (inventory.get("classes") or [])}
-
-    def owned_by(concept):
-        """Every property the concept has, including inherited ones.
-
-        `build_class_properties` answers per declaring class, not
-        transitively, and a source model ordinarily declares a property on a
-        parent: a child's decision about an inherited property is about a
-        property the child has.
-        """
-        owned, pending, seen = set(), [concept], set()
-        while pending:
-            qname = pending.pop()
-            if qname in seen:
-                continue
-            seen.add(qname)
-            owned |= class_properties.get(qname, set())
-            pending.extend(parents.get(qname, []))
-        return owned
-
     def resolve(name, concept=None):
         if not known or name in known:
             return name
@@ -108,22 +87,28 @@ def property_qname_resolver(inventory):
             # says something about ownership at all — an inventory with
             # neither domains nor shapes cannot answer it, and guessing
             # there is the old behaviour these callers relied on.
-            owned = owned_by(concept)
-            candidates = [q for q in candidates if q in owned]
+            # The concept's OWN properties, the same non-transitive answer
+            # Stage 3/4 built the reviewer's list from: a decision row under
+            # a concept is never legitimately about a property only an
+            # ancestor declares, and unioning ancestors re-admits the
+            # transplant this rule exists to block.
+            candidates = [q for q in candidates
+                          if q in class_properties.get(concept, set())]
         return candidates[0] if len(candidates) == 1 else name
 
     return resolve
 
 
 def _same_decision(first, second):
-    """Whether two rows record the same decision, spelling aside.
+    """Whether two rows record the same decision.
 
-    `sourceProperty` is excluded: a legacy spelling beside the declared one is
-    exactly how two rows come to resolve to one key.
+    Only the fields that ARE the decision: the provenance a row carries
+    (`sourceProperty`, `sourcePath`, `sourceDefinition`, rationale) differs
+    between a legacy spelling and its declared twin, which is exactly how two
+    rows come to resolve to one key.
     """
-    def body(pm):
-        return {k: v for k, v in pm.items() if k != "sourceProperty"}
-    return body(first) == body(second)
+    decided = ("action", "reviewStatus", "targetProperty", "newPropertyName")
+    return all(first.get(field) == second.get(field) for field in decided)
 
 
 def property_mapping_index(matrix, inventory=None):
@@ -312,9 +297,19 @@ def emitted_class_action(entry):
     one means review was bypassed. OWL and CMF must agree about that or
     they disagree about which classes the package contains.
     """
-    if not entry or entry.get("reviewStatus") == "pending-review":
+    if not entry:
         return None
-    return entry.get("action")
+    action = entry.get("action")
+    if action == "exclude":
+        # An exclusion is never presented for review (`get_pending_items`
+        # filters it out), so its status stays `pending-review` for the
+        # life of the run. Reading that as "undecided" made the emitters
+        # skip the exclusion redirect and drop object properties ranged
+        # on the excluded class — which the CMF kept declaring.
+        return action
+    if entry.get("reviewStatus") == "pending-review":
+        return None
+    return action
 
 
 def edge_class_name(qname):

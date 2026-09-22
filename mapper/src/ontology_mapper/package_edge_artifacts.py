@@ -135,9 +135,11 @@ def build_extension_catalog(matrix, ctx, inventory, target_ns_map):
 
         properties = set()
         for decision in m.get("propertyMappings") or []:
-            if decision.get("action") != "create-property":
-                continue
             if not created_property_is_declared(decision):
+                # One question, asked once: the emitters mint a term for any
+                # decision with no accepted reuse target, whatever its action
+                # says. Testing the action as well omitted terms they declare
+                # (a pending reuse, a `human-must-decide`).
                 continue
             recorded = resolve_property(decision["sourceProperty"], concept)
             if declared_properties and recorded not in declared_properties:

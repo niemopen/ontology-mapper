@@ -166,8 +166,13 @@ def build_active_classes(inv, matrix):
             if not ranges:
                 continue
             range_qname = ranges[0]
-            # Only include if range is an active class
-            if range_qname.startswith(source_prefix) and range_qname not in active_qnames:
+            # Only include if the range is an active class. Not "primary
+            # AND inactive": an augmenting namespace is first-class here,
+            # and an excluded class is excluded whatever namespace it
+            # lives in — otherwise the graph carries a relationship, and
+            # the transform rules a target node type, for a class the
+            # package never declares.
+            if range_qname not in active_qnames:
                 continue
             # Skip SKOS Concept ranges (codelist references, not graph edges)
             if range_qname == SKOS_CONCEPT:
@@ -331,11 +336,18 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source):
                       "file types instances as " + example_seed + "; this run's "
                       "inventory records " + example_active + ".")
 
-    # Collect datatype property label lookups
+    # Collect datatype property label lookups, and the inventory's own
+    # name for each predicate IRI: a CSV-shaped property IRI
+    # (`{ns}#{Class}.{prop}`) tailed by hand gives a key with a dot in
+    # it, which Neo4j rejects — the hazard this file already fixed for
+    # relationship type names.
     dt_prop_labels = {}
+    dt_prop_qnames = {}
     for cls in active_classes:
         for dp in cls["datatypeProps"]:
             dt_prop_labels[dp["qname"]] = dp["label"]
+            if dp.get("iri"):
+                dt_prop_qnames[str(dp["iri"])] = dp["qname"]
 
     # Phase 1: Create nodes
     node_lines = [
@@ -368,7 +380,7 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source):
             # Only include literal (datatype) values for node creation
             if hasattr(obj, "datatype") or hasattr(obj, "language") or not hasattr(obj, "n3"):
                 # It's a literal
-                prop_local = pred_str.rsplit("/", 1)[-1] if "/" in pred_str else pred_str.rsplit("#", 1)[-1]
+                prop_local = local_name(dt_prop_qnames.get(pred_str, pred_str))
                 val = str(obj)
                 # Detect type for proper Cypher literal formatting
                 if hasattr(obj, "datatype") and obj.datatype:

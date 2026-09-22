@@ -493,9 +493,12 @@ class TestDuplicateDecisionRows:
 
 
 class TestInheritedPropertyOwnership:
-    """A child's decision about a property its parent declares is a decision
-    about a property the child has: `build_class_properties` answers per
-    declaring class, not transitively."""
+    """A child's decision resolves when the child's own shape attaches the
+    property — which is how Stage 3/4 writes it. Ownership deliberately does
+    NOT union ancestors: `build_class_properties` is non-transitive, so the
+    reviewer's per-class list never offers a property only an ancestor
+    declares, and unioning them re-admits the transplant the rule blocks.
+    """
 
     def _inventory(self, shape_target):
         return {
@@ -514,8 +517,24 @@ class TestInheritedPropertyOwnership:
             {"sourceProperty": "src:code", "action": "reuse-property",
              "reviewStatus": "accepted", "targetProperty": "nc:PersonFullName"}]}]}
 
-    @pytest.mark.parametrize("shape_target", ["src:Parent", "src:Kid"])
-    def test_a_decision_on_an_inherited_property_resolves(self, shape_target):
+    def test_a_decision_resolves_when_the_concepts_own_shape_attaches_it(self):
         from ontology_mapper.generation_utils import property_mapping_index
-        index = property_mapping_index(self._matrix(), self._inventory(shape_target))
+        index = property_mapping_index(self._matrix(), self._inventory("src:Kid"))
         assert set(index) == {("src:Kid", "aug:code")}
+
+    def test_an_ancestors_property_is_not_borrowed(self):
+        """`gis:code` on the ancestor is a different property from the
+        `fin:code` the decision names; renaming onto it would apply an
+        accepted decision to a property the reviewer never saw."""
+        from ontology_mapper.generation_utils import property_mapping_index
+        inventory = {
+            "classes": [{"qname": "src:Root", "subClassOf": []},
+                        {"qname": "src:Fee", "subClassOf": ["src:Root"]}],
+            "objectProperties": [],
+            "datatypeProperties": [{"qname": "gis:code", "domain": ["src:Root"]}],
+            "shaclShapes": [],
+        }
+        matrix = {"mappings": [{"sourceConcept": "src:Fee", "propertyMappings": [
+            {"sourceProperty": "fin:code", "action": "reuse-property",
+             "reviewStatus": "accepted", "targetProperty": "nc:CodeText"}]}]}
+        assert set(property_mapping_index(matrix, inventory)) == {("src:Fee", "fin:code")}

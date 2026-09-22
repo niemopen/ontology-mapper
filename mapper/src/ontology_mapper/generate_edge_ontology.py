@@ -122,9 +122,8 @@ def undeclared_shape_paths(core_ttl, ext_ttl, shapes_ttl, own_namespaces):
             declared.add(str(subject))
     shapes = Graph().parse(data=shapes_ttl, format="turtle")
     paths = {str(o) for o in shapes.objects(None, SH.path)}
-    paths |= {str(o) for o in shapes.objects(None, SH.alternativePath)
-              if not str(o).startswith("N")}  # list heads are blank nodes
     for alternatives in shapes.objects(None, SH.alternativePath):
+        # The object of sh:alternativePath is a list head, never a term.
         paths |= {str(item) for item in shapes.items(alternatives)}
     return sorted(term for term in paths
                   if term.startswith(tuple(own_namespaces)) and term not in declared)
@@ -203,26 +202,21 @@ def main():
             return term if term.split(":")[0] in bound_prefixes else None
         return None
 
-    def emitting_action(context, emitting_leaf):
-        """The action that names a property inherited from `context`.
+    def emitting_action(prop_qname, context, emitting_leaf):
+        """The action that names a property a shape constrains.
 
-        A class the reviewer excluded — or one with no decision — mints
-        nothing, so the identity belongs to the nearest ancestor that does
-        emit, walking up from the declaring class and falling back to the
-        leaf that carries the shape. Taking the leaf directly names
-        `edge:` for a property only a grandparent's extension declares.
+        The identity belongs to the active class that DECLARES the term —
+        the one whose class block writes it — not to whichever ancestor a
+        walk happens to reach first. `subClassOf` is a set in the source
+        model, so an ancestor walk let statement order decide which term a
+        shape constrains, and which of two parents' namespaces it came from.
         """
-        seen = set()
-        pending = [context]
-        while pending:
-            qname = pending.pop(0)
-            if qname in seen:
-                continue
-            seen.add(qname)
-            action = classify_concept(qname)[0]
-            if action in ("reuse", "extend", "augment"):
-                return action
-            pending.extend(class_by_qname.get(qname, {}).get("subClassOf", []))
+        owners = set(obj_assigned.get(prop_qname, ())) | set(dt_assigned.get(prop_qname, ()))
+        for candidate in (emitting_leaf, context):
+            if candidate in owners:
+                return classify_concept(candidate)[0]
+        if owners:
+            return classify_concept(sorted(owners)[0])[0]
         return classify_concept(emitting_leaf)[0]
 
     def classify_concept(qname):
@@ -611,11 +605,13 @@ def main():
             prop_ref = resolve_property_ref(pqname, cls_qname, action)
             plabel = prop.get("label", prop_local)
             range_vals = prop["range"]
-            if range_vals:
-                range_ref = map_range_ref(range_vals[0])
-                if range_ref is None:
-                    continue
-            else:
+            range_ref = map_range_ref(range_vals[0]) if range_vals else None
+            if range_ref is None:
+                # The range names something this package does not emit —
+                # an excluded class, say. The property itself is still the
+                # source's and the CMF still declares it, so declare it
+                # here too with an open range rather than dropping a term
+                # the shapes go on to constrain.
                 range_ref = "owl:Thing"
             lines.append(f"{prop_ref}")
             lines.append(f"    a owl:ObjectProperty ;")
@@ -790,7 +786,8 @@ def main():
                 path_refs = set()
                 for context in contexts:
                     path_refs.add(resolve_property_ref(
-                        prop["path"], context, emitting_action(context, target_src)))
+                        prop["path"], context,
+                        emitting_action(prop["path"], context, target_src)))
                 refs = sorted(ref for ref in path_refs if ref is not None)
                 if refs:
                     emittable.append((prop, refs))

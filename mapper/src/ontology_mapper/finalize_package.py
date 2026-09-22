@@ -328,6 +328,13 @@ def main():
     # Load optional artifacts
     val_path = ctx.run_dir / "validation-report.json"
     validation_report = json.loads(val_path.read_text(encoding="utf-8")) if val_path.exists() else None
+    if validation_report is not None:
+        stale = stale_against_package(val_path, ctx.pkg_dir)
+        if stale:
+            print(f"  [!] validation-report.json predates {stale}")
+            print("      Stage 7 certified the package as it was before that "
+                  "file changed; re-run validation before finalizing.")
+            sys.exit(1)
 
     audit_path = ctx.run_dir / "generation-audit.json"
     generation_audit = json.loads(audit_path.read_text(encoding="utf-8")) if audit_path.exists() else None

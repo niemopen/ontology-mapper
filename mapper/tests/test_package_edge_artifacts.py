@@ -372,3 +372,34 @@ class TestShapeOnlyProperties:
         assert sorted(local.rsplit("#", 1)[-1]
                       for local in catalog["extensions"][0]["properties"]) == [
             "declared", "shapeOnly"]
+
+
+class TestPendingDecisionsAreListed:
+    """The emitters mint a term for any decision with no accepted reuse
+    target; the catalog must list the same terms."""
+
+    def test_a_pending_reuse_decision_is_listed_as_a_created_term(self):
+        from pathlib import Path
+        from ontology_mapper.pipeline_context import PipelineContext
+        context = PipelineContext(Path("run"), Path("run/edge-package"),
+                                  "example", "source", "niem", "6.0")
+        inventory = {"classes": [{"qname": "src:Thing",
+                                  "iri": "https://sample.test/src/Thing"}],
+                     "namespaceMap": {"https://sample.test/src/": "src:"},
+                     "objectProperties": [],
+                     "datatypeProperties": [{"qname": "src:p1", "domain": ["src:Thing"]},
+                                            {"qname": "src:p2", "domain": ["src:Thing"]}],
+                     "shaclShapes": []}
+        matrix = _matrix([_mapping("src:Thing", "extend", "nc:PersonType",
+                                   baseType="nc:PersonType",
+                                   propertyMappings=[
+                                       {"sourceProperty": "src:p1",
+                                        "action": "reuse-property",
+                                        "reviewStatus": "pending-review",
+                                        "targetProperty": "nc:Name"},
+                                       {"sourceProperty": "src:p2",
+                                        "action": "create-property",
+                                        "reviewStatus": "accepted"}])])
+        catalog = build_extension_catalog(matrix, context, inventory, {})
+        assert sorted(iri.rsplit("#", 1)[-1]
+                      for iri in catalog["extensions"][0]["properties"]) == ["p1", "p2"]

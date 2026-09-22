@@ -1340,3 +1340,79 @@ class TestReferentialClosure:
 
     def test_a_target_namespace_term_is_not_this_package_to_declare(self):
         assert self._ask("[] a sh:NodeShape ; sh:property [ sh:path nc:PersonName ] .") == []
+
+
+class TestExclusionsAndDeclarations:
+    """An exclusion is decided, not pending, and a property whose range this
+    package does not emit is still the source's property."""
+
+    TARGET = TestSharedSourceProfiles.TARGET
+
+    def _cls(self, name, parents=()):
+        return {"qname": "src:" + name, "iri": "https://sample.test/src/" + name,
+                "label": name, "comment": "",
+                "subClassOf": ["src:" + p for p in parents]}
+
+    def _row(self, concept, action, status="accepted", **extra):
+        row = {"sourceConcept": "src:" + concept, "action": action,
+               "targetType": "nc:BaseType", "reviewStatus": status,
+               "propertyMappings": []}
+        row.update(extra)
+        return row
+
+    def _files(self, review_status):
+        inventory = TestNiemOWLPatterns._minimal_inventory(
+            [self._cls("Active"), self._cls("Gone")],
+            obj_props=[{"qname": "src:hasGone", "label": "hasGone",
+                        "domain": ["src:Active"],
+                        "range": ["https://sample.test/src/Gone"]}])
+        matrix = {"mappings": [self._row("Active", "reuse"),
+                               self._row("Gone", "exclude", review_status)]}
+        return TestNiemOWLPatterns._run_generation(
+            inventory, matrix, catalog={"namespaces": {"nc": self.TARGET}})
+
+    @pytest.mark.parametrize("review_status", ["pending-review", "accepted"])
+    def test_a_property_ranged_on_an_excluded_class_is_still_declared(self, review_status):
+        """`get_pending_items` never presents an exclusion, so its status stays
+        `pending-review` for the life of the run. Reading that as undecided
+        dropped the property from the OWL while the CMF kept declaring it."""
+        files = self._files(review_status)
+        core = files["test-edge-core.ttl"]
+        assert "test-edge:hasGone" in core
+        assert "rdfs:range owl:Thing" in core
+
+
+class TestInheritedIdentityIsOrderIndependent:
+    """`subClassOf` is a set in the source model: nothing emitted may depend
+    on which parent happens to be written first."""
+
+    TARGET = TestSharedSourceProfiles.TARGET
+
+    def _files(self, parent_order):
+        inventory = TestNiemOWLPatterns._minimal_inventory(
+            [{"qname": "src:P1", "iri": "https://sample.test/src/P1", "label": "P1",
+              "comment": "", "subClassOf": []},
+             {"qname": "src:P2", "iri": "https://sample.test/src/P2", "label": "P2",
+              "comment": "", "subClassOf": []},
+             {"qname": "src:Kid", "iri": "https://sample.test/src/Kid", "label": "Kid",
+              "comment": "", "subClassOf": list(parent_order)}],
+            dt_props=[{"qname": "src:code", "label": "code",
+                       "domain": ["src:P1"], "range": []}],
+            shapes=[{"targetClasses": ["src:P1"],
+                     "properties": [{"path": "src:code", "minCount": 1}]}])
+        matrix = {"mappings": [
+            {"sourceConcept": "src:P1", "action": "extend", "targetType": "nc:BaseType",
+             "baseType": "nc:BaseType", "reviewStatus": "accepted", "propertyMappings": []},
+            {"sourceConcept": "src:P2", "action": "reuse", "targetType": "nc:BaseType",
+             "reviewStatus": "accepted", "propertyMappings": []},
+            {"sourceConcept": "src:Kid", "action": "reuse", "targetType": "nc:BaseType",
+             "reviewStatus": "accepted", "propertyMappings": []}]}
+        return TestNiemOWLPatterns._run_generation(
+            inventory, matrix, catalog={"namespaces": {"nc": self.TARGET}})
+
+    def test_the_declaring_class_names_the_property_either_way(self):
+        first = self._files(["src:P1", "src:P2"])["test-edge-shapes.ttl"]
+        second = self._files(["src:P2", "src:P1"])["test-edge-shapes.ttl"]
+        paths = lambda text: sorted(line.strip() for line in text.splitlines()
+                                    if "sh:path" in line)
+        assert paths(first) == paths(second)

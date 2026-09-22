@@ -24,6 +24,27 @@ def add_check(results, name, passed, details=""):
 # ---------------------------------------------------------------------------
 # Testable cross-reference helpers
 # ---------------------------------------------------------------------------
+def stale_against_package(report_path, pkg_dir):
+    """The package file a validation report predates, or None.
+
+    A report certifies the artifacts as they were when it ran. Publishing one
+    older than the package — `--from-stage 8` never runs Stage 7 at all —
+    records a PASS for files nobody validated.
+    """
+    from pathlib import Path
+
+    report_path, pkg_dir = Path(report_path), Path(pkg_dir)
+    if not report_path.exists() or not pkg_dir.exists():
+        return None
+    stamped = report_path.stat().st_mtime_ns
+    newer = [p for p in pkg_dir.rglob("*")
+             if p.is_file() and p.stat().st_mtime_ns > stamped
+             and p.name != report_path.name]
+    if not newer:
+        return None
+    return str(sorted(newer, key=lambda p: p.stat().st_mtime_ns)[-1])
+
+
 def check_schema_labels(schema_content, active_labels):
     """Check that Cypher schema constraint/index labels reference active classes.
 
@@ -289,17 +310,17 @@ def check_codebook_drift(mappings_list, catalog):
         target_type = m.get("targetType")
         stored_hash = m.get("targetDefinitionHash")
 
-        if target_type and stored_hash:
-            current_def = type_defs.get(target_type)
-            if current_def is None and target_type in type_defs:
-                current_def = type_defs[target_type]
-            current_hash = _hash_definition(current_def)
-
-            if target_type not in type_defs:
-                errors.append(
-                    f"{concept}: target type {target_type} not found in catalog"
-                )
-            elif current_hash != stored_hash:
+        # A target that left the catalog is drift whether or not the matrix
+        # recorded a fingerprint for it — that branch was unreachable while
+        # the whole block required a stored hash. A target still present with
+        # no stored hash has nothing to compare, and is not drift.
+        if target_type and target_type not in type_defs:
+            errors.append(
+                f"{concept}: target type {target_type} not found in catalog"
+            )
+        elif target_type and stored_hash:
+            current_hash = _hash_definition(type_defs.get(target_type))
+            if current_hash != stored_hash:
                 errors.append(
                     f"{concept}: {target_type} definition changed "
                     f"(was {stored_hash}, now {current_hash})"

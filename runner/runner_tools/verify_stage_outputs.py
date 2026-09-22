@@ -457,6 +457,20 @@ def _verify_stage_7(run_dir, state):
     fb_path = run_dir / "feedback-report.json"
     checks.append(_file_check("feedback_report_exists", fb_path))
 
+    # Freshness, not just existence: the orchestrated drivers delete a
+    # previous report before validating, but this entry point is
+    # documented for direct use, and a crashed validator leaves the old
+    # report in place to be read as this run's result.
+    from ontology_mapper.validate_edge_package import stale_against_package
+    from ontology_mapper.pipeline_context import load_context
+    try:
+        stale = stale_against_package(vr_path, load_context(run_dir).pkg_dir)
+    except Exception:
+        stale = None
+    if stale:
+        checks.append(_check("validation_report_is_current", False,
+                             f"report predates {stale}"))
+
     vr = _load_json(vr_path)
     if vr:
         vr_checks = vr.get("checks", [])

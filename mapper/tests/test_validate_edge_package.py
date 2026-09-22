@@ -572,3 +572,48 @@ class TestCheckCodebookDrift:
         ]
         errors = check_codebook_drift(mappings, catalog)
         assert len(errors) == 2
+
+
+class TestStaleValidationReport:
+    """A report certifies the artifacts as they were when it ran."""
+
+    def test_a_report_older_than_the_package_names_the_newer_file(self, tmp_path):
+        import os
+        from ontology_mapper.validate_edge_package import stale_against_package
+
+        report = tmp_path / "validation-report.json"
+        report.write_text("{}", encoding="utf-8")
+        pkg = tmp_path / "edge-package" / "ontology"
+        pkg.mkdir(parents=True)
+        artifact = pkg / "core.ttl"
+        artifact.write_text("# later", encoding="utf-8")
+        stamp = report.stat().st_mtime_ns
+        os.utime(artifact, ns=(stamp + 10_000_000, stamp + 10_000_000))
+
+        assert "core.ttl" in stale_against_package(report, tmp_path / "edge-package")
+
+    def test_a_report_newer_than_the_package_is_current(self, tmp_path):
+        import os
+        from ontology_mapper.validate_edge_package import stale_against_package
+
+        pkg = tmp_path / "edge-package" / "ontology"
+        pkg.mkdir(parents=True)
+        (pkg / "core.ttl").write_text("# earlier", encoding="utf-8")
+        report = tmp_path / "validation-report.json"
+        report.write_text("{}", encoding="utf-8")
+        stamp = (pkg / "core.ttl").stat().st_mtime_ns
+        os.utime(report, ns=(stamp + 10_000_000, stamp + 10_000_000))
+
+        assert stale_against_package(report, tmp_path / "edge-package") is None
+
+
+class TestDriftOnAMissingTarget:
+    """A target that left the catalog is drift whether or not the matrix
+    recorded a fingerprint for it."""
+
+    def test_a_target_absent_from_the_catalog_is_reported_without_a_hash(self):
+        errors = check_codebook_drift(
+            [{"sourceConcept": "src:A", "targetType": "nc:GoneType",
+              "targetDefinitionHash": None, "propertyMappings": []}],
+            _catalog_with_types([{"qname": "nc:PersonType", "definition": "A person."}]))
+        assert errors == ["src:A: target type nc:GoneType not found in catalog"]

@@ -182,9 +182,11 @@ downstream: `sh:maxCount` then counts values across the alternatives, so
 data carrying two of the target properties fails the source model's
 single-value bound; that is the source model speaking, not a data error.
 
-The package is referentially closed in its own namespaces: generation
-refuses when a `sh:path` names an edge or ext term no ontology file here
-declares (`generate_edge_ontology.undeclared_shape_paths`). Two defects of
+Generation refuses when a `sh:path` names an edge or ext term no ontology
+file here declares (`generate_edge_ontology.undeclared_shape_paths`). That
+is the `sh:path` question only, asked against the OWL subjects: `rdfs:range`,
+`sh:class`, `owl:allValuesFrom` and the CMF's own references are not
+checked, and a term declared only in the CMF would read as undeclared. Two defects of
 exactly that shape shipped with exit 0 — Turtle parses, SHACL conforms, and
 none of Stage 7's twelve checks asks the question.
 
@@ -204,10 +206,15 @@ property the source declares only through a SHACL shape is a property of
 that class, and Stage 3/4 writes decisions for it.
 
 A `pending-review` class mapping is not emitted by either generator
-(`generation_utils.emitted_class_action`). Review exit blocks pending
-concepts, so an emitter meeting one means review was bypassed; emitting it
-would ship a class decision the reviewer never made, and OWL and CMF must
-agree about that or they disagree about what the package contains.
+(`generation_utils.emitted_class_action`) — emitting it would ship a class
+decision the reviewer never made, and OWL and CMF must agree about that or
+they disagree about what the package contains. An `exclude` entry is the
+exception: exclusions are never presented for review (`get_pending_items`
+filters them out), so their status stays `pending-review` for the life of
+the run and reading that as undecided drops the exclusion redirect —
+object properties ranged on the excluded class then disappear from the OWL
+while the CMF keeps declaring them. A property whose range this package
+does not emit is still declared, with `rdfs:range owl:Thing`.
 
 Generation refuses a saved class target the target ontology's class policy
 rejects (`ontology_specific.invalid_class_targets`) before writing any artifact,
