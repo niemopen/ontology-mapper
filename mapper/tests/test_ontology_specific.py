@@ -1061,6 +1061,22 @@ class TestReclassifyForTargetTypeChange:
         assert check_codebook_drift([result], niem_catalog) == []
         assert entry["targetDefinition"] == "A data type for nc:CaseType."  # input untouched
 
+    def test_target_label_follows_the_new_target(self, niem_catalog):
+        entry = self._entry_with_target_metadata(niem_catalog)
+        entry["targetTypeLabel"] = "Case Type"
+        for t in niem_catalog["types"]:
+            if t["qname"] == "nc:PersonType":
+                t["label"] = "Person Type"
+        result = reclassify_for_target_type_change(entry, "nc:PersonType", "niem", niem_catalog)
+        assert result["targetTypeLabel"] == "Person Type"
+
+    def test_target_label_is_dropped_when_the_catalog_has_none(self, niem_catalog):
+        entry = self._entry_with_target_metadata(niem_catalog)
+        entry["targetTypeLabel"] = "Case Type"
+        result = reclassify_for_target_type_change(entry, "nc:PersonType", "niem", niem_catalog)
+        assert "targetTypeLabel" not in result
+        assert reclassify_for_target_type_change(entry, None, "niem", niem_catalog).get("targetTypeLabel") is None
+
     def test_no_target_clears_target_metadata(self, niem_catalog):
         entry = self._entry_with_target_metadata(niem_catalog)
         result = reclassify_for_target_type_change(entry, None, "niem", niem_catalog)

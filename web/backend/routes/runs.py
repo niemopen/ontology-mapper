@@ -403,6 +403,8 @@ def _run_pipeline_stages_6_8(run_id: str, run_dir: Path, cwd: str, env: dict) ->
     _pipeline_status[run_id]["stage"] = "7"
     _record_stage_start(run_dir, "7")
     validated = _run_cmd(run_id, "7", ["om-validate", "--run-dir", rd], cwd, env)
+    if not validated and not (run_dir / "validation-report.json").exists():
+        return False  # the validator crashed; there is nothing to report on
     validation_failure = None if validated else dict(_pipeline_status[run_id])
     reported = _run_cmd(run_id, "7", ["python", "runner_tools/feedback_report.py", "--run-dir", rd], cwd, env)
     if not validated:

@@ -125,6 +125,9 @@ result = reclassify_for_target_type_change(entry, new_target_type, target_ontolo
   catalog definition (`generation_utils.definition_hash`, the same fingerprint
   alignment collection writes and Stage 7 Check 12 compares), so a legitimate
   target change does not report codebook drift.
+  `targetTypeLabel` follows the same rule: the new target's catalog label, or
+  removed when the catalog has none, so the review card never shows the
+  previous target's label.
 - **Null target type**: Allowed — produces extend from root
   (`structures:ObjectType` for NIEM, no `baseType` for non-NIEM).
 - **Property actions do NOT change**: `reuse-property` / `create-property` /

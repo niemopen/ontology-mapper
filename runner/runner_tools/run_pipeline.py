@@ -382,7 +382,9 @@ def _dispatch_review_action(
 
         old_action = entry["action"]
         old_target = entry.get("targetType")
-        decision = {"targetType": new_target}
+        # The same class in another spelling is applied, not cascaded, and
+        # apply_decision requires the action: the current one is kept.
+        decision = {"action": old_action, "targetType": new_target}
         apply_decision_with_cascade(entry, decision, target_ontology, catalog)
 
         # Validate after cascade
@@ -692,13 +694,16 @@ def run_stage_7(run_dir: Path, timers: list[StageTimer]):
     ``validation-report.json``. The feedback report maps those failures back
     to source decisions, so it is produced before the stage stops; the stage
     then fails through verification (``validation_all_pass``) or, failing
-    that, the validation error itself. Stage 8 is never reached.
+    that, the validation error itself. A nonzero exit with no report is a
+    crash, raised as it was. Stage 8 is never reached.
     """
     with StageTimer("7") as t:
         validation_failure = None
         try:
             run_cmd("7", ["om-validate", "--run-dir", str(run_dir)])
         except StageError as exc:
+            if not (run_dir / "validation-report.json").exists():
+                raise  # the validator crashed; there is nothing to report on
             validation_failure = exc
         run_cmd("7", ["python", "runner_tools/feedback_report.py",
                        "--run-dir", str(run_dir)])

@@ -21,6 +21,7 @@ import json
 from ontology_mapper.cmf_reference import load_reference_cmf, reference_class_identities
 from ontology_mapper.generation_utils import (
     catalog_type_definition,
+    catalog_type_label,
     definition_hash,
     target_qname,
 )
@@ -432,6 +433,11 @@ def reclassify_for_target_type_change(entry, new_target_type, target_ontology, c
     definition = catalog_type_definition(new_target_type, catalog) if new_target_type else None
     result["targetDefinition"] = definition or ""
     result["targetDefinitionHash"] = definition_hash(definition)
+    label = catalog_type_label(new_target_type, catalog) if new_target_type else None
+    if label:
+        result["targetTypeLabel"] = label
+    else:
+        result.pop("targetTypeLabel", None)
     property_mappings = result.get("propertyMappings", [])
 
     # --- No target type: extend from root ---

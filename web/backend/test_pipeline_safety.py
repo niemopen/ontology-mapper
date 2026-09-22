@@ -77,6 +77,7 @@ def test_validation_stops_before_finalization(tmp_path, monkeypatch, valid):
     def command(run_id, stage, cmd, cwd, env):
         commands.append(cmd[0])
         if not valid and cmd[0] == "om-validate":
+            (tmp_path / "validation-report.json").write_text('{"checks": []}', encoding="utf-8")
             runs._pipeline_status[run_id] = {"status": "failed", "stage": "7", "error": "SOME CHECKS FAILED"}
             return False
         return True
@@ -91,6 +92,25 @@ def test_validation_stops_before_finalization(tmp_path, monkeypatch, valid):
     assert commands.index("python") > commands.index("om-validate")
     if not valid:
         assert runs._pipeline_status["sample"]["error"] == "SOME CHECKS FAILED"
+
+
+def test_validator_crash_without_a_report_stops_before_the_feedback_report(tmp_path, monkeypatch):
+    monkeypatch.setattr(runs, "_pipeline_status", {"sample": {}})
+    commands = []
+    monkeypatch.setattr(runs, "_record_stage_start", lambda *args: None)
+    monkeypatch.setattr(runs, "_mark_complete", lambda run_id, stage, *args: True)
+
+    def command(run_id, stage, cmd, cwd, env):
+        commands.append(cmd[0])
+        if cmd[0] == "om-validate":
+            runs._pipeline_status[run_id] = {"status": "failed", "stage": "7", "error": "Traceback ... KeyError"}
+            return False
+        return True
+
+    monkeypatch.setattr(runs, "_run_cmd", command)
+    assert runs._run_pipeline_stages_6_8("sample", tmp_path, str(tmp_path), {}) is False
+    assert "python" not in commands  # no report to map back; feedback_report.py does not run
+    assert runs._pipeline_status["sample"]["error"].startswith("Traceback")
 
 
 @pytest.mark.parametrize("target", ["scr:PersonRoleCategoryCodeType", "hs:PersonRoleCodeSimpleType", "nc:TextType"])

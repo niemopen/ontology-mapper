@@ -601,6 +601,28 @@ class TestSeedDataIdentity:
         assert 'CREATE (:Fee {feeNumber: "F-1"});' in out
         assert 'CREATE (:Thing {thingId: "T-1"});' in out
 
+    def test_relationship_type_comes_from_the_property_qname_not_the_predicate_iri(self, tmp_path):
+        """CSV ingest records property IRIs as `{ns}#{Class}.{prop}`; the seeded
+        relationship type must match schema.cypher (`HAS_FEE`), not `ACCOUNT.HAS_FEE`."""
+        csv = "https://example.test/csv"
+        account = make_class("csv:Account"); account["iri"] = f"{csv}#Account"
+        fee = make_class("csv:Fee"); fee["iri"] = f"{csv}#Fee"
+        has_fee = make_obj_prop("csv:hasFee", domain=["csv:Account"], range_val=["csv:Fee"])
+        has_fee["iri"] = f"{csv}#Account.hasFee"
+        acct_id = make_dt_prop("csv:accountId", domain=["csv:Account"]); acct_id["iri"] = f"{csv}#Account.accountId"
+        fee_id = make_dt_prop("csv:feeId", domain=["csv:Fee"]); fee_id["iri"] = f"{csv}#Fee.feeId"
+        inv = make_inv([account, fee], obj_props=[has_fee], dt_props=[acct_id, fee_id])
+        inv["primaryNamespace"] = {"prefix": "csv", "uri": csv}
+        matrix = make_matrix([make_mapping("csv:Account", "extend"), make_mapping("csv:Fee", "extend")])
+        out = self._generate(inv, matrix, (
+            f'<https://data.test/a1> a <{csv}#Account> ; <{csv}#Account.accountId> "A-1" ;'
+            f' <{csv}#Account.hasFee> <https://data.test/f1> .\n'
+            f'<https://data.test/f1> a <{csv}#Fee> ; <{csv}#Fee.feeId> "F-1" .\n'
+        ), tmp_path)
+
+        assert "CREATE (a)-[:HAS_FEE]->(b);" in out
+        assert "ACCOUNT.HAS_FEE" not in out
+
     def test_instances_of_other_iris_are_not_seeded(self, tmp_path):
         inv, matrix = self._two_namespace_domain()
         out = self._generate(inv, matrix, (

@@ -30,6 +30,15 @@ def catalog_type_definition(target_type, catalog):
     return None
 
 
+def catalog_type_label(target_type, catalog):
+    """The catalog's display label for a target type (label-bearing catalogs
+    such as SALI-FOLIO), or None when the catalog has none."""
+    for t in catalog.get("types", []):
+        if t.get("qname") == target_type:
+            return t.get("label") or None
+    return None
+
+
 def property_qname_resolver(inventory):
     """Resolve a recorded property name to its inventory QName.
 

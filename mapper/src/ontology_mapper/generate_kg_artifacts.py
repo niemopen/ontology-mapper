@@ -403,8 +403,11 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source):
         "",
     ]
 
-    # Build a set of known relationship property IRIs
-    rel_prop_iris = {op["iri"] for cls in active_classes for op in cls["objectProps"]}
+    # Known relationship properties by IRI. The relationship type comes from
+    # the property's QName, the same derivation schema.cypher and the import
+    # transform use, not from the predicate string: a CSV-shaped property IRI
+    # (`{ns}#{Class}.{prop}`) would otherwise yield `[:CLASS.PROP]`.
+    rel_props = {op["iri"]: op for cls in active_classes for op in cls["objectProps"]}
 
     for subj, pred, obj in sorted(g):
         if pred == RDF.type:
@@ -424,12 +427,12 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source):
             continue
 
         # Must be a known relationship property
-        if pred_str not in rel_prop_iris:
+        if pred_str not in rel_props:
             continue
 
         src_label, src_id = node_identifiers[subj_str]
         tgt_label, tgt_id = node_identifiers[obj_str]
-        rel_name = relationship_type(pred_str.rsplit("/", 1)[-1] if "/" in pred_str else pred_str.rsplit("#", 1)[-1])
+        rel_name = relationship_type(rel_props[pred_str]["qname"])
 
         rel_lines.append(f"MATCH (a:{src_label} {{identifier: \"{src_id}\"}})")
         rel_lines.append(f"MATCH (b:{tgt_label} {{identifier: \"{tgt_id}\"}})")

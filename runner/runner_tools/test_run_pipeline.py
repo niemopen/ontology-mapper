@@ -411,6 +411,24 @@ class TestDispatchReviewAction:
         assert prop["action"] == "reuse-property"
         assert prop["reviewStatus"] == "accepted"
 
+    def test_change_target_to_the_same_class_in_another_spelling_keeps_the_action(self, tmp_path):
+        """A same-identity selection is applied, not cascaded; the dispatcher must
+        supply the action apply_decision requires, or the review loop dies."""
+        import json as _json
+        from ontology_mapper.run_dir_utils import resolve_specs_dir
+
+        catalog = _json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json").read_text(encoding="utf-8"))
+        matrix, dec_log, pending = self._make_context(tmp_path)
+        entry = pending[0]
+        entry["targetType"] = catalog["namespaces"]["nc"] + "PersonType"
+        entry["action"] = "reuse"
+        action = {"action": "change_target", "concept": entry["sourceConcept"], "new_target_type": "nc:PersonType"}
+        msg, applied, _ = _dispatch_review_action(action, tmp_path, matrix, dec_log, pending, ("niem", catalog))
+        assert entry["targetType"] == "nc:PersonType"
+        assert entry["action"] == "reuse"
+        assert entry["ruleId"] == "human-review"
+        assert applied[0]["targetType"] == "nc:PersonType"
+
     def test_search_action(self, tmp_path):
         """Search action calls catalog_search."""
         matrix, dec_log, pending = self._make_context(tmp_path)
@@ -490,6 +508,8 @@ def test_stage_7_writes_feedback_report_before_stopping_on_failed_validation(tmp
     def run_cmd(stage, cmd, cwd=None):
         commands.append(cmd[0])
         if cmd[0] == "om-validate" and not valid:
+            # A failed validation has written its report before exiting nonzero.
+            (tmp_path / "validation-report.json").write_text('{"checks": []}', encoding="utf-8")
             raise StageError(stage, "Command failed (rc=1): om-validate")
         return ""
 
@@ -509,3 +529,24 @@ def test_stage_7_writes_feedback_report_before_stopping_on_failed_validation(tmp
             runner.run_stage_7(tmp_path, [])
         # feedback_report.py ran after the failed validation; mark-complete did not
         assert commands == ["om-validate", "python"]
+
+
+
+def test_stage_7_validator_crash_without_a_report_is_raised_as_is(tmp_path, monkeypatch):
+    """No validation-report.json means the validator crashed, not that checks
+    failed: the error (stderr in its message) is raised; no feedback report runs."""
+    import runner_tools.run_pipeline as runner
+
+    commands = []
+
+    def run_cmd(stage, cmd, cwd=None):
+        commands.append(cmd[0])
+        if cmd[0] == "om-validate":
+            raise StageError(stage, "Command failed (rc=1): om-validate\nTraceback ... KeyError")
+        return ""
+
+    monkeypatch.setattr(runner, "run_cmd", run_cmd)
+    monkeypatch.setattr(runner, "verify_stage", lambda *a: pytest.fail("verify must not run"))
+    with pytest.raises(StageError, match="Traceback"):
+        runner.run_stage_7(tmp_path, [])
+    assert commands == ["om-validate"]
