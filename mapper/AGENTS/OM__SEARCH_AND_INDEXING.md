@@ -26,9 +26,13 @@ result belongs to `(source.parentType, source.qname)`. Shared properties receive
 separate files per parent, and resumption retains existing evaluated files,
 including legacy filenames. A file written before the declared `qname`
 existed recorded every property under its parent's prefix; resumption reuses
-such a file when its local name is unique for that parent (the rule
-`property_qname_resolver` applies to old matrices) and never guesses between
-two. Collection groups by the document's parent rather than deriving identity
+such a file when its local name is unique for that parent on both sides (one
+unclaimed legacy file, one current property), never guesses between two, and
+rewrites the file's `source.qname` and `evaluation.sourceProperty` to the
+declared identity so the mis-qualified name does not leave this stage —
+downstream local-name resolution is inventory-wide, not per parent, and would
+silently drop the decision when another parent shares the local name.
+Collection groups by the document's parent rather than deriving identity
 from its filename.
 
 ### Vector index infrastructure

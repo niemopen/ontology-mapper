@@ -254,6 +254,30 @@ def build_property_file(
 # Writing
 # ---------------------------------------------------------------------------
 
+def _requalify_property_file(filepath: Path, qname: str) -> None:
+    """Give a legacy property file the identity the source ontology declares.
+
+    The file was written with the property qualified under its parent's
+    prefix. Everything downstream — collection, the matrix builder, the
+    emitters' property lookups — keys the decision by ``sourceProperty``,
+    and the local-name fallback those stages apply is inventory-wide, not
+    per parent, so the mis-qualified name must not leave this stage. The
+    status, evaluation and candidates are kept; only the identity changes.
+    """
+    doc = json.loads(filepath.read_text(encoding="utf-8"))
+    recorded = doc.get("source", {}).get("qname")
+    if recorded == qname:
+        return
+    doc.setdefault("source", {})["qname"] = qname
+    evaluation = doc.get("evaluation")
+    if isinstance(evaluation, dict) and evaluation.get("sourceProperty") == recorded:
+        evaluation["sourceProperty"] = qname
+    filepath.write_text(
+        json.dumps(doc, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+
+
 def _write_file(filepath: Path, doc: dict) -> bool:
     """Write a search-result file, skipping evaluated ones.
 
@@ -369,6 +393,7 @@ def write_search_results(
                 legacy = legacy_paths.get(legacy_key, [])
                 if len(legacy) == 1 and current_locals[legacy_key] == 1:
                     filepath = legacy.pop()
+                    _requalify_property_file(filepath, pq)
                     occurrence_paths[identity] = filepath
             if filepath is None:
                 filename = sanitize_filename(pq) + ".json"

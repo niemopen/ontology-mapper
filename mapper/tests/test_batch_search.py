@@ -102,9 +102,38 @@ def test_legacy_file_qualified_under_parent_prefix_is_reused_not_duplicated(tmp_
     props_dir = tmp_path / "search-results" / "properties"
     assert counts["props_skipped"] == 1 and counts["props_written"] == 0
     assert sorted(p.name for p in props_dir.glob("*.json")) == ["src_flag.json"]
-    from ontology_mapper.collect_alignments import load_search_results
-    _, props = load_search_results(tmp_path)
+    from ontology_mapper.collect_alignments import load_search_results, reassemble_evaluations
+    types, props = load_search_results(tmp_path)
     assert [(p["status"], p["evaluation"]["targetProperty"]) for _, p in props] == [("evaluated", "nc:Saved")]
+    # The reused file now carries the declared identity, so the decision
+    # reaches collection as `other:flag` — the identity the inventory and the
+    # emitters key by — with no inventory-wide local-name resolution needed.
+    assert [p["source"]["qname"] for _, p in props] == ["other:flag"]
+    assert [p["evaluation"]["sourceProperty"] for _, p in props] == ["other:flag"]
+    for filename, doc in types:
+        doc.update(status="evaluated", evaluation={"sourceConcept": doc["source"]["qname"]})
+        (tmp_path / "search-results" / "types" / filename).write_text(json.dumps(doc), encoding="utf-8")
+    [combined] = reassemble_evaluations(*load_search_results(tmp_path))
+    assert [(p["sourceProperty"], p["targetProperty"]) for p in combined["properties"]] == [("other:flag", "nc:Saved")]
+
+
+def test_requalified_legacy_file_is_matched_exactly_on_the_next_resume(tmp_path):
+    """After the first resume the file is `other:flag`; a later `x:flag` on the
+    same parent gets its own file and the evaluated decision is untouched."""
+    _write_evaluated_property_file(tmp_path, "src_flag.json", "src:A", "src:flag", "nc:Saved")
+    first = [{"qname": "src:A", "definition": "", "properties": [{"name": "flag", "qname": "other:flag"}]}]
+    write_search_results(tmp_path, first, {}, {"src:A": {"other:flag": [PROP_CANDIDATE]}})
+
+    later = [{"qname": "src:A", "definition": "", "properties": [
+        {"name": "flag", "qname": "other:flag"}, {"name": "flag", "qname": "x:flag"}]}]
+    counts = write_search_results(tmp_path, later, {}, {"src:A": {
+        "other:flag": [PROP_CANDIDATE], "x:flag": [PROP_CANDIDATE]}})
+
+    props_dir = tmp_path / "search-results" / "properties"
+    assert counts["props_skipped"] == 1 and counts["props_written"] == 1
+    assert sorted(p.name for p in props_dir.glob("*.json")) == ["src_flag.json", "x_flag.json"]
+    kept = json.loads((props_dir / "src_flag.json").read_text(encoding="utf-8"))
+    assert kept["source"]["qname"] == "other:flag" and kept["evaluation"]["targetProperty"] == "nc:Saved"
 
 
 def test_ambiguous_legacy_local_name_is_not_guessed(tmp_path):
