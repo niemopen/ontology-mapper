@@ -114,7 +114,13 @@ sees what needs attention.
 - `package-manifest.json` has accurate stats matching actual artifact counts
 
 Property decisions are resolved by source QName through `generation_utils.py`;
-legacy local names are matched only when unique. Accepted reuse references the
+a legacy local name is matched only when unique AND when the concept owns a
+property of that name, asked through `build_class_properties` — domains and
+shape paths, the same predicate the matrix was built from, because a
+property whose domain sits on a parent and whose shape sits on the child is
+an ordinary source shape. Every caller passes the concept, so the emitters
+and the extension catalog resolve identically. Two rows that resolve to one
+decision refuse the run and name both, unless they record the same decision. Accepted reuse references the
 target property without redeclaring its domain or range. OWL retains those
 references even without source shapes; CMF augmentation records retain borrowed
 properties and their occurrence bounds.
@@ -164,21 +170,44 @@ collapse into one type carrying both superclasses, both labels and both
 property sets. `generation_utils.colliding_edge_class_names` asks this and
 generation refuses before writing anything.
 
-A property inherited from a class the reviewer excluded is named by the
-class that emits it, not by the declaring one: an excluded parent mints
-nothing, and minting `ext:` there while the emitting reuse class declares
-`edge:` ships shapes that reject every conformant instance and accept one
-carrying a term no file declares. Where two declaring parents mapped one
+A property inherited from a class that emits nothing — one the reviewer
+excluded, or one with no decision — is named by the nearest ancestor that
+does emit, walking up from the declaring class and falling back to the leaf
+carrying the shape. Taking the leaf directly named `edge:` for a term only
+a grandparent's extension declares. Where two declaring parents mapped one
 source property to different target properties, the shape offers them as a
 single `sh:alternativePath` — one source property, either identity, the
-source model's bounds counted across both.
+source model's bounds counted across both. A consequence worth knowing
+downstream: `sh:maxCount` then counts values across the alternatives, so
+data carrying two of the target properties fails the source model's
+single-value bound; that is the source model speaking, not a data error.
+
+The package is referentially closed in its own namespaces: generation
+refuses when a `sh:path` names an edge or ext term no ontology file here
+declares (`generate_edge_ontology.undeclared_shape_paths`). Two defects of
+exactly that shape shipped with exit 0 — Turtle parses, SHACL conforms, and
+none of Stage 7's twelve checks asks the question.
+
+Known limitation, not yet fixed: a shared target's `sh:or` has one branch
+per source class, and a class with no active constraints contributes an
+unconstrained branch, which any instance of the shared target satisfies.
+Enforcing each source class's profile on its own instances needs the shapes
+to target the emitted `edge:`/`ext:` classes rather than the target type.
 
 The extension catalog lists what the model declares. The emitters walk the
 inventory and declare a created term for any property with no accepted
 reuse target, pending decision or not, so the catalog asks the same
 question (`generation_utils.created_property_is_declared`) and names — in
 the same refusal as an unqualifiable prefix — a decision whose property
-this run's inventory does not carry.
+this run does not carry. Carrying is `build_class_properties` again: a
+property the source declares only through a SHACL shape is a property of
+that class, and Stage 3/4 writes decisions for it.
+
+A `pending-review` class mapping is not emitted by either generator
+(`generation_utils.emitted_class_action`). Review exit blocks pending
+concepts, so an emitter meeting one means review was bypassed; emitting it
+would ship a class decision the reviewer never made, and OWL and CMF must
+agree about that or they disagree about what the package contains.
 
 Generation refuses a saved class target the target ontology's class policy
 rejects (`ontology_specific.invalid_class_targets`) before writing any artifact,

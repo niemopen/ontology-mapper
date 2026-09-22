@@ -32,6 +32,7 @@ OWL_CLASS = "http://www.w3.org/2002/07/owl#Class"
 from ontology_mapper.run_dir_utils import utc_stamp
 from ontology_mapper.generation_utils import (
     component_iri,
+    emitted_class_action,
     is_full_iri,
     local_name,
     edge_class_name,
@@ -103,6 +104,32 @@ def load_stage_data(ctx):
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+def undeclared_shape_paths(core_ttl, ext_ttl, shapes_ttl, own_namespaces):
+    """Shape paths in the package's own namespaces that it never declares.
+
+    A shape constraining a term no ontology file defines rejects data that is
+    correct and accepts data using a predicate nothing describes, and the run
+    still exits 0: Turtle parses, SHACL conforms, and none of Stage 7's checks
+    asks. Terms in target or source namespaces are references, not this
+    package's to declare, so only its own two namespaces are asked about.
+    """
+    from rdflib import Graph
+    from rdflib.namespace import SH
+
+    declared = set()
+    for text in (core_ttl, ext_ttl):
+        for subject in Graph().parse(data=text, format="turtle").subjects():
+            declared.add(str(subject))
+    shapes = Graph().parse(data=shapes_ttl, format="turtle")
+    paths = {str(o) for o in shapes.objects(None, SH.path)}
+    paths |= {str(o) for o in shapes.objects(None, SH.alternativePath)
+              if not str(o).startswith("N")}  # list heads are blank nodes
+    for alternatives in shapes.objects(None, SH.alternativePath):
+        paths |= {str(item) for item in shapes.items(alternatives)}
+    return sorted(term for term in paths
+                  if term.startswith(tuple(own_namespaces)) and term not in declared)
+
+
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="Stage 6a: Generate edge ontology TTL files")
@@ -176,11 +203,36 @@ def main():
             return term if term.split(":")[0] in bound_prefixes else None
         return None
 
+    def emitting_action(context, emitting_leaf):
+        """The action that names a property inherited from `context`.
+
+        A class the reviewer excluded — or one with no decision — mints
+        nothing, so the identity belongs to the nearest ancestor that does
+        emit, walking up from the declaring class and falling back to the
+        leaf that carries the shape. Taking the leaf directly names
+        `edge:` for a property only a grandparent's extension declares.
+        """
+        seen = set()
+        pending = [context]
+        while pending:
+            qname = pending.pop(0)
+            if qname in seen:
+                continue
+            seen.add(qname)
+            action = classify_concept(qname)[0]
+            if action in ("reuse", "extend", "augment"):
+                return action
+            pending.extend(class_by_qname.get(qname, {}).get("subClassOf", []))
+        return classify_concept(emitting_leaf)[0]
+
     def classify_concept(qname):
         m = mapping_by_concept.get(qname)
         if not m:
             return None, None
-        return m["action"], m.get("targetType")
+        action = emitted_class_action(m)
+        if action is None:
+            return None, None
+        return action, m.get("targetType")
 
     def is_source_class_ref(iri):
         return iri.startswith(SOURCE_PREFIX)
@@ -300,7 +352,12 @@ def main():
         | {q for q, _, _, _, _ in augment_classes}
     )
 
-    collisions = colliding_edge_class_names(all_active_qnames)
+    # Reuse and extend only: an augmentation declares no class of its own in
+    # OWL (`emit_augmentation_props` puts the properties on the augmented
+    # target), so two augmentations, or an augmentation beside a reuse class,
+    # share no emitted name and must not be refused.
+    collisions = colliding_edge_class_names(
+        [q for q, _, _, _ in reuse_classes] + [q for q, _, _, _ in extend_classes])
     if collisions:
         details = "\n".join(f"  - {name}: {', '.join(qnames)}"
                             for name, qnames in collisions.items())
@@ -732,18 +789,8 @@ def main():
                             else declaring_sources)
                 path_refs = set()
                 for context in contexts:
-                    action = classify_concept(context)[0]
-                    if action not in ("reuse", "extend", "augment"):
-                        # A parent the reviewer excluded — or one with no
-                        # decision at all — mints nothing. The identity of
-                        # an inherited property belongs to the class that
-                        # emits it: minting `ext:` here while the emitting
-                        # reuse class declares `edge:` ships shapes that
-                        # reject every conformant instance and accept one
-                        # carrying a term no file declares.
-                        action = classify_concept(target_src)[0]
-                    path_refs.add(
-                        resolve_property_ref(prop["path"], context, action))
+                    path_refs.add(resolve_property_ref(
+                        prop["path"], context, emitting_action(context, target_src)))
                 refs = sorted(ref for ref in path_refs if ref is not None)
                 if refs:
                     emittable.append((prop, refs))
@@ -907,6 +954,14 @@ def main():
             + "\n".join(branches) + "\n    ) .\n")
 
     shapes_ttl = shapes_header + "\n".join(shapes_body) + "\n"
+
+    undeclared = undeclared_shape_paths(core_ttl, ext_ttl, shapes_ttl,
+                                        (EDGE_NS, EXT_NS))
+    if undeclared:
+        raise ValueError(
+            f"{len(undeclared)} SHACL path(s) name a term in this package's own "
+            f"namespaces that no ontology file declares:\n"
+            + "\n".join(f"  - {term}" for term in undeclared))
 
     # vocab/{SOURCE}-edge-codelists.ttl
     codelists_header = f"""{PREFIXES}

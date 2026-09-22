@@ -199,6 +199,9 @@ def test_reset_without_a_stage_4_snapshot_does_not_claim_to_reset(run_context):
 
     response = client.post("/runs/sample/review/reset")
     assert response.status_code == 404, response.text
+    # The 404 carries the same next step the execute 409 gives, so
+    # following the product's advice twice does not dead-end.
+    assert "om-build-matrix --force" in response.json()["detail"]
 
 
 def test_reset_reports_a_snapshot_that_itself_carries_decisions(run_context):

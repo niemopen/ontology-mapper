@@ -371,7 +371,11 @@ async def reset_review(run_id: str, user: dict = Depends(require_auth), org: str
     run_dir = _run_dir(org, run_id)
     snapshot = run_dir / STAGE4_SNAPSHOT
     if not snapshot.exists():
-        raise HTTPException(status_code=404, detail="No Stage 4 snapshot found — nothing to reset to")
+        raise HTTPException(
+            status_code=404,
+            detail="No Stage 4 snapshot found — nothing to reset to. This run's "
+                   "review came from outside the web; rebuild the matrix with "
+                   "`om-build-matrix --force` to start the review over.")
 
     # Restore mapping matrix from snapshot
     matrix_file = run_dir / "mapping-matrix.json"

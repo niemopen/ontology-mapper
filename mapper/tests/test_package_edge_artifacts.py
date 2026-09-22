@@ -339,3 +339,36 @@ class TestConceptsMissingFromTheInventory:
                                    baseType="nc:PersonType", propertyMappings=[])])
         with pytest.raises(ValueError, match="src:Gone"):
             build_extension_catalog(matrix, context, inventory, {})
+
+
+class TestShapeOnlyProperties:
+    """`build_class_properties` harvests shape paths as class properties, so
+    Stage 3/4 legitimately writes a decision for a property the source
+    declares only through a shape. Packaging must not call that unknown."""
+
+    def test_a_property_declared_only_by_a_shape_is_packaged(self):
+        from pathlib import Path
+        from ontology_mapper.pipeline_context import PipelineContext
+        context = PipelineContext(Path("run"), Path("run/edge-package"),
+                                  "example", "source", "niem", "6.0")
+        inventory = {"classes": [{"qname": "src:Thing",
+                                  "iri": "https://sample.test/src/Thing"}],
+                     "namespaceMap": {"https://sample.test/src/": "src:"},
+                     "objectProperties": [],
+                     "datatypeProperties": [{"qname": "src:declared",
+                                             "domain": ["src:Thing"]}],
+                     "shaclShapes": [{"targetClasses": ["src:Thing"],
+                                      "properties": [{"path": "src:shapeOnly"}]}]}
+        matrix = _matrix([_mapping("src:Thing", "extend", "nc:PersonType",
+                                   baseType="nc:PersonType",
+                                   propertyMappings=[
+                                       {"sourceProperty": "src:declared",
+                                        "action": "create-property",
+                                        "reviewStatus": "accepted"},
+                                       {"sourceProperty": "src:shapeOnly",
+                                        "action": "create-property",
+                                        "reviewStatus": "accepted"}])])
+        catalog = build_extension_catalog(matrix, context, inventory, {})
+        assert sorted(local.rsplit("#", 1)[-1]
+                      for local in catalog["extensions"][0]["properties"]) == [
+            "declared", "shapeOnly"]

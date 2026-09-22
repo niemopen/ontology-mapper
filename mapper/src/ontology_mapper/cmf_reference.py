@@ -52,9 +52,12 @@ def load_reference_cmf(target_ontology: str, target_version: str):
 
     if not inside(Path(os.path.abspath(path))) or not inside(path.resolve()):
         raise ValueError("CMF reference path escapes the configured specs directory")
-    if not path.exists():
+    try:
+        return _read_reference_cmf(str(path), path.stat().st_mtime_ns)
+    except OSError:
+        # Absent, or removed between the check and the read: the
+        # contract is "None when not installed", not a traceback.
         return None
-    return _read_reference_cmf(str(path), path.stat().st_mtime_ns)
 
 
 @lru_cache(maxsize=2)

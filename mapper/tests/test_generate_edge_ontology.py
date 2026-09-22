@@ -1146,3 +1146,197 @@ class TestEmittedIdentityAcrossFiles:
         text = " ".join(files.values())
         assert "@prefix j:" in text
         assert "j:CaseType" in text
+
+
+class TestRefusalsDoNotFireOnLegitimateRuns:
+    """The author's pass on the emitted-name refusal: it must fire only
+    where two concepts really do emit one name."""
+
+    def _run(self, tmp_path, monkeypatch, mappings, classes):
+        import json as _json
+        from ontology_mapper import generate_edge_ontology
+
+        inventory = {"classes": classes, "datatypeProperties": [],
+                     "objectProperties": [], "shaclShapes": [],
+                     "codelistSchemes": [],
+                     "augmentingNamespaces": [{"prefix": "aug:",
+                                               "namespace": "https://aug.test/ns#"}],
+                     "primaryNamespace": {"prefix": "src",
+                                          "namespace": "https://sample.test/src/"},
+                     "namespaceMap": {"https://sample.test/src/": "src:"}}
+        (tmp_path / "concept-inventory.json").write_text(
+            _json.dumps(inventory), encoding="utf-8")
+        (tmp_path / "mapping-matrix.json").write_text(
+            _json.dumps({"mappings": mappings}), encoding="utf-8")
+        (tmp_path / ".mapper-state.json").write_text(_json.dumps({"inputs": {
+            "organization": "sample", "source": "sample",
+            "target_ontology": "niem", "target_version": "6.0"}}), encoding="utf-8")
+        monkeypatch.setattr("sys.argv",
+                            ["om-generate-ontology", "--run-dir", str(tmp_path)])
+        generate_edge_ontology.main()
+        return " ".join(f.read_text(encoding="utf-8")
+                        for f in (tmp_path / "edge-package").rglob("*.ttl"))
+
+    def _classes(self):
+        return [{"qname": "src:Thing", "iri": "https://sample.test/src/Thing",
+                 "label": "Source Thing", "comment": "", "subClassOf": []},
+                {"qname": "aug:Thing", "iri": "https://aug.test/ns#Thing",
+                 "label": "Augmenting Thing", "comment": "", "subClassOf": []}]
+
+    def _row(self, concept, action, **extra):
+        row = {"sourceConcept": concept, "action": action,
+               "targetType": "nc:PersonType", "reviewStatus": "accepted",
+               "propertyMappings": []}
+        row.update(extra)
+        return row
+
+    def test_two_augmentations_sharing_a_local_name_still_generate(self, tmp_path, monkeypatch):
+        """An augmentation declares no class of its own in OWL — its
+        properties land on the augmented target — so two augmentations share
+        no emitted class name."""
+        ttl = self._run(tmp_path, monkeypatch, [
+            self._row("src:Thing", "augment", augmentsType="nc:PersonType",
+                      augmentationType="SourceThingAugmentationType"),
+            self._row("aug:Thing", "augment", augmentsType="nc:PersonType",
+                      augmentationType="AugThingAugmentationType")],
+            self._classes())
+        assert "Augmentation of nc:PersonType" in ttl
+
+    def test_a_reuse_class_beside_an_augmentation_still_generates(self, tmp_path, monkeypatch):
+        ttl = self._run(tmp_path, monkeypatch, [
+            self._row("src:Thing", "reuse"),
+            self._row("aug:Thing", "augment", augmentsType="nc:PersonType",
+                      augmentationType="AugThingAugmentationType")],
+            self._classes())
+        assert "sample-edge:ThingType" in ttl or "ThingType" in ttl
+
+    def test_a_pending_class_mapping_is_not_emitted(self, tmp_path, monkeypatch):
+        """"Only emit accepted mappings" (OM__GENERATORS.md). Review exit
+        blocks pending concepts, so this is the by-hand path: emitting one
+        ships a class decision the reviewer never made."""
+        ttl = self._run(tmp_path, monkeypatch, [
+            self._row("src:Thing", "reuse"),
+            dict(self._row("aug:Thing", "reuse"), reviewStatus="pending-review")],
+            self._classes())
+        assert "Augmenting Thing" not in ttl
+        assert "Source Thing" in ttl
+
+
+class TestInheritedIdentityThroughChains:
+    """Every `sh:path` must name a term some ontology file declares, and an
+    accepted reuse decision must survive an inherited property."""
+
+    TARGET = TestSharedSourceProfiles.TARGET
+
+    def _cls(self, name, parents=()):
+        return {"qname": "src:" + name, "iri": "https://sample.test/src/" + name,
+                "label": name, "comment": "",
+                "subClassOf": ["src:" + p for p in parents]}
+
+    def _row(self, concept, action, **extra):
+        row = {"sourceConcept": "src:" + concept, "action": action,
+               "targetType": "nc:BaseType", "reviewStatus": "accepted",
+               "propertyMappings": []}
+        row.update(extra)
+        return row
+
+    def test_an_excluded_middle_parent_does_not_rename_the_declaring_extension(self):
+        """The nearest EMITTING ancestor names the property. Taking the leaf
+        named `edge:` for a term only the grandparent's extension declares —
+        a shape constraining a predicate no file defines, exit 0."""
+        inventory = TestNiemOWLPatterns._minimal_inventory(
+            [self._cls("Grand"), self._cls("Middle", ["Grand"]),
+             self._cls("Child", ["Middle"]), self._cls("Other")],
+            dt_props=[{"qname": "src:code", "label": "code",
+                       "domain": ["src:Grand"], "range": []}],
+            shapes=[{"targetClasses": ["src:Grand"],
+                     "properties": [{"path": "src:code", "minCount": 1}]}])
+        matrix = {"mappings": [
+            self._row("Grand", "extend", baseType="nc:BaseType"),
+            self._row("Middle", "exclude"),
+            self._row("Child", "reuse"),
+            self._row("Other", "reuse")]}
+        files = TestNiemOWLPatterns._run_generation(
+            inventory, matrix, catalog={"namespaces": {"nc": self.TARGET}})
+        shapes = files["test-edge-shapes.ttl"]
+        assert "ext:code" in shapes
+        assert "test-edge:code" not in shapes
+
+    def test_an_accepted_reuse_decision_survives_an_inherited_property(self):
+        """The property's domain is on the parent and the child's own shape
+        attaches it; the decision was recorded under the legacy
+    parent-prefix spelling. Dropping it would ship a created term where
+        the reviewer accepted reuse of a target property."""
+        inventory = TestNiemOWLPatterns._minimal_inventory(
+            [self._cls("Parent"), self._cls("Kid", ["Parent"])],
+            dt_props=[{"qname": "aug:code", "label": "code",
+                       "domain": ["src:Parent"], "range": []}],
+            shapes=[{"targetClasses": ["src:Kid"],
+                     "properties": [{"path": "aug:code", "minCount": 1}]}])
+        inventory["augmentingNamespaces"] = [{"prefix": "aug:",
+                                              "namespace": "https://aug.test/ns#"}]
+        matrix = {"mappings": [
+            self._row("Parent", "reuse"),
+            dict(self._row("Kid", "reuse"), propertyMappings=[
+                {"sourceProperty": "src:code", "action": "reuse-property",
+                 "reviewStatus": "accepted", "targetProperty": "nc:PersonFullName"}])]}
+        files = TestNiemOWLPatterns._run_generation(
+            inventory, matrix, catalog={"namespaces": {"nc": self.TARGET}})
+        shapes = files["test-edge-shapes.ttl"]
+        assert "nc:PersonFullName" in shapes
+        assert "aug:code" not in shapes
+
+    def test_one_target_named_two_ways_is_one_shared_target(self):
+        """A pre-policy matrix can carry the IRI beside the QName. Comparing
+        identities through `component_iri` is what makes them one target; a
+        concatenated spelling made two, each with its own constraints."""
+        inventory = TestNiemOWLPatterns._minimal_inventory(
+            [self._cls("A"), self._cls("B")])
+        matrix = {"mappings": [
+            dict(self._row("A", "reuse"), targetType="nods:BondType"),
+            dict(self._row("B", "reuse"),
+                 targetType="http://ncsc.org/nods/nods/BondType")]}
+        files = TestNiemOWLPatterns._run_generation(
+            inventory, matrix,
+            catalog={"namespaces": {"nods": "http://ncsc.org/nods/nods"}})
+        text = " ".join(files.values())
+        assert "http://ncsc.org/nods/nodsBondType" not in text
+        assert text.count("sh:targetClass") <= 2
+
+
+class TestReferentialClosure:
+    """A shape may not constrain a term no ontology file in the package
+    declares. Two defects of that shape shipped with exit 0, and none of
+    Stage 7's twelve checks asks the question."""
+
+    CORE = ("@prefix owl: <http://www.w3.org/2002/07/owl#> .\n"
+            "@prefix edge: <https://e.test/edge#> .\n"
+            "@prefix ext: <https://e.test/ext#> .\n"
+            "edge:declared a owl:DatatypeProperty .\n")
+
+    SHAPES_HEAD = ("@prefix edge: <https://e.test/edge#> .\n"
+                   "@prefix ext: <https://e.test/ext#> .\n"
+                   "@prefix nc: <https://target.test/> .\n"
+                   "@prefix sh: <http://www.w3.org/ns/shacl#> .\n")
+
+    OWN = ("https://e.test/edge#", "https://e.test/ext#")
+
+    def _ask(self, shapes_body):
+        from ontology_mapper.generate_edge_ontology import undeclared_shape_paths
+        return undeclared_shape_paths(self.CORE, "",
+                                      self.SHAPES_HEAD + shapes_body, self.OWN)
+
+    def test_a_declared_term_is_closed(self):
+        assert self._ask("[] a sh:NodeShape ; sh:property [ sh:path edge:declared ] .") == []
+
+    def test_an_undeclared_term_is_named(self):
+        assert self._ask("[] a sh:NodeShape ; sh:property [ sh:path edge:missing ] .") == [
+            "https://e.test/edge#missing"]
+
+    def test_an_undeclared_alternative_is_named(self):
+        body = ("[] a sh:NodeShape ; sh:property [ sh:path "
+                "[ sh:alternativePath (edge:declared edge:missing) ] ] .")
+        assert self._ask(body) == ["https://e.test/edge#missing"]
+
+    def test_a_target_namespace_term_is_not_this_package_to_declare(self):
+        assert self._ask("[] a sh:NodeShape ; sh:property [ sh:path nc:PersonName ] .") == []

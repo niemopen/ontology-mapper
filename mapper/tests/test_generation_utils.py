@@ -461,3 +461,32 @@ class TestCollidingPropertyDecisions:
             {"sourceProperty": "dbpi:widgetId", "action": "create-property",
              "reviewStatus": "accepted"}]), inventory)
         assert set(index) == {("dbpi:Fee", "dbpi:widgetId")}
+
+
+class TestDuplicateDecisionRows:
+    """A duplicated row is one decision: refusing it would stop a run over
+    an editing slip that changes nothing."""
+
+    def _matrix(self, rows):
+        return {"mappings": [{"sourceConcept": "src:Fee", "propertyMappings": rows}]}
+
+    def _inventory(self):
+        return {"objectProperties": [],
+                "datatypeProperties": [{"qname": "src:code", "domain": ["src:Fee"]}]}
+
+    def test_two_identical_rows_are_one_decision(self):
+        from ontology_mapper.generation_utils import property_mapping_index
+        row = {"sourceProperty": "src:code", "action": "reuse-property",
+               "reviewStatus": "accepted", "targetProperty": "nc:CodeText"}
+        index = property_mapping_index(self._matrix([dict(row), dict(row)]),
+                                       self._inventory())
+        assert set(index) == {("src:Fee", "src:code")}
+
+    def test_two_rows_that_disagree_are_still_refused(self):
+        from ontology_mapper.generation_utils import property_mapping_index
+        accepted = {"sourceProperty": "src:code", "action": "reuse-property",
+                    "reviewStatus": "accepted", "targetProperty": "nc:CodeText"}
+        other = {"sourceProperty": "src:code", "action": "create-property",
+                 "reviewStatus": "pending-review"}
+        with pytest.raises(ValueError, match="resolve to a decision"):
+            property_mapping_index(self._matrix([accepted, other]), self._inventory())

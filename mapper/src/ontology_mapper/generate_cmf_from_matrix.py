@@ -19,6 +19,7 @@ from ontology_mapper.owl_cmf_bridge import (
     CmfRestriction,
 )
 from ontology_mapper.generation_utils import (
+    emitted_class_action,
     local_name,
     edge_class_name,
     infer_domains_from_shapes,
@@ -165,9 +166,9 @@ class MatrixToCmfBuilder:
         for cls in self.inventory["classes"]:
             qname = cls["qname"]
             m = self._mapping_by_concept.get(qname)
-            if not m:
+            action = emitted_class_action(m)
+            if action is None:
                 continue
-            action = m["action"]
             target = m.get("targetType")
             if action == "reuse":
                 self._reuse.append((qname, target, cls["label"], cls["comment"]))
@@ -446,9 +447,9 @@ class MatrixToCmfBuilder:
     def _map_source_class_ref(self, qname: str) -> str:
         """Map a source class reference to a CMF class id via the mapping matrix."""
         m = self._mapping_by_concept.get(qname)
-        if not m:
+        action = emitted_class_action(m)
+        if action is None:
             return ""
-        action = m["action"]
         target = m.get("targetType")
 
         if action == "reuse" and target:
@@ -539,7 +540,7 @@ class MatrixToCmfBuilder:
                 # index uses. Reading the raw `sourceProperty` here meant a
                 # mis-qualified augmenting-namespace name failed the
                 # inventory lookup and the decision vanished silently.
-                prop_qname = self._resolve_prop_qname(pm.get("sourceProperty", ""))
+                prop_qname = self._resolve_prop_qname(pm.get("sourceProperty", ""), qname)
                 prop_data = (self._obj_by_qname.get(prop_qname)
                              or self._dt_by_qname.get(prop_qname))
                 if prop_data is None:

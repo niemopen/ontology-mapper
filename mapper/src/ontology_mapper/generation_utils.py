@@ -58,9 +58,10 @@ def property_qname_resolver(inventory):
     that incorrectly used the parent concept's namespace. Ambiguous names
     remain unresolved; never guess between properties sharing a local name.
     """
+    from ontology_mapper.build_strategy_reports import build_class_properties
+
     known = set()
     by_local = {}
-    domains = {}
     inventory = inventory or {}
     for prop in ((inventory.get("objectProperties") or [])
                  + (inventory.get("datatypeProperties") or [])):
@@ -69,24 +70,40 @@ def property_qname_resolver(inventory):
             continue
         known.add(qname)
         by_local.setdefault(local_name(qname), []).append(qname)
-        domains[qname] = set(prop.get("domain") or [])
+    # "Which properties belong to this class" already has one home, and
+    # it reads domains AND shape paths: a property declared with its
+    # domain on a parent and attached to the child by the child's shape
+    # is an ordinary source shape, and a domain-only test drops exactly
+    # the population this fallback exists for.
+    class_properties = build_class_properties(inventory)
 
     def resolve(name, concept=None):
         if not known or name in known:
             return name
         candidates = by_local.get(local_name(name), [])
-        if concept is not None and any(domains.get(q) for q in candidates):
-            # The mis-qualification this fallback exists for is a
-            # namespace error on the concept's own property; a unique
-            # local name on a DIFFERENT class is a different property,
-            # and renaming the decision onto it invents a mapping. Only
-            # where the inventory states domains: a property associated
-            # through a SHACL shape declares none, and scoping by an
-            # absent domain would drop the very case this resolves.
-            candidates = [q for q in candidates if concept in domains.get(q, set())]
+        if concept is not None and class_properties:
+            # A unique local name on a class that does not own it is a
+            # different property; renaming a decision onto it invents a
+            # mapping the reviewer never made. Asked only when the inventory
+            # says something about ownership at all — an inventory with
+            # neither domains nor shapes cannot answer it, and guessing
+            # there is the old behaviour these callers relied on.
+            owned = class_properties.get(concept, set())
+            candidates = [q for q in candidates if q in owned]
         return candidates[0] if len(candidates) == 1 else name
 
     return resolve
+
+
+def _same_decision(first, second):
+    """Whether two rows record the same decision, spelling aside.
+
+    `sourceProperty` is excluded: a legacy spelling beside the declared one is
+    exactly how two rows come to resolve to one key.
+    """
+    def body(pm):
+        return {k: v for k, v in pm.items() if k != "sourceProperty"}
+    return body(first) == body(second)
 
 
 def property_mapping_index(matrix, inventory=None):
@@ -96,8 +113,8 @@ def property_mapping_index(matrix, inventory=None):
     declared one in a matrix saved before the identity rule, or edited by
     hand. Last-write-wins there would let row order decide whether an
     accepted reuse decision or a pending created property reaches the
-    emitters, so an accepted decision always wins and the loser is
-    reported rather than dropped in silence.
+    emitters, so the run refuses and names both rows. Two rows recording
+    the SAME decision are one decision and pass.
     """
     resolve = property_qname_resolver(inventory)
     index = {}
@@ -110,10 +127,12 @@ def property_mapping_index(matrix, inventory=None):
             if previous is None:
                 index[key] = pm
                 continue
+            if _same_decision(previous, pm):
+                # A duplicated row carries no ambiguity: the same decision
+                # twice is one decision, and refusing it would stop a run
+                # over an editing slip that changes nothing.
+                continue
             collisions.append((key, previous, pm))
-            if (previous.get("reviewStatus") != "accepted"
-                    and pm.get("reviewStatus") == "accepted"):
-                index[key] = pm
     if collisions:
         raise ValueError(
             f"{len(collisions)} property decision(s) resolve to a decision "
@@ -265,6 +284,19 @@ def local_name(qname_or_iri):
     return qname_or_iri
 
 
+def emitted_class_action(entry):
+    """The action the emitters act on for a mapping entry, or None.
+
+    "Only emit accepted mappings" — a `pending-review` entry is not one,
+    and review exit blocks pending concepts, so reaching an emitter with
+    one means review was bypassed. OWL and CMF must agree about that or
+    they disagree about which classes the package contains.
+    """
+    if not entry or entry.get("reviewStatus") == "pending-review":
+        return None
+    return entry.get("action")
+
+
 def edge_class_name(qname):
     """Map source class qname to edge type name (e.g. prefix:Permit → PermitType)."""
     return local_name(qname) + "Type"
@@ -277,8 +309,9 @@ def colliding_edge_class_names(concepts):
     local name across source namespaces — which augmenting and other
     non-primary namespaces make ordinary — collapse into a single emitted
     type carrying both superclasses, both labels and both property sets.
-    No emitter can tell them apart afterwards, so the generators ask this
-    first and refuse.
+    No emitter can tell them apart afterwards, so the OWL generator — the
+    entry every driver passes through, and the one that emits the class
+    blocks — asks this before writing anything and refuses.
 
     Returns {emitted name: [source concepts]} for the colliding names only.
     """

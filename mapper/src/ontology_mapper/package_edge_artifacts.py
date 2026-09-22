@@ -25,6 +25,7 @@ from pathlib import Path
 from ontology_mapper.run_dir_utils import utc_stamp
 
 from ontology_mapper.pipeline_context import load_context
+from ontology_mapper.build_strategy_reports import build_class_properties
 from ontology_mapper.generation_utils import (
     created_property_is_declared,
     component_iri, created_property_qname, edge_class_name,
@@ -105,9 +106,11 @@ def build_extension_catalog(matrix, ctx, inventory, target_ns_map):
                   "ext": ctx.extension_namespace}
     namespaces.update({prefix: uri for prefix, uri in bindings.values()})
     primary = source_prefix(inventory)
-    declared_properties = {p.get("qname") for p in
-                           (inventory.get("objectProperties") or [])
-                           + (inventory.get("datatypeProperties") or [])}
+    # The same predicate Stage 3/4 built the decisions from: a property
+    # the source declares only through a SHACL shape is a property of
+    # that class, and the emitters reference it.
+    class_properties = build_class_properties(inventory)
+    declared_properties = {q for props in class_properties.values() for q in props}
     unresolved = []
     extensions = []
     for m in matrix["mappings"]:
@@ -136,7 +139,7 @@ def build_extension_catalog(matrix, ctx, inventory, target_ns_map):
                 continue
             if not created_property_is_declared(decision):
                 continue
-            recorded = resolve_property(decision["sourceProperty"])
+            recorded = resolve_property(decision["sourceProperty"], concept)
             if declared_properties and recorded not in declared_properties:
                 # The OWL and CMF emitters walk the inventory, so a
                 # decision on a property it does not carry produces no
