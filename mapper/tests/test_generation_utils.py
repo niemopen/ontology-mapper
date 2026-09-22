@@ -490,3 +490,32 @@ class TestDuplicateDecisionRows:
                  "reviewStatus": "pending-review"}
         with pytest.raises(ValueError, match="resolve to a decision"):
             property_mapping_index(self._matrix([accepted, other]), self._inventory())
+
+
+class TestInheritedPropertyOwnership:
+    """A child's decision about a property its parent declares is a decision
+    about a property the child has: `build_class_properties` answers per
+    declaring class, not transitively."""
+
+    def _inventory(self, shape_target):
+        return {
+            "classes": [
+                {"qname": "src:Parent", "subClassOf": []},
+                {"qname": "src:Kid", "subClassOf": ["src:Parent"]},
+            ],
+            "objectProperties": [],
+            "datatypeProperties": [{"qname": "aug:code", "domain": ["src:Parent"]}],
+            "shaclShapes": [{"targetClasses": [shape_target],
+                             "properties": [{"path": "aug:code"}]}],
+        }
+
+    def _matrix(self):
+        return {"mappings": [{"sourceConcept": "src:Kid", "propertyMappings": [
+            {"sourceProperty": "src:code", "action": "reuse-property",
+             "reviewStatus": "accepted", "targetProperty": "nc:PersonFullName"}]}]}
+
+    @pytest.mark.parametrize("shape_target", ["src:Parent", "src:Kid"])
+    def test_a_decision_on_an_inherited_property_resolves(self, shape_target):
+        from ontology_mapper.generation_utils import property_mapping_index
+        index = property_mapping_index(self._matrix(), self._inventory(shape_target))
+        assert set(index) == {("src:Kid", "aug:code")}

@@ -76,6 +76,26 @@ def property_qname_resolver(inventory):
     # is an ordinary source shape, and a domain-only test drops exactly
     # the population this fallback exists for.
     class_properties = build_class_properties(inventory)
+    parents = {c.get("qname"): list(c.get("subClassOf") or [])
+               for c in (inventory.get("classes") or [])}
+
+    def owned_by(concept):
+        """Every property the concept has, including inherited ones.
+
+        `build_class_properties` answers per declaring class, not
+        transitively, and a source model ordinarily declares a property on a
+        parent: a child's decision about an inherited property is about a
+        property the child has.
+        """
+        owned, pending, seen = set(), [concept], set()
+        while pending:
+            qname = pending.pop()
+            if qname in seen:
+                continue
+            seen.add(qname)
+            owned |= class_properties.get(qname, set())
+            pending.extend(parents.get(qname, []))
+        return owned
 
     def resolve(name, concept=None):
         if not known or name in known:
@@ -88,7 +108,7 @@ def property_qname_resolver(inventory):
             # says something about ownership at all — an inventory with
             # neither domains nor shapes cannot answer it, and guessing
             # there is the old behaviour these callers relied on.
-            owned = class_properties.get(concept, set())
+            owned = owned_by(concept)
             candidates = [q for q in candidates if q in owned]
         return candidates[0] if len(candidates) == 1 else name
 
