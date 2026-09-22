@@ -1591,3 +1591,31 @@ class TestAnInheritedShapeNamesTheOwnersTerm:
         shapes = files["test-edge-shapes.ttl"]
         assert "nc:DescriptionText" in shapes
         assert "ext:code" in shapes
+
+    def test_a_full_iri_property_no_class_owns_is_declared_not_refused(self):
+        """Extraction leaves a property whose namespace the manifest does not
+        name as a full IRI, and `created_property_qname` mints such a term
+        into this package. The global block tested the source prefix alone
+        and skipped it, so the shape named `test-edge:code` and the closure
+        guard refused a package whose only fault was the filter."""
+        inventory = TestNiemOWLPatterns._minimal_inventory(
+            [self._cls("Parent"), self._cls("ChildA", ["Parent"]),
+             self._cls("ChildB")],
+            dt_props=[{"qname": "https://other.test/ns/code", "label": "code",
+                       "domain": [], "range": []}],
+            shapes=[{"targetClasses": ["src:Parent"],
+                     "properties": [{"path": "https://other.test/ns/code",
+                                     "minCount": 1}]}])
+        matrix = {"mappings": [
+            {"sourceConcept": "src:Parent", "action": "exclude",
+             "targetType": None, "reviewStatus": "pending-review",
+             "propertyMappings": []},
+            self._row("ChildA", "extend", targetType="nc:PersonType",
+                      baseType="nc:PersonType"),
+            self._row("ChildB", "reuse", targetType="nc:PersonType")]}
+
+        files = TestNiemOWLPatterns._run_generation(
+            inventory, matrix, catalog={"namespaces": {"nc": self.TARGET}})
+
+        assert "test-edge:code" in files["test-edge-core.ttl"]
+        assert "sh:path test-edge:code" in files["test-edge-shapes.ttl"]

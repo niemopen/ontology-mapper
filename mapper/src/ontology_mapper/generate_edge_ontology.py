@@ -704,15 +704,25 @@ def main():
         # exactly those two relations (build_strategy_reports.build_class_properties).
         # Therefore these properties have no per-class reuse decision.
         #
-        # Only primary-namespace properties are emitted, and that filter
-        # lives here rather than at the call site so one place answers
-        # "which unassigned properties belong to this package": a
-        # property that belongs to no active class and to a namespace
-        # this package does not mint into is not part of the edge model,
-        # and writing it under the edge prefix would declare a term the
-        # CMF model never declares.
-        unassigned_dt = [p for p in unassigned_dt if p.startswith(SOURCE_PREFIX)]
-        unassigned_obj = [p for p in unassigned_obj if p.startswith(SOURCE_PREFIX)]
+        # Which unassigned properties belong to this package, answered in
+        # one place rather than at the call site: the ones this package
+        # mints a term for. That is `created_property_qname`'s rule — a
+        # primary-namespace term, or one extraction left as a full IRI
+        # because the manifest names no prefix for it, which is minted here
+        # exactly as a primary one. A term in a source namespace the package
+        # binds is referenced through that binding and declared elsewhere;
+        # writing it under the edge prefix would declare a term the CMF
+        # model never declares.
+        #
+        # Not `startswith(SOURCE_PREFIX)` alone: the shape emitter resolves
+        # an unowned path through `created_property_qname` and named
+        # `edge:<local>` for a full-IRI property this block then skipped,
+        # so the closure guard refused the package.
+        def minted_here(qname):
+            return qname.startswith(SOURCE_PREFIX) or is_full_iri(qname)
+
+        unassigned_dt = [p for p in unassigned_dt if minted_here(p)]
+        unassigned_obj = [p for p in unassigned_obj if minted_here(p)]
         lines = []
         if not unassigned_obj and not unassigned_dt:
             return ""
@@ -722,7 +732,8 @@ def main():
                 continue
             prop = dt_by_qname[pqname]
             prop_local = local_name(pqname)
-            prop_ref = prefix + prop_local
+            prop_ref = created_property_qname(
+                pqname, "reuse", _source, source_bindings, prefix)
             range_vals = prop["range"]
             xsd_type = source_term_ref(xsd_qname(range_vals[0])) if range_vals else "xsd:string"
             plabel = prop.get("label", prop_local)
@@ -736,7 +747,8 @@ def main():
                 continue
             prop = obj_by_qname[pqname]
             prop_local = local_name(pqname)
-            prop_ref = prefix + prop_local
+            prop_ref = created_property_qname(
+                pqname, "reuse", _source, source_bindings, prefix)
             plabel = prop.get("label", prop_local)
             range_ref = object_range_ref(prop["range"])
             lines.append(f"{prop_ref}")
