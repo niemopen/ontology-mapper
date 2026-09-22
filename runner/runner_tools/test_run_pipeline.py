@@ -429,6 +429,25 @@ class TestDispatchReviewAction:
         assert entry["ruleId"] == "human-review"
         assert applied[0]["targetType"] == "nc:PersonType"
 
+    @pytest.mark.parametrize("target", ["nc:BooleanType", "nc:PersonTyp"])
+    def test_change_target_to_a_rejected_selection_answers_instead_of_dying(self, tmp_path, target):
+        """A datatype or a misspelling is answered with the policy's message;
+        the entry is untouched and the loop continues."""
+        import copy
+        import json as _json
+        from ontology_mapper.run_dir_utils import resolve_specs_dir
+
+        catalog = _json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json").read_text(encoding="utf-8"))
+        matrix, dec_log, pending = self._make_context(tmp_path)
+        entry = pending[0]
+        entry["targetType"] = "nc:PersonType"
+        before = copy.deepcopy(entry)
+        action = {"action": "change_target", "concept": entry["sourceConcept"], "new_target_type": target}
+        msg, applied, _ = _dispatch_review_action(action, tmp_path, matrix, dec_log, pending, ("niem", catalog))
+        assert "not a class" in msg and target in msg
+        assert applied == []
+        assert entry == before
+
     def test_search_action(self, tmp_path):
         """Search action calls catalog_search."""
         matrix, dec_log, pending = self._make_context(tmp_path)
@@ -530,6 +549,30 @@ def test_stage_7_writes_feedback_report_before_stopping_on_failed_validation(tmp
         # feedback_report.py ran after the failed validation; mark-complete did not
         assert commands == ["om-validate", "python"]
 
+
+
+def test_stage_7_discards_a_previous_runs_report_before_validating(tmp_path, monkeypatch):
+    """A stale report must not turn a validator crash into a failed validation
+    with stale feedback and stale verification."""
+    import runner_tools.run_pipeline as runner
+
+    (tmp_path / "validation-report.json").write_text('{"checks": [], "stale": true}', encoding="utf-8")
+    (tmp_path / "feedback-report.json").write_text('{"stale": true}', encoding="utf-8")
+    commands = []
+
+    def run_cmd(stage, cmd, cwd=None):
+        commands.append(cmd[0])
+        if cmd[0] == "om-validate":
+            assert not (tmp_path / "validation-report.json").exists()  # cleared before the run
+            raise StageError(stage, "Command failed (rc=1): om-validate\nTraceback ... KeyError")
+        return ""
+
+    monkeypatch.setattr(runner, "run_cmd", run_cmd)
+    monkeypatch.setattr(runner, "verify_stage", lambda *a: pytest.fail("verify must not run"))
+    with pytest.raises(StageError, match="Traceback"):
+        runner.run_stage_7(tmp_path, [])
+    assert commands == ["om-validate"]
+    assert not (tmp_path / "feedback-report.json").exists()
 
 
 def test_stage_7_validator_crash_without_a_report_is_raised_as_is(tmp_path, monkeypatch):

@@ -24,6 +24,7 @@ from pathlib import Path
 
 from runner_tools.verify_stage_outputs import verify
 from ontology_mapper.build_mapping_matrix import refuse_to_discard_review
+from ontology_mapper.ontology_specific import ClassTargetError
 from runner_tools._present_and_apply_human_review import (
     load_inputs as review_load_inputs,
     get_pending_items,
@@ -385,7 +386,12 @@ def _dispatch_review_action(
         # The same class in another spelling is applied, not cascaded, and
         # apply_decision requires the action: the current one is kept.
         decision = {"action": old_action, "targetType": new_target}
-        apply_decision_with_cascade(entry, decision, target_ontology, catalog)
+        try:
+            apply_decision_with_cascade(entry, decision, target_ontology, catalog)
+        except ClassTargetError as exc:
+            # A datatype or a misspelling: the policy's message is the answer;
+            # the entry is untouched and the review loop continues.
+            return str(exc), applied, cascade_context
 
         # Validate after cascade
         issues = validate_class_decision(entry)
@@ -698,6 +704,11 @@ def run_stage_7(run_dir: Path, timers: list[StageTimer]):
     crash, raised as it was. Stage 8 is never reached.
     """
     with StageTimer("7") as t:
+        # Only this run's report counts: a previous run's report would make a
+        # validator crash look like a failed validation and feed stale
+        # conclusions to the feedback report and to verification.
+        for stale in ("validation-report.json", "feedback-report.json"):
+            (run_dir / stale).unlink(missing_ok=True)
         validation_failure = None
         try:
             run_cmd("7", ["om-validate", "--run-dir", str(run_dir)])

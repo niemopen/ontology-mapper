@@ -23,9 +23,10 @@ Action:  om-pipeline mark-complete --stage 7 --run-dir {run_dir}
 the web backend's stage runner) still run `feedback_report.py` so the failures
 are mapped back to source decisions, then stop the stage: verification's
 `validation_all_pass` check fails, Stage 7 is not marked complete, and Stage 8
-is never reached. A nonzero exit with no `validation-report.json` is a validator
-crash, not a failed validation: the error is raised as it was and no feedback
-report is produced.
+is never reached. Both orchestrators delete a previous run's
+`validation-report.json` and `feedback-report.json` before validating, so a
+nonzero exit with no report is a validator crash, not a failed validation: the
+error is raised as it was and no feedback report is produced.
 
 ## Validation Checks
 

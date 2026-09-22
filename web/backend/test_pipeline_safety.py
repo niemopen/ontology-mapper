@@ -113,6 +113,29 @@ def test_validator_crash_without_a_report_stops_before_the_feedback_report(tmp_p
     assert runs._pipeline_status["sample"]["error"].startswith("Traceback")
 
 
+def test_stage_7_discards_a_previous_runs_report_before_validating(tmp_path, monkeypatch):
+    monkeypatch.setattr(runs, "_pipeline_status", {"sample": {}})
+    (tmp_path / "validation-report.json").write_text('{"checks": [], "stale": true}', encoding="utf-8")
+    (tmp_path / "feedback-report.json").write_text('{"stale": true}', encoding="utf-8")
+    commands = []
+    monkeypatch.setattr(runs, "_record_stage_start", lambda *args: None)
+    monkeypatch.setattr(runs, "_mark_complete", lambda run_id, stage, *args: True)
+
+    def command(run_id, stage, cmd, cwd, env):
+        commands.append(cmd[0])
+        if cmd[0] == "om-validate":
+            assert not (tmp_path / "validation-report.json").exists()  # cleared before the run
+            runs._pipeline_status[run_id] = {"status": "failed", "stage": "7", "error": "Traceback ... KeyError"}
+            return False
+        return True
+
+    monkeypatch.setattr(runs, "_run_cmd", command)
+    assert runs._run_pipeline_stages_6_8("sample", tmp_path, str(tmp_path), {}) is False
+    assert "python" not in commands
+    assert not (tmp_path / "feedback-report.json").exists()
+    assert runs._pipeline_status["sample"]["error"].startswith("Traceback")
+
+
 @pytest.mark.parametrize("target", ["scr:PersonRoleCategoryCodeType", "hs:PersonRoleCodeSimpleType", "nc:TextType"])
 @pytest.mark.parametrize("same_target", [False, True])
 def test_change_target_checks_native_class_before_saving(run_context, monkeypatch, target, same_target):

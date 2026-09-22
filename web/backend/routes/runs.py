@@ -402,6 +402,8 @@ def _run_pipeline_stages_6_8(run_id: str, run_dir: Path, cwd: str, env: dict) ->
     # source decisions, so it is produced before the failed stage stops.
     _pipeline_status[run_id]["stage"] = "7"
     _record_stage_start(run_dir, "7")
+    for stale in ("validation-report.json", "feedback-report.json"):
+        (run_dir / stale).unlink(missing_ok=True)  # only this run's report counts
     validated = _run_cmd(run_id, "7", ["om-validate", "--run-dir", rd], cwd, env)
     if not validated and not (run_dir / "validation-report.json").exists():
         return False  # the validator crashed; there is nothing to report on
