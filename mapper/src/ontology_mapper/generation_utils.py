@@ -200,20 +200,17 @@ def source_namespace_bindings(inventory, target_ns_map, edge_prefix):
 def local_name(qname_or_iri):
     """Extract local name from qname (prefix:Foo → Foo) or IRI.
 
-    The inverse of `component_iri` for each separator it writes: a `urn:`
-    IRI's name is the last colon-separated segment, so it is read from the
-    right — reading it as a QName would return the whole tail after `urn`.
+    The inverse of `component_iri` for every separator it writes. That
+    function appends after a namespace already ending in "/", "#" or ":",
+    and otherwise joins with ":" for `urn:` and "/" for the rest, so the
+    name is whatever follows the LAST of those three characters: a `urn:`
+    name is read from the right, and a namespace ending in one separator
+    while containing another (`urn:example:model/v1`,
+    `https://example.test/ns:`) still reads back whole.
     """
     if is_full_iri(qname_or_iri):
-        # `component_iri` appends after a trailing "/", "#" or ":", and joins
-        # with ":" for urn and "/" otherwise: read back whichever separator
-        # the namespace actually ends with, rightmost first.
-        for separator in ("#", "/", ":"):
-            if separator in qname_or_iri:
-                tail = qname_or_iri.rsplit(separator, 1)[-1]
-                if tail:
-                    return tail
-        return qname_or_iri
+        cut = max(qname_or_iri.rfind(separator) for separator in ("#", "/", ":"))
+        return qname_or_iri[cut + 1:] or qname_or_iri
     if ":" in qname_or_iri:
         return qname_or_iri.split(":", 1)[1]
     return qname_or_iri

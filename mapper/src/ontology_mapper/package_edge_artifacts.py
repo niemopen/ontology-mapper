@@ -104,6 +104,7 @@ def build_extension_catalog(matrix, ctx, inventory, target_ns_map):
                   "ext": ctx.extension_namespace}
     namespaces.update({prefix: uri for prefix, uri in bindings.values()})
     primary = source_prefix(inventory)
+    unresolved = []
     extensions = []
     for m in matrix["mappings"]:
         if m.get("action") not in ("extend", "augment") or m.get("reviewStatus") != "accepted":
@@ -127,7 +128,27 @@ def build_extension_catalog(matrix, ctx, inventory, target_ns_map):
                 resolve_property(decision["sourceProperty"]), m["action"],
                 primary, bindings, ctx.edge_prefix)
             prefix, name = qname.split(":", 1)
-            properties.add(component_iri(namespaces[prefix], name))
+            # This is the only artifact built by walking the decisions
+            # rather than the inventory, so it alone must qualify a
+            # recorded name the resolver could not resolve
+            # (`property_qname_resolver` returns an unknown name
+            # unchanged). Such a prefix binds to no namespace: the
+            # catalog cannot invent an IRI for it, and the OWL and CMF
+            # emitters never wrote one, so name the decision rather than
+            # failing on the lookup.
+            namespace = namespaces.get(prefix)
+            if namespace is None:
+                unresolved.append(
+                    f"  - {concept}: {decision['sourceProperty']} "
+                    f"(prefix '{prefix}' is bound to no namespace)")
+                continue
+            properties.add(component_iri(namespace, name))
+
+        if unresolved:
+            raise ValueError(
+                f"{len(unresolved)} accepted created-property decision(s) name a "
+                f"source property this run cannot qualify; reopen review:\n"
+                + "\n".join(unresolved))
 
         extensions.append({
             "extensionIRI": component_iri(ctx.extension_namespace, ext_name),

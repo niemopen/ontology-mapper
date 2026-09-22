@@ -245,3 +245,44 @@ def test_component_identities_survive_a_namespace_without_a_separator():
         iri = component_iri(namespace, "value")
         assert iri != namespace + "value" or namespace[-1] in "/#:"
         assert local_name(iri) == "value"
+
+
+class TestCreatedPropertyNamespaces:
+    """The extension catalog is the one artifact built by walking the
+    decisions rather than the inventory, so it alone meets a recorded
+    property name the resolver could not resolve."""
+
+    def _inventory(self):
+        return {"classes": [{"qname": "src:Thing", "iri": "https://src.test/ns#Thing"}],
+                "namespaceMap": {"https://src.test/ns#": "src:",
+                                 "https://abc.test/ns#": "abc:"},
+                "objectProperties": [],
+                "datatypeProperties": [{"qname": "src:flag"}, {"qname": "abc:flag"}]}
+
+    def _context(self):
+        from pathlib import Path
+        from ontology_mapper.pipeline_context import PipelineContext
+        return PipelineContext(Path("run"), Path("run/edge-package"),
+                               "example", "source", "niem", "6.0")
+
+    def _matrix_with(self, source_property):
+        return _matrix([_mapping("src:Thing", "extend", "nc:PersonType",
+                                 baseType="nc:PersonType",
+                                 propertyMappings=[{"sourceProperty": source_property,
+                                                    "action": "create-property",
+                                                    "reviewStatus": "accepted"}])])
+
+    def test_a_decision_naming_an_unbound_prefix_is_reported_not_indexed(self):
+        """`property_qname_resolver` returns an ambiguous name unchanged, so
+        a prefix bound to no namespace reaches the catalog. It cannot invent
+        an IRI for it, and dying on the dict lookup names no decision.
+        """
+        with pytest.raises(ValueError, match="cannot qualify"):
+            build_extension_catalog(self._matrix_with("legacy:flag"),
+                                    self._context(), self._inventory(), {})
+
+    def test_a_decision_naming_a_declared_property_still_mints_its_iri(self):
+        """The legitimate flow: a bound source prefix keeps its namespace."""
+        catalog = build_extension_catalog(self._matrix_with("abc:flag"),
+                                          self._context(), self._inventory(), {})
+        assert catalog["extensions"][0]["properties"] == ["https://abc.test/ns#flag"]

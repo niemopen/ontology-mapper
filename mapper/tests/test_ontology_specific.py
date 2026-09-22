@@ -1140,6 +1140,10 @@ class TestInvalidClassTargets:
         reported = invalid_class_targets(matrix, "niem", catalog)
         assert [c for c, _, _ in reported] == ["src:Ext", "src:Aug"]
         assert all(t == "hs:PersonRoleCodeSimpleType" for _, t, _ in reported)
+        # The reviewer picks a class, so a message naming only a type they
+        # never picked leaves them nothing to act on: name the field.
+        assert reported[0][2].startswith("baseType ")
+        assert reported[1][2].startswith("augmentsType ")
     def test_clean_matrix_reports_nothing(self):
         from ontology_mapper.ontology_specific import invalid_class_targets
         matrix = {"mappings": [{"sourceConcept": "src:Ok", "action": "reuse", "targetType": "nc:PersonType"}]}

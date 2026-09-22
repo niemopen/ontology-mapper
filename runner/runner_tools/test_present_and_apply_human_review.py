@@ -1486,3 +1486,90 @@ class TestStageFiveExitValidatesSavedTargets:
         can_exit, blockers = check_stage_5_exit(matrix, self._cascade())
         assert not can_exit and "pending review" in blockers[0]
 
+
+class TestStageFiveCompletionEnforcesExit:
+    """Marking the stage complete is the boundary the web and the CLI share.
+    The CLI review loop has no gate of its own and its stage verification
+    reads pending status only, so a matrix that cannot leave review would
+    otherwise be marked complete by it."""
+
+    def _run_dir(self, tmp_path, base_type):
+        import json
+        (tmp_path / ".mapper-state.json").write_text(json.dumps(
+            {"inputs": {"target_ontology": "niem", "target_version": "6.0"}}),
+            encoding="utf-8")
+        (tmp_path / "mapping-matrix.json").write_text(json.dumps(
+            {"mappings": [{"sourceConcept": "src:A", "action": "extend",
+                           "targetType": "nc:PersonType", "baseType": base_type,
+                           "reviewStatus": "accepted", "propertyMappings": []}]}),
+            encoding="utf-8")
+        (tmp_path / "decision-log.json").write_text(json.dumps({"decisions": []}),
+                                                    encoding="utf-8")
+        return tmp_path
+
+    def test_rejected_scaffolding_stops_completion(self, tmp_path):
+        from runner_tools._present_and_apply_human_review import complete_stage_5
+        success, error = complete_stage_5(self._run_dir(tmp_path, "niem-xs:token"))
+        assert not success
+        assert "exit criteria not met" in error and "baseType" in error
+
+    def test_a_run_whose_targets_cannot_be_read_is_not_completed(self, tmp_path):
+        from runner_tools._present_and_apply_human_review import complete_stage_5
+        success, error = complete_stage_5(tmp_path)
+        assert not success and "could not be checked" in error
+
+    def test_a_clean_matrix_still_completes(self, tmp_path, monkeypatch):
+        """The legitimate flow: the gate refuses nothing a reviewer resolved."""
+        import subprocess
+        from runner_tools._present_and_apply_human_review import complete_stage_5
+
+        class _Ok:
+            returncode = 0
+            stdout = ""
+            stderr = ""
+
+        ran = []
+        monkeypatch.setattr(subprocess, "run",
+                            lambda cmd, **kw: (ran.append(cmd), _Ok())[1])
+        success, error = complete_stage_5(self._run_dir(tmp_path, "nc:PersonType"))
+        assert (success, error) == (True, None)
+        assert len(ran) == 2
+
+
+class TestScaffoldingRepair:
+    """A blocker the reviewer cannot clear is a dead end: re-accepting the
+    same class is the obvious move, so it has to rebuild the scaffolding."""
+
+    def _catalog(self):
+        import json
+        from ontology_mapper.run_dir_utils import resolve_specs_dir
+        return json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json")
+                          .read_text(encoding="utf-8"))
+
+    def test_re_accepting_the_same_class_rebuilds_rejected_scaffolding(self):
+        from runner_tools._present_and_apply_human_review import apply_decision_with_cascade
+        from ontology_mapper.ontology_specific import invalid_class_targets
+        catalog = self._catalog()
+        entry = {"sourceConcept": "src:A", "action": "extend",
+                 "targetType": "nc:PersonType", "baseType": "niem-xs:token",
+                 "reviewStatus": "accepted", "propertyMappings": []}
+        apply_decision_with_cascade(entry, {"action": "extend",
+                                            "targetType": "nc:PersonType"},
+                                    "niem", catalog)
+        assert entry.get("baseType") != "niem-xs:token"
+        assert invalid_class_targets({"mappings": [entry]}, "niem", catalog) == []
+
+    def test_valid_scaffolding_is_left_alone(self):
+        """The legitimate flow: an unchanged, valid entry keeps its decision
+        and is not reset to pending by a repair it does not need."""
+        from runner_tools._present_and_apply_human_review import apply_decision_with_cascade
+        catalog = self._catalog()
+        entry = {"sourceConcept": "src:A", "action": "extend",
+                 "targetType": "nc:PersonType", "baseType": "nc:PersonType",
+                 "reviewStatus": "pending-review", "propertyMappings": [],
+                 "notes": "keep"}
+        apply_decision_with_cascade(entry, {"action": "extend",
+                                            "targetType": "nc:PersonType"},
+                                    "niem", catalog)
+        assert entry["baseType"] == "nc:PersonType"
+        assert entry["reviewStatus"] == "accepted"

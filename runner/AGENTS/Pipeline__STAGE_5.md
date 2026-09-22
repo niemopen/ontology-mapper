@@ -61,6 +61,16 @@ decisions saved before the policy existed: they make no selection for the
 interactive check to catch, so the exit check and the Stage 6 entry are the
 seams that see them. `check_stage_5_exit(matrix, cascade)` takes the run's
 `(target_ontology, catalog)`; when that cannot be loaded the targets cannot
-be proven valid and that is itself a blocker. The Stage 6 entry answers the
+be proven valid and that is itself a blocker.
+
+Each driver meets that check at a different point. The web asks it through
+`routes/review.stage_5_gate` before it offers to close review; the CLI loop
+has no gate of its own, and `verify_stage` reads pending status only, so
+`complete_stage_5` — the step that marks the stage complete for both — runs
+the check itself and returns the blockers instead of completing. The
+blocker names the field, because the reviewer selects a class and stored
+`baseType`/`augmentsType` is not one: re-accepting the same class rebuilds
+scaffolding the policy rejects, so the message names something the reviewer
+can act on. The Stage 6 entry answers the
 same way: an unreadable catalog or matrix shape fails the stage
 (`StageError`), never escaping as a traceback the driver does not present.

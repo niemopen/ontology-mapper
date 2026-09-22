@@ -138,8 +138,21 @@ primary-namespace property rather than split into a pseudo-prefix.
 extension-catalog names agree; an emitter that short-circuits on the source
 prefix excludes full IRIs from the short circuit rather than emitting the IRI.
 `generation_utils.component_iri` writes every component IRI — the extension
-catalog included — and `local_name` reads each separator it writes back,
-`urn:` names from the right.
+catalog included — and `local_name` reads it back as the name after the last
+"#", "/" or ":", which inverts every namespace shape that function writes,
+`urn:` names included.
+
+The extension catalog is the one artifact built by walking the decisions
+rather than the inventory, so it alone meets a recorded property name the
+resolver could not resolve. A prefix bound to no namespace has no IRI to
+mint, and the OWL and CMF emitters never wrote one for it, so the catalog
+names the decision and refuses rather than inventing a namespace.
+
+Global properties — those belonging to no active class — are emitted for the
+primary source namespace only, and `emit_global_properties` applies that
+filter itself. A property with no class and a namespace this package does
+not mint into is not part of the edge model; emitting it under the edge
+prefix would declare a term the CMF model never declares.
 
 Generation refuses a saved class target the target ontology's class policy
 rejects (`ontology_specific.invalid_class_targets`) before writing any artifact,

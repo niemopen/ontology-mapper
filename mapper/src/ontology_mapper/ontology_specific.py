@@ -139,7 +139,12 @@ def invalid_class_targets(matrix, target_ontology, catalog):
             try:
                 canonical_class_target(target, target_ontology, catalog)
             except ClassTargetError as exc:
-                invalid.append((entry.get("sourceConcept", ""), target, str(exc)))
+                # Name the field. The reviewer selects a class, so a
+                # message naming only a type they never chose leaves
+                # them nothing to act on when stored scaffolding is the
+                # offender.
+                invalid.append((entry.get("sourceConcept", ""), target,
+                                f"{field} {exc}"))
     return invalid
 
 

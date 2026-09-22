@@ -137,7 +137,7 @@ def main():
     # --- Closures that reference loaded data ---
 
     def source_term_ref(qname):
-        if qname.startswith(("http://", "https://", "urn:")):
+        if is_full_iri(qname):
             return URIRef(qname).n3()
         prefix, separator, name = qname.partition(":")
         if separator and prefix in source_bindings:
@@ -166,7 +166,7 @@ def main():
         """
         if not term:
             return None
-        if term.startswith(("http://", "https://", "urn:")):
+        if is_full_iri(term):
             return URIRef(term).n3()
         if term in uris:
             return URIRef(uris[term]).n3()
@@ -601,6 +601,16 @@ def main():
         # exists only under a class entry whose property list is derived from
         # exactly those two relations (build_strategy_reports.build_class_properties).
         # Therefore these properties have no per-class reuse decision.
+        #
+        # Only primary-namespace properties are emitted, and that filter
+        # lives here rather than at the call site so one place answers
+        # "which unassigned properties belong to this package": a
+        # property that belongs to no active class and to a namespace
+        # this package does not mint into is not part of the edge model,
+        # and writing it under the edge prefix would declare a term the
+        # CMF model never declares.
+        unassigned_dt = [p for p in unassigned_dt if p.startswith(SOURCE_PREFIX)]
+        unassigned_obj = [p for p in unassigned_obj if p.startswith(SOURCE_PREFIX)]
         lines = []
         if not unassigned_obj and not unassigned_dt:
             return ""
@@ -610,10 +620,7 @@ def main():
                 continue
             prop = dt_by_qname[pqname]
             prop_local = local_name(pqname)
-            if not pqname.startswith(SOURCE_PREFIX) and not is_full_iri(pqname):
-                prop_ref = source_term_ref(pqname)
-            else:
-                prop_ref = prefix + prop_local
+            prop_ref = prefix + prop_local
             range_vals = prop["range"]
             xsd_type = source_term_ref(xsd_qname(range_vals[0])) if range_vals else "xsd:string"
             plabel = prop.get("label", prop_local)
@@ -627,9 +634,7 @@ def main():
                 continue
             prop = obj_by_qname[pqname]
             prop_local = local_name(pqname)
-            prop_ref = (prefix + prop_local
-                        if pqname.startswith(SOURCE_PREFIX) or is_full_iri(pqname)
-                        else source_term_ref(pqname))
+            prop_ref = prefix + prop_local
             plabel = prop.get("label", prop_local)
             range_vals = prop["range"]
             if range_vals:
@@ -760,11 +765,7 @@ def main():
         obj, dt = declared_props_for_class(cls_qname)
         core_body.append(emit_class_block(cls_qname, target, label, comment, EDGE_PREFIX, obj, dt))
 
-    core_globals = emit_global_properties(
-        [p for p in obj_unassigned if p.startswith(SOURCE_PREFIX)],
-        [p for p in dt_unassigned if p.startswith(SOURCE_PREFIX)],
-        EDGE_PREFIX
-    )
+    core_globals = emit_global_properties(obj_unassigned, dt_unassigned, EDGE_PREFIX)
 
     core_ttl = core_header + "\n".join(core_body) + "\n" + core_globals + "\n"
 

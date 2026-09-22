@@ -308,6 +308,16 @@ def apply_decision_with_cascade(entry, decision, target_ontology, catalog):
             old_canonical = old_target
         decision = {**decision, "targetType": new_target}
         changed = new_target != old_canonical
+        if not changed:
+            # Re-accepting the same class is the reviewer's obvious move
+            # when a blocker names stored scaffolding, and a plain apply
+            # does not rebuild scaffolding: without this the rejected
+            # `baseType`/`augmentsType` survives the repair and blocks
+            # review exit again, with no reviewer action that clears it.
+            from ontology_mapper.ontology_specific import invalid_class_targets
+            candidate = {**entry, "targetType": new_target}
+            changed = bool(invalid_class_targets(
+                {"mappings": [candidate]}, target_ontology, catalog))
 
     if changed:
         from ontology_mapper.ontology_specific import (
@@ -642,7 +652,14 @@ def check_stage_5_exit(matrix, cascade):
 def complete_stage_5(run_dir):
     """Run post-review completion steps for Stage 5.
 
-    Assumes exit criteria have already been checked via check_stage_5_exit().
+    The exit criteria are enforced here rather than assumed. The web
+    presents them through `stage_5_gate` before it asks; the CLI review
+    loop has no gate of its own, and its own stage verification reads
+    pending status only. Marking the stage complete is the boundary both
+    drivers share, so the one exit predicate answers here for both. A
+    catalog that will not load leaves the saved class targets unproven,
+    which blocks exit for the same reason it does in the web gate.
+
     Runs residual entropy calculation and marks the stage complete.
 
     Returns (success, error_message).
@@ -650,6 +667,16 @@ def complete_stage_5(run_dir):
     import subprocess
 
     run_dir = Path(run_dir)
+    try:
+        _, matrix, _ = load_inputs(run_dir)
+        cascade = load_cascade_context(run_dir)
+    except Exception as exc:
+        return False, f"Stage 5 exit criteria could not be checked: {exc}"
+    can_exit, blockers = check_stage_5_exit(matrix, cascade)
+    if not can_exit:
+        return False, ("Stage 5 exit criteria not met:\n  - "
+                       + "\n  - ".join(blockers))
+
     env = {**__import__("os").environ}
 
     # Residual entropy

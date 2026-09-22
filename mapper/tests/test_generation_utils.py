@@ -414,3 +414,15 @@ class TestCreatedPropertyIdentityForUndeclaredNamespaces:
         assert created_property_qname("dbpi:amount", "extend", "dbpi", bindings, "edge:") == "ext:amount"
         assert created_property_qname("dbpi:amount", "reuse", "dbpi", bindings, "edge:") == "edge:amount"
 
+
+class TestComponentIriRoundTrip:
+    """`local_name` is the inverse of `component_iri` for every namespace
+    shape that function writes, not only the ones the bundled catalogs use."""
+
+    def test_every_namespace_shape_reads_back_whole(self):
+        from ontology_mapper.generation_utils import component_iri, local_name
+        for namespace in ("https://example.test/ns/", "https://example.test/ns#",
+                          "https://example.test/ns:", "https://example.test/ns",
+                          "urn:example:model", "urn:example:model:",
+                          "urn:example:model/v1", "urn:example:model/v1/"):
+            assert local_name(component_iri(namespace, "Thing")) == "Thing", namespace
