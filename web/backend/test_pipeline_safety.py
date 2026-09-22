@@ -18,7 +18,8 @@ def run_context(tmp_path, monkeypatch):
     run_dir = tmp_path / "demo" / "sample"
     run_dir.mkdir(parents=True)
     (run_dir / ".mapper-state.json").write_text(json.dumps({
-        "inputs": {}, "stages": {"5": {"status": "completed"}}}), encoding="utf-8")
+        "inputs": {"target_ontology": "niem", "target_version": "6.0"},
+        "stages": {"5": {"status": "completed"}}}), encoding="utf-8")
     thread = Mock()
     monkeypatch.setattr(runs.threading, "Thread", thread)
     app = FastAPI()
@@ -160,3 +161,22 @@ def test_change_target_checks_native_class_before_saving(run_context, monkeypatc
         assert target in response.json()["detail"]
         assert "not a class" in response.json()["detail"]
         assert all((run_dir / name).read_bytes() == data for name, data in before.items())
+
+@pytest.mark.parametrize("target,blocked", [("hs:PersonRoleCodeSimpleType", True), ("nc:PersonType", False)])
+def test_continue_blocks_on_a_saved_target_the_policy_rejects(run_context, monkeypatch, target, blocked):
+    from ontology_mapper.run_dir_utils import resolve_specs_dir
+
+    run_dir, client, thread = run_context
+    catalog = json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json").read_text(encoding="utf-8"))
+    monkeypatch.setattr(review, "_get_cascade", lambda *args: ("niem", catalog))
+    (run_dir / "mapping-matrix.json").write_text(json.dumps({"mappings": [
+        {"sourceConcept": "src:A", "action": "reuse", "targetType": target,
+         "reviewStatus": "accepted", "propertyMappings": []}]}), encoding="utf-8")
+
+    response = client.post("/runs/sample/continue")
+
+    assert response.status_code == (409 if blocked else 200), response.text
+    assert thread.called is (not blocked)
+    if blocked:
+        assert any("src:A" in b for b in response.json()["detail"]["blockers"])
+

@@ -80,6 +80,22 @@ def _get_cascade(run_id: str, run_dir: Path) -> tuple | None:
     return _cascade_cache.get(run_id)
 
 
+def stage_5_gate(run_id: str, run_dir: Path, matrix: dict) -> tuple:
+    """May review close for this run? One home for the three routes that ask.
+
+    The class-target policy needs the run's catalog. When it cannot be loaded
+    the saved targets cannot be proven valid, which is a blocker, not a pass:
+    an unvalidated matrix reaching Stage 6 is the hole this check exists for.
+    """
+    from runner_tools._present_and_apply_human_review import check_stage_5_exit
+
+    cascade = _get_cascade(run_id, run_dir)
+    if not cascade:
+        return False, ["class targets could not be validated: "
+                       "no reference catalog resolved for this run"]
+    return check_stage_5_exit(matrix, cascade)
+
+
 @router.get("")
 async def get_review_state(run_id: str, user: dict = Depends(require_auth), org: str = Depends(get_org_slug)) -> dict:
     """Get the full review state: mappings, summary, and validation status."""
@@ -295,12 +311,9 @@ async def get_validation(run_id: str, user: dict = Depends(require_auth), org: s
     run_dir = _run_dir(org, run_id)
     matrix = _load_matrix(run_dir)
 
-    from runner_tools._present_and_apply_human_review import (
-        check_stage_5_exit,
-        get_pending_items,
-    )
+    from runner_tools._present_and_apply_human_review import get_pending_items
 
-    can_exit, blockers = check_stage_5_exit(matrix)
+    can_exit, blockers = stage_5_gate(run_id, run_dir, matrix)
     pending = get_pending_items(matrix)
 
     must_decide = []
@@ -326,12 +339,9 @@ async def submit_review(run_id: str, user: dict = Depends(require_auth), org: st
     run_dir = _run_dir(org, run_id)
     matrix = _load_matrix(run_dir)
 
-    from runner_tools._present_and_apply_human_review import (
-        check_stage_5_exit,
-        complete_stage_5,
-    )
+    from runner_tools._present_and_apply_human_review import complete_stage_5
 
-    can_exit, blockers = check_stage_5_exit(matrix)
+    can_exit, blockers = stage_5_gate(run_id, run_dir, matrix)
     if not can_exit:
         raise HTTPException(status_code=409, detail="; ".join(blockers))
 

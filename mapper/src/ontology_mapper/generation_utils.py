@@ -9,6 +9,8 @@ import hashlib
 
 XSD = "http://www.w3.org/2001/XMLSchema#"
 
+_IRI_SCHEMES = ("http://", "https://", "urn:")
+
 
 def definition_hash(definition):
     """Fingerprint a target definition for codebook drift detection.
@@ -103,8 +105,6 @@ def source_prefix(inventory):
     return classes[0]["qname"].split(":")[0] if classes else ""
 
 
-_IRI_SCHEMES = ("http://", "https://", "urn:")
-
 
 def component_iri(namespace_uri, name):
     """A component's IRI from its namespace URI and name (NIEM NDR 6.0, 14.1.2)."""
@@ -139,9 +139,17 @@ def target_qname(term, namespaces):
 
 
 def created_property_qname(prop_qname, class_action, primary_prefix, bindings, edge_prefix):
-    """One emitted identity for a created property in OWL, CMF and the catalog."""
-    prefix = prop_qname.split(":", 1)[0]
-    if prefix == primary_prefix:
+    """One emitted identity for a created property in OWL, CMF and the catalog.
+
+    A created property is a new term in the package's own namespace unless it
+    belongs to a source namespace the package declares and re-binds. Extraction
+    leaves a property whose namespace the manifest does not name as a full IRI
+    (`make_to_qname` returns the IRI unchanged), and such a term has no prefix
+    to split on and no binding to emit under: it is minted here like a primary
+    one, never split into the pseudo-prefix `https`.
+    """
+    prefix = "" if prop_qname.startswith(_IRI_SCHEMES) else prop_qname.split(":", 1)[0]
+    if not prefix or prefix == primary_prefix:
         prefix = edge_prefix.rstrip(":") if class_action == "reuse" else "ext"
     else:
         prefix = bindings.get(prefix, (prefix, ""))[0]
@@ -180,7 +188,14 @@ def source_namespace_bindings(inventory, target_ns_map, edge_prefix):
 
 
 def local_name(qname_or_iri):
-    """Extract local name from qname (prefix:Foo → Foo) or IRI."""
+    """Extract local name from qname (prefix:Foo → Foo) or IRI.
+
+    The inverse of `component_iri` for each separator it writes: a `urn:`
+    IRI's name is the last colon-separated segment, so it is read from the
+    right — reading it as a QName would return the whole tail after `urn`.
+    """
+    if qname_or_iri.startswith("urn:"):
+        return qname_or_iri.rsplit(":", 1)[-1]
     if ":" in qname_or_iri and not qname_or_iri.startswith("http"):
         return qname_or_iri.split(":", 1)[1]
     if "#" in qname_or_iri:

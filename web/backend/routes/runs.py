@@ -506,10 +506,9 @@ async def continue_pipeline(
         raise HTTPException(status_code=409, detail="Stage 5 (review) must be completed first")
 
     # A reset or target change can reopen review after the stage was completed.
-    from routes.review import _load_matrix
-    from runner_tools._present_and_apply_human_review import check_stage_5_exit
+    from routes.review import _load_matrix, stage_5_gate
 
-    can_continue, blockers = check_stage_5_exit(_load_matrix(run_dir))
+    can_continue, blockers = stage_5_gate(run_id, run_dir, _load_matrix(run_dir))
     if not can_continue:
         raise HTTPException(status_code=409, detail={"blockers": blockers})
 

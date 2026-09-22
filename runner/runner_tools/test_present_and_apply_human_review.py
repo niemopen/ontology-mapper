@@ -1086,9 +1086,10 @@ class TestSaveDecisions:
         save_decisions(tmp_path, decisions)
         data = json.loads((tmp_path / DECISIONS_FILENAME).read_text(encoding="utf-8"))
         assert "reviewedAt" in data["decisions"][0]
-        # Should be a valid ISO timestamp
-        from datetime import datetime
-        datetime.fromisoformat(data["decisions"][0]["reviewedAt"])
+        # `utc_stamp` writes a trailing Z, which `datetime.fromisoformat`
+        # rejects before Python 3.11; read it back through its own parser.
+        from ontology_mapper.run_dir_utils import parse_stamp
+        assert parse_stamp(data["decisions"][0]["reviewedAt"]) is not None
 
     def test_preserves_existing_reviewed_at(self, tmp_path):
         """If reviewedAt is already set, don't overwrite it."""
@@ -1453,3 +1454,35 @@ class TestCmdSearch:
         results = search_catalog(catalog, "zzzzz")
         assert results["types"] == []
         assert results["properties"] == []
+
+class TestStageFiveExitValidatesSavedTargets:
+    """A decision saved before the class policy existed makes no selection this
+    session, so only the exit check can catch it."""
+
+    def _cascade(self):
+        import json
+        from ontology_mapper.run_dir_utils import resolve_specs_dir
+        catalog = json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json").read_text(encoding="utf-8"))
+        return ("niem", catalog)
+
+    def _matrix(self, target):
+        return {"mappings": [{"sourceConcept": "src:A", "action": "reuse", "targetType": target,
+                              "reviewStatus": "accepted", "propertyMappings": []}]}
+
+    def test_saved_datatype_target_blocks_exit(self):
+        from runner_tools._present_and_apply_human_review import check_stage_5_exit
+        can_exit, blockers = check_stage_5_exit(self._matrix("hs:PersonRoleCodeSimpleType"), self._cascade())
+        assert not can_exit
+        assert any("src:A" in b and "not a class" in b for b in blockers)
+
+    def test_saved_class_target_allows_exit(self):
+        from runner_tools._present_and_apply_human_review import check_stage_5_exit
+        assert check_stage_5_exit(self._matrix("nc:PersonType"), self._cascade()) == (True, [])
+
+    def test_pending_review_still_blocks_with_a_valid_target(self):
+        from runner_tools._present_and_apply_human_review import check_stage_5_exit
+        matrix = self._matrix("nc:PersonType")
+        matrix["mappings"][0]["reviewStatus"] = "pending-review"
+        can_exit, blockers = check_stage_5_exit(matrix, self._cascade())
+        assert not can_exit and "pending review" in blockers[0]
+

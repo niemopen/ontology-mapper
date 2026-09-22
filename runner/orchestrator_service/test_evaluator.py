@@ -13,6 +13,7 @@ import asyncio
 import json
 import pytest
 
+from ontology_mapper.run_dir_utils import parse_stamp
 from orchestrator_service.evaluator import (
     EvaluationContext,
     EvaluationError,
@@ -253,8 +254,9 @@ class TestProvenanceMetadata:
         monkeypatch.setattr("ontology_mapper.llm_service._spawn", mock)
 
         result = asyncio.run(evaluate_file(_type_doc(), _context()))
-        # Should parse without error
-        datetime.fromisoformat(result["evaluatedAt"])
+        # `utc_stamp` writes a trailing Z, which `datetime.fromisoformat`
+        # rejects before Python 3.11; read it back through its own parser.
+        assert parse_stamp(result["evaluatedAt"]) is not None
 
 
 # ---------------------------------------------------------------------------

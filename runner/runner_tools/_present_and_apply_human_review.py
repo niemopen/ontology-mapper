@@ -603,8 +603,13 @@ def group_by_action(pending_items):
 # ---------------------------------------------------------------------------
 # Stage 5 Completion (shared between CLI and web)
 # ---------------------------------------------------------------------------
-def check_stage_5_exit(matrix):
+def check_stage_5_exit(matrix, cascade):
     """Check whether Stage 5 exit criteria are met.
+
+    ``cascade`` is the ``(target_ontology, catalog)`` pair the class-target
+    policy needs; every caller has it, so an accepted decision saved before
+    the policy existed cannot leave review unexamined just because the
+    reviewer made no selection this session.
 
     Returns (can_exit, blockers) where blockers is a list of strings
     describing what still needs resolution.
@@ -624,6 +629,12 @@ def check_stage_5_exit(matrix):
                 })
     if must_decide:
         blockers.append(f"{len(must_decide)} properties require human decision")
+
+    from ontology_mapper.ontology_specific import invalid_class_targets
+
+    target_ontology, catalog = cascade
+    for concept, target, message in invalid_class_targets(matrix, target_ontology, catalog):
+        blockers.append(f"{concept}: {message}")
 
     return len(blockers) == 0, blockers
 

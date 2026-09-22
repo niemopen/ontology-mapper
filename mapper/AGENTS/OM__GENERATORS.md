@@ -130,6 +130,14 @@ property carries from the inventory, so classes from augmenting or other
 non-primary source namespaces are seeded too, and the seed file's own prefix
 declarations are never consulted.
 
+A created property whose source namespace the package manifest does not name
+is left as a full IRI by extraction; it has no prefix to split and no binding
+to emit under, so it is minted in the edge (reuse) or ext namespace like a
+primary-namespace property rather than split into a pseudo-prefix.
+`generation_utils.component_iri` writes every component IRI — the extension
+catalog included — and `local_name` reads each separator it writes back,
+`urn:` names from the right.
+
 Source namespace prefixes that collide with a different target URI receive
 deterministic aliases from `source_namespace_bindings`; declarations and
 references share those aliases in OWL and CMF. Lookup keys keep source QNames.

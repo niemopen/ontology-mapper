@@ -26,8 +26,8 @@ from ontology_mapper.run_dir_utils import utc_stamp
 
 from ontology_mapper.pipeline_context import load_context
 from ontology_mapper.generation_utils import (
-    created_property_qname, edge_class_name, property_qname_resolver,
-    source_namespace_bindings, source_prefix,
+    component_iri, created_property_qname, edge_class_name,
+    property_qname_resolver, source_namespace_bindings, source_prefix,
 )
 
 
@@ -127,10 +127,10 @@ def build_extension_catalog(matrix, ctx, inventory, target_ns_map):
                 resolve_property(decision["sourceProperty"]), m["action"],
                 primary, bindings, ctx.edge_prefix)
             prefix, name = qname.split(":", 1)
-            properties.add(namespaces[prefix] + name)
+            properties.add(component_iri(namespaces[prefix], name))
 
         extensions.append({
-            "extensionIRI": ctx.extension_namespace + ext_name,
+            "extensionIRI": component_iri(ctx.extension_namespace, ext_name),
             "name": ext_name,
             "baseType": base,
             "definition": m.get("notes", ""),

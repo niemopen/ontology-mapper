@@ -1102,5 +1102,33 @@ def test_native_cmf_root_policy_is_target_and_version_specific():
     assert cmf_implicit_roots("niem", "5.0") == set()
 
 
+class TestInvalidClassTargets:
+    """The saved-matrix policy question, asked by review exit and generation entry."""
+
+    def _catalog(self):
+        import json
+        from ontology_mapper.run_dir_utils import resolve_specs_dir
+        return json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json").read_text(encoding="utf-8"))
+
+    def test_datatype_and_unbound_targets_are_reported_with_their_concepts(self):
+        from ontology_mapper.ontology_specific import invalid_class_targets
+        catalog = self._catalog()
+        matrix = {"mappings": [
+            {"sourceConcept": "src:A", "action": "reuse", "targetType": "hs:PersonRoleCodeSimpleType"},
+            {"sourceConcept": "src:B", "action": "augment", "targetType": "https://unbound.test/Thing"},
+            {"sourceConcept": "src:Ok", "action": "reuse", "targetType": "nc:PersonType"},
+            {"sourceConcept": "src:Ext", "action": "extend", "targetType": None},
+            {"sourceConcept": "src:Skip", "action": "exclude", "targetType": "hs:PersonRoleCodeSimpleType"},
+        ]}
+        reported = invalid_class_targets(matrix, "niem", catalog)
+        assert [c for c, _, _ in reported] == ["src:A", "src:B"]
+        assert all("not a class" in message for _, _, message in reported)
+
+    def test_clean_matrix_reports_nothing(self):
+        from ontology_mapper.ontology_specific import invalid_class_targets
+        matrix = {"mappings": [{"sourceConcept": "src:Ok", "action": "reuse", "targetType": "nc:PersonType"}]}
+        assert invalid_class_targets(matrix, "niem", self._catalog()) == []
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

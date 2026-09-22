@@ -675,8 +675,31 @@ def run_stage_5(run_dir: Path, timers: list[StageTimer]):
     timers.append(t)
 
 
+def refuse_invalid_class_targets(run_dir: Path):
+    """Stop before generation when a saved class target fails the policy.
+
+    Stage 5's dispatcher checks a selection as the reviewer makes it, and a
+    resume at Stage 6 makes no selections at all: a matrix saved before the
+    policy existed would otherwise be generated from and fail two stages
+    later as an unbound or datatype CMF reference.
+    """
+    from ontology_mapper.ontology_specific import invalid_class_targets
+
+    matrix_path = run_dir / "mapping-matrix.json"
+    if not matrix_path.exists():
+        return
+    matrix = json.loads(matrix_path.read_text(encoding="utf-8"))
+    target_ontology, catalog = load_cascade_context(run_dir)
+    invalid = invalid_class_targets(matrix, target_ontology, catalog)
+    if invalid:
+        details = "\n".join(f"  - {concept}: {message}" for concept, _, message in invalid)
+        raise StageError("6", f"{len(invalid)} saved class target(s) rejected by the "
+                              f"{target_ontology} policy; reopen review:\n{details}")
+
+
 def run_stage_6(run_dir: Path, timers: list[StageTimer]):
     """Stage 6: Generate — bootstrap dirs, then 3 sub-stages."""
+    refuse_invalid_class_targets(run_dir)
     with StageTimer("6") as t:
         # Bootstrap edge-package directory structure
         run_cmd("6", ["om-pipeline", "rerun", "--stage", "6", "--run-dir", str(run_dir)])

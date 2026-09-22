@@ -593,3 +593,39 @@ def test_stage_7_validator_crash_without_a_report_is_raised_as_is(tmp_path, monk
     with pytest.raises(StageError, match="Traceback"):
         runner.run_stage_7(tmp_path, [])
     assert commands == ["om-validate"]
+
+@pytest.mark.parametrize("target,refused", [
+    ("hs:PersonRoleCodeSimpleType", True), ("https://unbound.test/Thing", True), ("nc:PersonType", False)])
+def test_stage_6_refuses_a_saved_target_the_policy_rejects(tmp_path, monkeypatch, target, refused):
+    """A resume at Stage 6 makes no selections, so the generation entry is the
+    only place a pre-policy matrix can still be caught."""
+    import json as _json
+    import runner_tools.run_pipeline as runner
+    from ontology_mapper.run_dir_utils import resolve_specs_dir
+
+    catalog = _json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json").read_text(encoding="utf-8"))
+    monkeypatch.setattr(runner, "load_cascade_context", lambda run_dir: ("niem", catalog))
+    (tmp_path / "mapping-matrix.json").write_text(_json.dumps({"mappings": [
+        {"sourceConcept": "src:A", "action": "reuse", "targetType": target, "reviewStatus": "accepted"}]}),
+        encoding="utf-8")
+
+    commands = []
+    monkeypatch.setattr(runner, "run_cmd", lambda stage, cmd, cwd=None: commands.append(cmd[0]) or "")
+    monkeypatch.setattr(runner, "verify_stage", lambda *a: {})
+
+    if refused:
+        with pytest.raises(StageError, match="src:A"):
+            runner.run_stage_6(tmp_path, [])
+        assert commands == []          # nothing generated
+    else:
+        runner.run_stage_6(tmp_path, [])
+        assert commands[0] == "om-pipeline"
+
+
+def test_stage_6_without_a_matrix_does_not_refuse(tmp_path, monkeypatch):
+    import runner_tools.run_pipeline as runner
+
+    monkeypatch.setattr(runner, "load_cascade_context",
+                        lambda run_dir: pytest.fail("no matrix: the catalog must not be loaded"))
+    runner.refuse_invalid_class_targets(tmp_path)
+

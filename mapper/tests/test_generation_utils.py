@@ -387,3 +387,30 @@ def test_created_property_identity_is_shared_across_outputs():
     for action in ("extend", "augment"):
         assert created_property_qname("src:value", action, "src", bindings, "sample-edge:") == "ext:value"
     assert created_property_qname("shared:value", "extend", "src", bindings, "sample-edge:") == "src_shared:value"
+
+class TestCreatedPropertyIdentityForUndeclaredNamespaces:
+    """Extraction leaves a property whose namespace the manifest does not name
+    as a full IRI; it has no prefix to split and no binding to emit under."""
+
+    def _bindings(self):
+        from ontology_mapper.generation_utils import source_namespace_bindings
+        inv = {"namespaceMap": {"https://example.test/dbpi#": "dbpi:"},
+               "augmentingNamespaces": [],
+               "primaryNamespace": {"prefix": "dbpi", "uri": "https://example.test/dbpi#"},
+               "classes": [{"qname": "dbpi:Fee"}]}
+        return source_namespace_bindings(inv, {"nc": "http://niem/core/"}, "edge:")
+
+    @pytest.mark.parametrize("iri", [
+        "https://other.test/ns/value", "http://other.test/ns#value", "urn:other:ns:value"])
+    def test_full_iri_property_is_minted_not_split(self, iri):
+        from ontology_mapper.generation_utils import created_property_qname
+        bindings = self._bindings()
+        assert created_property_qname(iri, "extend", "dbpi", bindings, "edge:") == "ext:value"
+        assert created_property_qname(iri, "reuse", "dbpi", bindings, "edge:") == "edge:value"
+
+    def test_declared_namespaces_keep_their_emitted_prefix(self):
+        from ontology_mapper.generation_utils import created_property_qname
+        bindings = self._bindings()
+        assert created_property_qname("dbpi:amount", "extend", "dbpi", bindings, "edge:") == "ext:amount"
+        assert created_property_qname("dbpi:amount", "reuse", "dbpi", bindings, "edge:") == "edge:amount"
+

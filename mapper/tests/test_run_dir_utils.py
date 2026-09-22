@@ -1,3 +1,4 @@
+import pathlib
 """Tests for run_dir_utils — run directory resolution and org detection."""
 
 import json
@@ -166,3 +167,26 @@ class TestStatePathFor:
     def test_returns_correct_path(self, tmp_path):
         result = state_path_for(tmp_path)
         assert result == tmp_path / STATE_FILENAME
+
+def test_no_module_parses_a_shared_timestamp_with_the_stdlib_parser():
+    """`utc_stamp` writes a trailing Z, which `datetime.fromisoformat` rejects
+    before Python 3.11 — and both pyproject files declare `requires-python =
+    ">=3.10"`. Every reader goes through `parse_stamp`, which is proven
+    Z-tolerant above; a direct call would pass on this interpreter and fail
+    on the oldest supported one, where no suite here runs."""
+    import re
+
+    root = pathlib.Path(__file__).resolve().parents[2]
+    allowed = {
+        root / "mapper" / "src" / "ontology_mapper" / "run_dir_utils.py",   # parse_stamp itself
+        root / "mapper" / "tests" / "test_run_dir_utils.py",                # and its own test
+    }
+    offenders = []
+    for folder in ("mapper/src", "mapper/tests", "runner", "web/backend"):
+        for path in (root / folder).rglob("*.py"):
+            if path in allowed or "build" in path.parts or "node_modules" in path.parts:
+                continue
+            if re.search(r"fromisoformat\s*\(", path.read_text(encoding="utf-8")):
+                offenders.append(str(path.relative_to(root)))
+    assert offenders == [], f"use run_dir_utils.parse_stamp instead: {offenders}"
+

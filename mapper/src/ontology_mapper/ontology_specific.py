@@ -105,6 +105,30 @@ def canonical_class_target(target, target_ontology, catalog):
     return target_qname(target, catalog.get("namespaces", {}))
 
 
+def invalid_class_targets(matrix, target_ontology, catalog):
+    """Every saved class decision whose target the policy rejects.
+
+    One home for the question "is this matrix fit to generate from?". The
+    interactive path checks a selection as the reviewer makes it, but a
+    matrix saved before the policy existed — or edited outside review —
+    reaches generation with no selection event to check. Both the review
+    exit and the generation entry ask this instead of repeating the rule.
+
+    Returns a list of ``(sourceConcept, targetType, message)``; empty when
+    every accepted class decision names a class the policy allows.
+    """
+    invalid = []
+    for entry in matrix.get("mappings", []):
+        if entry.get("action") not in ("reuse", "extend", "augment"):
+            continue
+        target = entry.get("targetType")
+        try:
+            canonical_class_target(target, target_ontology, catalog)
+        except ClassTargetError as exc:
+            invalid.append((entry.get("sourceConcept", ""), target, str(exc)))
+    return invalid
+
+
 def validate_class_target(target, target_ontology, catalog):
     """Reject incompatible saved or review selections without replacing them."""
     canonical_class_target(target, target_ontology, catalog)

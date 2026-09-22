@@ -51,3 +51,14 @@ python runner_tools/_present_and_apply_human_review.py --run-dir {run_dir} appro
 # Search target catalog
 python runner_tools/_present_and_apply_human_review.py --run-dir {run_dir} search {query}
 ```
+
+## Exit criteria
+
+Review may close when nothing is pending, no property still needs a human
+decision, and every accepted class target passes the target ontology's class
+policy (`ontology_specific.invalid_class_targets`). The third applies to
+decisions saved before the policy existed: they make no selection for the
+interactive check to catch, so the exit check and the Stage 6 entry are the
+seams that see them. `check_stage_5_exit(matrix, cascade)` takes the run's
+`(target_ontology, catalog)`; when that cannot be loaded the targets cannot
+be proven valid and that is itself a blocker.

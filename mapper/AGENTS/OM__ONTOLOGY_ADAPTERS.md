@@ -53,6 +53,11 @@ rejected at review rather than failing later as an unbound CMF reference.
 The review apply path (`runner_tools.apply_decision_with_cascade`) compares
 canonical identities, so re-accepting a stored IRI as its QName stores the QName
 without a cascade; only a different class triggers reclassification.
+`invalid_class_targets()` asks the same policy of a whole saved matrix: a
+decision accepted before the policy existed makes no selection to check, so
+review exit (`check_stage_5_exit`, all three web routes) reports it as a
+blocker and the generation entry (`run_pipeline.refuse_invalid_class_targets`,
+which a Stage 6 resume also passes through) refuses to generate from it.
 Datatypes and XSD-only names cannot become superclasses. Literal classes,
 including classes with only inherited properties, remain eligible. Names,
 patterns and property counts do not determine component kind.
