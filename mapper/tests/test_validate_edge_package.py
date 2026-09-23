@@ -510,8 +510,11 @@ class TestCheckCodebookDrift:
         assert "definition changed" in errors[0]
         # Round thirteen: a decision saved before decisions were
         # refingerprinted fails here with no way to tell it from real drift.
-        assert "re-resolve the property on the web review page" in errors[0]
-        assert "re-run from Stage 6" in errors[0]
+        assert "fingerprint predates the review decision" in errors[0]
+        # No surface is named that cannot do it: the review page is
+        # read-only once Stage 6 has run, and reopening waits for its feature.
+        assert "web review page" not in errors[0]
+        assert "do not yet offer" in errors[0]
 
     def test_property_not_found(self):
         catalog = _catalog_with_types(

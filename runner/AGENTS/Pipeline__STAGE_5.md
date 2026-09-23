@@ -14,7 +14,7 @@
 
 Available actions during review:
 - `approve` — accept a single concept's recommendation
-- `approve_all` — accept all pending (blocked while undecided properties exist)
+- `approve_all` — accept all pending (blocked while pending concepts have undecided properties; `approve_all_blockers`)
 - `detail` — show full rationale and property mappings for a concept
 - `change_target` — change target type, triggering reclassification cascade
 - `resolve_property` — resolve a single property (especially human-must-decide)
@@ -45,7 +45,7 @@ python runner_tools/_present_and_apply_human_review.py --run-dir {run_dir} detai
 # Approve a single concept
 python runner_tools/_present_and_apply_human_review.py --run-dir {run_dir} approve {concept}
 
-# Approve all (blocked while undecided properties exist)
+# Approve all (blocked while pending concepts have undecided properties)
 python runner_tools/_present_and_apply_human_review.py --run-dir {run_dir} approve-all
 
 # Search target catalog
@@ -67,7 +67,10 @@ reuse, `generation_utils.accepted_reuse_target`). Everything else is
 undecided whatever its status: `human-must-decide`, a reuse without a target,
 any other action string. Every count and view of blocking properties, CLI
 and web (the web page reads each property's `undecided` flag), bulk accept
-included, asks the same function, and the blocker names each one. `check_stage_5_exit(matrix, cascade)` takes the run's
+included, asks the same function, and the blocker names each one. Approve-all
+asks it of the pending concepts it would approve (`approve_all_blockers`, one
+home for the route, the page's button and the CLI); the exit gate asks it of
+every concept. `check_stage_5_exit(matrix, cascade)` takes the run's
 `(target_ontology, catalog)`; when that cannot be loaded the targets cannot
 be proven valid and that is itself a blocker.
 

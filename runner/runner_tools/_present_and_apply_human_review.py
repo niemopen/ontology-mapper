@@ -798,6 +798,15 @@ def _prop_counts(entry):
     return len(props), reuse, create, must_decide
 
 
+def approve_all_blockers(matrix):
+    """The undecided properties that block approve-all: those of the pending
+    concepts it would approve. One home for the web route, the page's
+    Approve All button (GET /review ``approveAllBlocked``) and both CLI
+    paths; the page counted every undecided property, so it disabled the
+    button for an approve-all the route would perform."""
+    return undecided_properties(get_pending_items(matrix))
+
+
 def _undecided_blocker_lines(matrix):
     """Lines naming the undecided properties that still block Stage 5 when
     no concept is pending: "No items pending review" read as review done
@@ -922,7 +931,7 @@ def _cmd_accept_all(args):
         return
 
     # Block accept-all if any undecided properties remain
-    must_decide_count = len(undecided_properties(pending))
+    must_decide_count = len(approve_all_blockers(matrix))
     if must_decide_count:
         print(f"Cannot approve-all: {must_decide_count} undecided "
               f"properties must be resolved individually first.")

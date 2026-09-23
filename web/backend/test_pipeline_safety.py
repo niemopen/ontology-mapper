@@ -415,3 +415,24 @@ def test_review_state_marks_each_property_undecided_by_the_gates_rule(run_contex
     saved = json.loads((run_dir / "mapping-matrix.json").read_text(encoding="utf-8"))
     assert "undecided" not in saved["mappings"][0]["propertyMappings"][0]
 
+
+def test_approve_all_button_and_route_ask_the_same_question(run_context, monkeypatch):
+    """The page disabled Approve All for any undecided property, while the
+    route approves when only an accepted concept has one."""
+    run_dir, client, _ = run_context
+    monkeypatch.setattr(review, "_get_cascade", lambda *args: ("niem", {"types": [], "namespaces": {}}))
+    monkeypatch.setattr("ontology_mapper.ontology_specific.invalid_class_targets", lambda *a: [])
+    entries = [
+        {"sourceConcept": "src:Done", "action": "extend", "targetType": None, "reviewStatus": "accepted",
+         "propertyMappings": [{"sourceProperty": "src:count", "action": "human-must-decide",
+                               "reviewStatus": "pending-review"}]},
+        {"sourceConcept": "src:Next", "action": "extend", "targetType": None, "reviewStatus": "pending-review",
+         "propertyMappings": []}]
+    (run_dir / "mapping-matrix.json").write_text(json.dumps({"mappings": entries}), encoding="utf-8")
+    for name in ("decision-log.json", "human-review-decisions.json"):
+        (run_dir / name).write_text(json.dumps({"decisions": []}), encoding="utf-8")
+    validation = client.get("/runs/sample/review").json()["validation"]
+    assert validation["humanMustDecide"] == 1
+    assert validation["approveAllBlocked"] == 0
+    assert client.post("/runs/sample/review/approve-all").status_code == 200
+

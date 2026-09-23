@@ -38,6 +38,7 @@ from runner_tools._present_and_apply_human_review import (
     apply_property_decision,
     check_stage_5_exit,
     find_mapping_entry,
+    approve_all_blockers,
     PROPERTY_DECISION_ACTIONS,
     load_cascade_context,
     save_matrix,
@@ -338,8 +339,8 @@ def _dispatch_review_action(
         return msg, applied, cascade_context
 
     elif action_type == "approve_all":
-        # Check for human-must-decide blockers
-        must_decide = len(undecided_properties(pending))
+        # Check for undecided blockers (`approve_all_blockers`)
+        must_decide = len(approve_all_blockers(matrix))
         if must_decide:
             return (f"Cannot approve-all: {must_decide} undecided properties "
                     f"must be resolved individually first."), applied, cascade_context

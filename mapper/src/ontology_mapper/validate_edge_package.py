@@ -450,15 +450,19 @@ def check_codebook_drift(mappings_list, catalog):
                     # A review decision saved before decisions were
                     # refingerprinted still carries the hash of Stage 3's
                     # candidate, not of the chosen target; say how to tell
-                    # that from a catalog change and how to clear it.
+                    # that from a catalog change and what clearing it needs.
+                    # Naming a page action was wrong: after Stage 6 the
+                    # review page is read-only.
                     errors.append(
                         f"{concept}/{src_prop}: {target_prop} definition "
                         f"changed (was {prop_hash}, now {current_prop_hash}); "
                         f"if the catalog has not changed since review, the "
-                        f"fingerprint predates the review decision: re-resolve "
-                        f"the property on the web review page, which records "
-                        f"the current one, then re-run from Stage 6, which "
-                        f"packages the matrix this check reads"
+                        f"fingerprint predates the review decision (a review "
+                        f"saved before decisions recorded their own), and "
+                        f"re-resolving the property in Stage 5 review records "
+                        f"the current one; that needs the approved review "
+                        f"reopened, which the web page and CLI do not yet "
+                        f"offer"
                     )
 
     return errors

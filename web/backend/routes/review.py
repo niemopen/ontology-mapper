@@ -141,6 +141,9 @@ async def get_review_state(run_id: str, user: dict = Depends(require_auth), org:
     from runner_tools._present_and_apply_human_review import undecided_properties
 
     must_decide_count = len(undecided_properties(matrix.get("mappings", [])))
+    from runner_tools._present_and_apply_human_review import approve_all_blockers
+
+    approve_all_blocked = len(approve_all_blockers(matrix))
     best_guess_count = sum(
         1 for entry in matrix.get("mappings", [])
         if entry.get("confidence") == "best-guess" and entry.get("reviewStatus") == "accepted")
@@ -161,6 +164,7 @@ async def get_review_state(run_id: str, user: dict = Depends(require_auth), org:
             "accepted": accepted,
             "pending": len(pending),
             "humanMustDecide": must_decide_count,
+            "approveAllBlocked": approve_all_blocked,
             "bestGuess": best_guess_count,
             "canSubmit": can_submit,
             "blockers": blockers,
@@ -201,7 +205,8 @@ async def approve_concept(
 
 @router.post("/approve-all")
 async def approve_all(run_id: str, user: dict = Depends(require_auth), org: str = Depends(get_org_slug)) -> dict:
-    """Approve all pending concepts. Blocked if human-must-decide properties exist."""
+    """Approve all pending concepts. Blocked while they have undecided
+    properties (`approve_all_blockers`)."""
     run_dir = _run_dir(org, run_id)
     matrix = _load_matrix(run_dir)
     dec_log = _load_decision_log(run_dir)
@@ -214,10 +219,9 @@ async def approve_all(run_id: str, user: dict = Depends(require_auth), org: str 
 
     pending = get_pending_items(matrix)
 
-    # Check for human-must-decide blockers
-    from runner_tools._present_and_apply_human_review import undecided_properties
+    from runner_tools._present_and_apply_human_review import approve_all_blockers
 
-    must_decide = undecided_properties(pending)
+    must_decide = approve_all_blockers(matrix)
     if must_decide:
         raise HTTPException(
             status_code=409,

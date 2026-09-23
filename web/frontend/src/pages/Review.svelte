@@ -55,6 +55,9 @@
   $: accepted = validation.accepted || 0;
   $: pending = validation.pending || 0;
   $: mustDecide = validation.humanMustDecide || 0;
+  // The route's own answer (approve_all_blockers): only the pending
+  // concepts' undecided properties block approve-all.
+  $: approveAllBlocked = validation.approveAllBlocked || 0;
   $: bestGuessCount = validation.bestGuess || 0;
   $: canSubmit = validation.canSubmit && !submitting;
   $: progress = totalConcepts > 0 ? (accepted / totalConcepts) * 100 : 0;
@@ -267,9 +270,9 @@
                 class="px-3 py-1.5 text-sm font-medium text-indigo-700 bg-indigo-50
                        hover:bg-indigo-100 rounded-md transition-colors
                        disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={mustDecide > 0}
+                disabled={approveAllBlocked > 0}
                 on:click={handleApproveAll}
-                title={mustDecide > 0 ? `Blocked: ${mustDecide} properties need human decision` : "Approve all pending"}
+                title={approveAllBlocked > 0 ? `Blocked: ${approveAllBlocked} properties of pending concepts need human decision` : "Approve all pending"}
               >
                 Approve All ({pending})
               </button>
