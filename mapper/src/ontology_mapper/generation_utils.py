@@ -178,6 +178,20 @@ def qualified_target_property(target_prop, class_target_type):
     return target_prop
 
 
+def catalog_property_key(target_prop, class_target_type, namespaces):
+    """The catalog's `qualifiedProperty` for a recorded target property.
+
+    One home for Stage 3's definition fingerprint and Stage 7 Check 12: both
+    look the property up in the catalog's propertyIndex, which is keyed by
+    QName. A full IRI is grounded first and a bare local name is qualified by
+    its class's target prefix, as the OWL and CMF emitters name it. Looking
+    it up as spelled reported a property the package emits as missing, and
+    fingerprinted the search result's definition instead of the catalog's.
+    """
+    return qualified_target_property(target_qname(target_prop, namespaces),
+                                     target_qname(class_target_type, namespaces))
+
+
 def source_declared_properties(inventory):
     """The properties a source property list declares, as QNames.
 

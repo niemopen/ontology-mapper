@@ -549,7 +549,7 @@ class TestAddDefinitionHashes:
                 {"targetDefinition": "A city name."},
             ],
         }
-        _add_definition_hashes(entry, {}, {})
+        _add_definition_hashes(entry, {}, {}, {})
         assert len(entry["targetDefinitionHash"]) == 16
         assert len(entry["properties"][0]["targetDefinitionHash"]) == 16
         assert len(entry["properties"][1]["targetDefinitionHash"]) == 16
@@ -563,14 +563,14 @@ class TestAddDefinitionHashes:
                 {"targetDefinition": None},
             ],
         }
-        _add_definition_hashes(entry, {}, {})
+        _add_definition_hashes(entry, {}, {}, {})
         assert entry["targetDefinitionHash"] is None
         assert len(entry["properties"][0]["targetDefinitionHash"]) == 16
         assert entry["properties"][1]["targetDefinitionHash"] is None
 
     def test_entry_no_properties(self):
         entry = {"targetDefinition": "A person."}
-        _add_definition_hashes(entry, {}, {})
+        _add_definition_hashes(entry, {}, {}, {})
         assert len(entry["targetDefinitionHash"]) == 16
 
     def test_undecided_property(self):
@@ -581,7 +581,7 @@ class TestAddDefinitionHashes:
                 {"targetProperty": "[undecided]", "targetDefinition": None},
             ],
         }
-        _add_definition_hashes(entry, {}, {})
+        _add_definition_hashes(entry, {}, {}, {})
         assert len(entry["targetDefinitionHash"]) == 16
         assert entry["properties"][0]["targetDefinitionHash"] is None
 
@@ -593,7 +593,7 @@ class TestAddDefinitionHashes:
             "properties": [],
         }
         type_defs = {"nc:PersonType": "A person."}
-        _add_definition_hashes(entry, type_defs, {})
+        _add_definition_hashes(entry, type_defs, {}, {})
         assert entry["targetDefinitionHash"] == _hash_definition("A person.")
 
     def test_prefers_catalog_property_definition(self):
@@ -606,7 +606,7 @@ class TestAddDefinitionHashes:
             }],
         }
         prop_defs = {"nc:PersonName": "A name."}
-        _add_definition_hashes(entry, {}, prop_defs)
+        _add_definition_hashes(entry, {}, prop_defs, {})
         assert entry["properties"][0]["targetDefinitionHash"] == _hash_definition("A name.")
 
 
@@ -777,3 +777,17 @@ class TestCollectionRefusesOnceNamingEveryConcept:
                                        "niem", self._catalog())
         assert [e["sourceConcept"] for e in resolved] == ["src:Fine"]
         assert resolved[0]["action"] in {"reuse", "extend", "augment"}
+
+
+def test_a_bare_or_iri_target_property_is_fingerprinted_from_the_catalog():
+    """A target property recorded by local name or full IRI names the same
+    catalog property the emitters write; its fingerprint is the catalog's
+    definition, not the search result's, or Check 12 reports drift."""
+    from ontology_mapper.generation_utils import definition_hash
+    namespaces = {"nc": "https://example.test/nc/"}
+    prop_defs = {"nc:PersonName": "A name of a person."}
+    for spelling in ("PersonName", "https://example.test/nc/PersonName", "nc:PersonName"):
+        entry = {"targetType": "nc:PersonType", "targetDefinition": "x",
+                 "properties": [{"targetProperty": spelling, "targetDefinition": "search text"}]}
+        _add_definition_hashes(entry, {}, prop_defs, namespaces)
+        assert entry["properties"][0]["targetDefinitionHash"] == definition_hash("A name of a person.")

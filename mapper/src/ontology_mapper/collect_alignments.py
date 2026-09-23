@@ -21,7 +21,7 @@ from collections import defaultdict
 from ontology_mapper.run_dir_utils import utc_stamp
 from pathlib import Path
 
-from ontology_mapper.generation_utils import definition_hash
+from ontology_mapper.generation_utils import catalog_property_key, definition_hash
 from ontology_mapper.pipeline_context import load_context
 from ontology_mapper.build_strategy_reports import resolve_catalog_path
 from ontology_mapper.ontology_specific import ClassTargetError, resolve_alignment
@@ -157,10 +157,10 @@ def _build_catalog_def_lookups(catalog):
     for ns_data in catalog.get("propertyIndex", {}).values():
         for p in ns_data.get("properties", []):
             prop_defs[p["qualifiedProperty"]] = p.get("definition")
-    return type_defs, prop_defs
+    return type_defs, prop_defs, catalog.get("namespaces", {})
 
 
-def _add_definition_hashes(entry, type_defs, prop_defs):
+def _add_definition_hashes(entry, type_defs, prop_defs, namespaces):
     """Add targetDefinitionHash to an alignment entry and its properties.
 
     Hashes the canonical catalog definition (not the enriched definition from
@@ -174,7 +174,8 @@ def _add_definition_hashes(entry, type_defs, prop_defs):
     )
     for prop in entry.get("properties", []):
         target_prop = prop.get("targetProperty")
-        canonical_prop_def = prop_defs.get(target_prop) if target_prop else None
+        canonical_prop_def = (prop_defs.get(catalog_property_key(target_prop, target_type, namespaces))
+                              if target_prop else None)
         prop["targetDefinitionHash"] = _hash_definition(
             canonical_prop_def if canonical_prop_def is not None else prop.get("targetDefinition")
         )
@@ -190,7 +191,7 @@ def collect_and_resolve(
     Returns a list of fully resolved alignment entries (with actions,
     scaffolding, property actions, and target definition hashes).
     """
-    type_defs, prop_defs = _build_catalog_def_lookups(catalog)
+    type_defs, prop_defs, namespaces = _build_catalog_def_lookups(catalog)
     resolved = []
     rejected = []
     for evaluation in evaluations:
@@ -204,7 +205,7 @@ def collect_and_resolve(
             # cannot trace back to a concept.
             rejected.append(f"  - {evaluation.get('sourceConcept', '(unnamed)')}: {exc}")
             continue
-        _add_definition_hashes(entry, type_defs, prop_defs)
+        _add_definition_hashes(entry, type_defs, prop_defs, namespaces)
         resolved.append(entry)
     if rejected:
         raise ClassTargetError(

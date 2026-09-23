@@ -794,3 +794,19 @@ class TestGovernanceFilesStage7Validates:
             '{"finalizedAt": "now"}', encoding="utf-8")
 
         assert stale_against_package(report, pkg) is None
+
+
+@pytest.mark.parametrize("spelling", ["PersonName", "https://example.test/nc/PersonName", "nc:PersonName"])
+def test_check_12_finds_a_target_property_in_any_spelling_the_emitters_accept(spelling):
+    """The OWL and CMF emitters qualify a bare local name by its class's
+    target prefix and ground a full IRI; Check 12 reported both "not found
+    in catalog", and Stage 8 then refused a package Check 11 accepted."""
+    from ontology_mapper.generation_utils import definition_hash
+    catalog = {"namespaces": {"nc": "https://example.test/nc/"},
+               "types": [{"qname": "nc:PersonType", "definition": "A person."}],
+               "propertyIndex": {"nc": {"properties": [
+                   {"qualifiedProperty": "nc:PersonName", "definition": "A name of a person."}]}}}
+    mappings = [{"sourceConcept": "src:Person", "targetType": "nc:PersonType",
+                 "propertyMappings": [{"sourceProperty": "src:name", "targetProperty": spelling,
+                                       "targetDefinitionHash": definition_hash("A name of a person.")}]}]
+    assert check_codebook_drift(mappings, catalog) == []

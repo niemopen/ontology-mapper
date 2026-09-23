@@ -402,8 +402,9 @@ def check_codebook_drift(mappings_list, catalog):
         for p in ns_data.get("properties", []):
             prop_defs[p["qualifiedProperty"]] = p.get("definition")
 
-    from ontology_mapper.generation_utils import target_qname
+    from ontology_mapper.generation_utils import catalog_property_key, target_qname
 
+    namespaces = catalog.get("namespaces", {})
     for m in mappings_list:
         concept = m.get("sourceConcept", "")
         # One identity: a matrix saved before selections were canonicalized
@@ -434,6 +435,7 @@ def check_codebook_drift(mappings_list, catalog):
             prop_hash = p.get("targetDefinitionHash")
 
             if target_prop and prop_hash and target_prop != "[undecided]":
+                target_prop = catalog_property_key(target_prop, m.get("targetType"), namespaces)
                 current_prop_def = prop_defs.get(target_prop)
                 current_prop_hash = _hash_definition(current_prop_def)
 
