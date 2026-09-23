@@ -518,6 +518,36 @@ class TestStage5Metric:
 # Stage 7: failed validation still produces the feedback report
 # ---------------------------------------------------------------------------
 
+def test_stage_5_loop_offers_the_repair_for_a_blocked_accepted_target(tmp_path, monkeypatch):
+    """A matrix saved before the class policy: every class accepted, one with
+    a datatype base. Nothing is pending, but review cannot close, so the loop
+    must still prompt; change_target to the same class rebuilds the base."""
+    import runner_tools.run_pipeline as runner
+
+    (tmp_path / ".mapper-state.json").write_text(json.dumps(
+        {"inputs": {"target_ontology": "niem", "target_version": "6.0"}, "stages": {}}),
+        encoding="utf-8")
+    entry = {"sourceConcept": "src:A", "action": "extend", "targetType": "nc:PersonType",
+             "baseType": "niem-xs:token", "extensionType": "A",
+             "reviewStatus": "accepted", "propertyMappings": []}
+    (tmp_path / "mapping-matrix.json").write_text(json.dumps({"mappings": [entry]}), encoding="utf-8")
+    (tmp_path / "decision-log.json").write_text(json.dumps({"decisions": []}), encoding="utf-8")
+
+    prompts = []
+    monkeypatch.setattr("builtins.input", lambda p="": prompts.append(p) or "rebase A on PersonType")
+    monkeypatch.setattr(runner, "_call_claude_interpret", lambda prompt: {
+        "action": "change_target", "concept": "src:A", "new_target_type": "nc:PersonType"})
+    monkeypatch.setattr(runner, "_cmd_present", lambda args: None)
+
+    runner.run_stage_5_loop(tmp_path)
+    # The first selection rebuilds the rejected scaffolding and returns the
+    # entry to pending review; the second, now valid, accepts it.
+    assert len(prompts) == 2
+    saved = json.loads((tmp_path / "mapping-matrix.json").read_text(encoding="utf-8"))
+    assert saved["mappings"][0].get("baseType") != "niem-xs:token"
+    assert saved["mappings"][0]["reviewStatus"] == "accepted"
+
+
 def _finalized_run(run_dir):
     """A run whose previous Stages 7 and 8 passed and stamped the package."""
     stamp = "2026-09-01T00:00:00Z"

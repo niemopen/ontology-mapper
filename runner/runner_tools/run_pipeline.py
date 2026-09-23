@@ -36,6 +36,7 @@ from runner_tools._present_and_apply_human_review import (
     apply_all_property_accepts,
     apply_decision_with_cascade,
     apply_property_decision,
+    check_stage_5_exit,
     load_cascade_context,
     save_matrix,
     validate_class_decision,
@@ -499,7 +500,11 @@ def run_stage_5_loop(run_dir: Path) -> list:
     """Interactive Stage 5 review loop.
 
     Presents pending items, reads user input, interprets via claude -p,
-    executes the action, and repeats until no pending items remain.
+    executes the action, and repeats until Stage 5's exit criteria are met
+    (`check_stage_5_exit`, the predicate `complete_stage_5` and the web ask).
+    A blocker on an entry that is not pending — a saved class target the
+    policy rejects — keeps the prompt open, because `change_target` is how it
+    is repaired and the loop is the only place the runner offers it.
 
     Returns the list of all applied decisions.
     """
@@ -509,11 +514,11 @@ def run_stage_5_loop(run_dir: Path) -> list:
 
     _, matrix, dec_log = review_load_inputs(run_dir)
     all_applied = []
-    cascade_context = None
+    cascade_context = load_cascade_context(run_dir)
 
     # Initial presentation
-    pending = get_pending_items(matrix)
-    if not pending:
+    can_exit, blockers = check_stage_5_exit(matrix, cascade_context)
+    if can_exit:
         print("  No items pending review — Stage 5 already complete.")
         return all_applied
 
@@ -521,9 +526,12 @@ def run_stage_5_loop(run_dir: Path) -> list:
 
     while True:
         pending = get_pending_items(matrix)
-        if not pending:
+        can_exit, blockers = check_stage_5_exit(matrix, cascade_context)
+        if can_exit:
             print("\n  All items reviewed — Stage 5 complete.")
             break
+        if not pending:
+            print("\n  Review cannot close yet:\n    - " + "\n    - ".join(blockers))
 
         # Read user input
         try:
@@ -541,6 +549,9 @@ def run_stage_5_loop(run_dir: Path) -> list:
 
         # Build prompt and call claude -p for interpretation
         pending_summary = _build_pending_summary(pending)
+        if not pending:
+            pending_summary += "\nBlocking review exit:\n" + "\n".join(
+                f"  {b}" for b in blockers)
         prompt = _build_review_prompt(pending_summary, user_input)
         print("  (interpreting...)")
         action = _call_claude_interpret(prompt)

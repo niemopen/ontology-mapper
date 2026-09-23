@@ -65,7 +65,8 @@ be proven valid and that is itself a blocker.
 
 Each driver meets that check at a different point. The web asks it through
 `routes/review.stage_5_gate` before it offers to close review; the CLI loop
-has no gate of its own, and `verify_stage` reads pending status only, so
+(`run_stage_5_loop`) keeps prompting until the same check passes, so a
+blocker on an entry that is not pending still gets a `Review>` prompt; and
 `complete_stage_5` — the step that marks the stage complete for both — runs
 the check itself and returns the blockers instead of completing. The
 blocker names every field holding the rejected class, because the reviewer
