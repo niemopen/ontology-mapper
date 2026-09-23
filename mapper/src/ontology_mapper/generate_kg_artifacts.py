@@ -79,11 +79,13 @@ def build_active_classes(inv, matrix):
     from ontology_mapper.generation_utils import (
         emitted_class_action,
         infer_domains_from_shapes,
+        range_class_for,
         assign_properties_to_classes,
         source_prefix as primary_source_prefix,
     )
 
     mapping_by_concept = {m["sourceConcept"]: m for m in matrix["mappings"]}
+    class_by_qname = {c["qname"]: c for c in inv["classes"]}
 
     # Determine active classes
     active_qnames = set()
@@ -173,7 +175,11 @@ def build_active_classes(inv, matrix):
             ranges = p.get("range", [])
             if not ranges:
                 continue
-            range_qname = ranges[0]
+            # An excluded range class stands for its nearest emitted
+            # ancestor, the class the OWL/SHACL and CMF ranges name
+            # (range_class_for, their shared redirect); dropping the
+            # relationship left the graph without an edge both models have.
+            range_qname = range_class_for(ranges[0], mapping_by_concept, class_by_qname) or ranges[0]
             # Only include if the range is an active class. Not "primary
             # AND inactive": an augmenting namespace is first-class here,
             # and an excluded class is excluded whatever namespace it

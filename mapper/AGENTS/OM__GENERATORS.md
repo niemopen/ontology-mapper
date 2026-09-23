@@ -240,7 +240,7 @@ object properties ranged on the excluded class then disappear from the OWL
 while the CMF keeps declaring them. A range on an excluded class names the
 nearest emitted ancestor along first parents, through any number of
 exclusions (`generation_utils.range_class_for`, the one redirect the OWL/SHACL
-and CMF emitters both call). A property whose range this package does not
+and CMF emitters and the KG relationship builder all call). A property whose range this package does not
 emit is still declared, with `rdfs:range owl:Thing`.
 
 Generation refuses a saved class target the target ontology's class policy

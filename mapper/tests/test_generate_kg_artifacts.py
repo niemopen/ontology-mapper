@@ -177,6 +177,34 @@ class TestKebab:
 # ═══════════════════════════════════════════════════════════════════════════
 
 class TestBuildActiveClasses:
+    @pytest.mark.parametrize("chain", [["ex:Minor"], ["ex:Minor", "ex:Middle"]])
+    def test_an_excluded_range_names_the_class_the_owl_and_cmf_name(self, chain):
+        """A range on an excluded class stands for its nearest emitted
+        ancestor in OWL, SHACL and CMF (range_class_for); the graph dropped
+        the relationship instead, through any number of exclusions."""
+        classes = [make_class("ex:Person"), make_class("ex:Case")]
+        parent = "ex:Person"
+        for qname in reversed(chain):
+            cls = make_class(qname)
+            cls["subClassOf"] = [parent]
+            classes.append(cls)
+            parent = qname
+        inv = make_inv(classes, obj_props=[
+            make_obj_prop("ex:subject", domain=["ex:Case"], range_val=[chain[0]])])
+        matrix = make_matrix([make_mapping("ex:Person", "reuse", "nc:PersonType"),
+                              make_mapping("ex:Case", "extend")]
+                             + [make_mapping(q, "exclude") for q in chain])
+        case = next(c for c in build_active_classes(inv, matrix) if c["sourceQname"] == "ex:Case")
+        assert [(p["qname"], p["rangeQname"]) for p in case["objectProps"]] == [("ex:subject", "ex:Person")]
+
+    def test_a_range_with_no_emitted_ancestor_is_still_dropped(self):
+        orphan = make_class("ex:Orphan")
+        inv = make_inv([make_class("ex:Case"), orphan], obj_props=[
+            make_obj_prop("ex:about", domain=["ex:Case"], range_val=["ex:Orphan"])])
+        matrix = make_matrix([make_mapping("ex:Case", "extend"), make_mapping("ex:Orphan", "exclude")])
+        case = next(c for c in build_active_classes(inv, matrix) if c["sourceQname"] == "ex:Case")
+        assert case["objectProps"] == []
+
     def test_filters_to_reuse_and_extend(self):
         inv = make_inv(
             classes=[
