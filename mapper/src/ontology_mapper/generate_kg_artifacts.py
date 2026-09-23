@@ -458,13 +458,18 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
         if subj_str not in node_identifiers or obj_str not in node_identifiers:
             continue
 
-        # Must be a known relationship property
-        if pred_str not in rel_props:
+        # A declared property: one an active class owns, or one declared
+        # with no owner (no domain), which the OWL declares globally and
+        # whose edges were dropped here (hasFee, assignedToUnit).
+        if pred_str in rel_props:
+            rel_name = relationship_type(rel_props[pred_str]["label"])
+        elif pred_str in property_keys:
+            rel_name = relationship_type(property_keys[pred_str])
+        else:
             continue
 
         src_label, src_id = node_identifiers[subj_str]
         tgt_label, tgt_id = node_identifiers[obj_str]
-        rel_name = relationship_type(rel_props[pred_str]["label"])
 
         rel_lines.append(f"MATCH (a:{src_label} {{identifier: {src_id}}})")
         rel_lines.append(f"MATCH (b:{tgt_label} {{identifier: {tgt_id}}})")

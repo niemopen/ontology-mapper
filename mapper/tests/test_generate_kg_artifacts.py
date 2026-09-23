@@ -1046,3 +1046,21 @@ class TestSeedRound14:
         assert strip(first) == strip(second)
         assert '(b:Party {identifier: "https://sample.test/src/p1"})' in first
 
+    def test_an_edge_of_a_property_no_class_owns_is_seeded(self, tmp_path):
+        """A declared object property with no domain (hasFee, assignedToUnit
+        in the demo package) is declared globally by the OWL; its seed edges
+        were dropped because no active class owned it."""
+        from ontology_mapper.generate_kg_artifacts import generate_seed_cypher
+        classes = [{**make_class(f"src:{n}"), "iri": self.SRC + n} for n in ("Case", "Party")]
+        op = [{**make_obj_prop("src:unowned", domain=[], range_val=["src:Party"]), "iri": self.SRC + "unowned"}]
+        inv = make_inv(classes, obj_props=op)
+        inv["primaryNamespace"] = {"prefix": "src"}
+        matrix = make_matrix([make_mapping("src:Case", "extend"), make_mapping("src:Party", "extend")])
+        seed = tmp_path / "seed.ttl"
+        seed.write_text(f"@prefix src: <{self.SRC}> .\nsrc:c1 a src:Case ; src:unowned src:p1 .\nsrc:p1 a src:Party .",
+                        encoding="utf-8")
+        active = build_active_classes(inv, matrix)
+        cypher = generate_seed_cypher(active, build_relationships(active), seed, "sample",
+                                      graph_property_keys(inv))
+        assert "CREATE (a)-[:UNOWNED]->(b);" in cypher
+
