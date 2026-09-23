@@ -713,7 +713,10 @@ def main():
         elif cmf_dir.exists():
             cmf_errors = [f"CMF file not found: {ctx.cmf_model_stem}.cmf"]
         else:
-            cmf_errors = ["cmf/ directory not found"]
+            # A reference model installed after Stage 6 omitted the CMF: the
+            # package predates it, and only regenerating gives it a CMF.
+            cmf_errors = ["cmf/ directory not found; a CMF reference model is installed "
+                          "for this target now, so re-run Stage 6 to generate it"]
 
         add_check(checks, "cmf-consistency", len(cmf_errors) == 0,
               "CMF matches matrix" if not cmf_errors else "; ".join(cmf_errors[:3]))

@@ -1176,8 +1176,15 @@ def main():
     from ontology_mapper.cmf_reference import (
         CMF_OMITTED_REASON, complete_cmf_references, load_reference_cmf, reference_cmf_installed)
     if not reference_cmf_installed(TARGET_ONTOLOGY, TARGET_VERSION):
-        # A CMF left by an earlier run would be validated as this package's.
-        shutil.rmtree(cmf_dir, ignore_errors=True)
+        # A CMF left by an earlier run would be validated as this package's,
+        # so a removal that fails stops the stage rather than shipping it
+        # beside a manifest that says there is none.
+        if cmf_dir.exists():
+            try:
+                shutil.rmtree(cmf_dir)
+            except OSError as exc:
+                sys.exit(f"ERROR: could not remove the earlier run's {cmf_dir}: {exc}. "
+                         "Remove it and re-run Stage 6.")
         print(f"\n  CMF not generated for {TARGET_ONTOLOGY} {TARGET_VERSION}: {CMF_OMITTED_REASON}")
         return
     cmf_dir.mkdir(parents=True, exist_ok=True)

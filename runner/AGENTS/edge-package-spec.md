@@ -26,8 +26,9 @@ This specification defines the standard structure for an edge ontology package p
 ├── README.md                          # Package manifest and usage guide
 ├── package-manifest.json              # Machine-readable package metadata
 │
-├── cmf/                               # Canonical Model Format
-│   ├── {source}-model.cmf.xml         # CMF model file
+├── cmf/                               # CMF model (targets with a CMF reference model;
+│   │                                  #   otherwise absent, reason under omittedArtifacts)
+│   ├── {source}-model.cmf             # CMF model file (XML)
 │   └── {source}-model.cmf.json        # CMF model in JSON representation
 │
 ├── ontology/                          # Target-aligned OWL/RDF ontology modules

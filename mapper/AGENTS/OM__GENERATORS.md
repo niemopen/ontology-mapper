@@ -69,7 +69,7 @@ Run generators collectively produce this directory tree:
 ```
 edge-package/
   ontology/          # OWL/TTL modules (6a)
-  cmf/               # CMF model (6a via owl_cmf_bridge)
+  cmf/               # CMF model (6a via owl_cmf_bridge; targets with a CMF reference model)
   shapes/            # SHACL shapes (6a)
   vocab/             # SKOS codelists (6a)
   mappings/          # mapping-matrix.json, alignment-report.json, gap-analysis (6b)

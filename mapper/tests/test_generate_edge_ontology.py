@@ -152,6 +152,26 @@ def test_a_reuse_restriction_takes_the_catalog_type_however_the_target_is_spelle
     assert "owl:allValuesFrom nc:TextType" in ttl
 
 
+def test_a_stale_cmf_that_cannot_be_removed_stops_stage_6(tmp_path, monkeypatch):
+    """Round twelve: the removal ignored errors, so an undeletable file from
+    an earlier run shipped beside a manifest saying there is no cmf/."""
+    import shutil
+    import ontology_mapper.cmf_reference as cmf_reference
+
+    monkeypatch.setattr(cmf_reference, "reference_cmf_installed", lambda *args: False)
+    stale = tmp_path / "edge-package" / "cmf"
+    stale.mkdir(parents=True)
+    (stale / "sample-model.cmf").write_text("<Model/>", encoding="utf-8")
+
+    def refuse(path, *args, **kwargs):
+        raise PermissionError(13, "Access is denied", str(path))
+
+    monkeypatch.setattr(shutil, "rmtree", refuse)
+    with pytest.raises(SystemExit) as exc:
+        _generate_one_class(tmp_path, monkeypatch, "extend", "nc:DocumentFileControlID")
+    assert "could not remove" in str(exc.value) and "re-run Stage 6" in str(exc.value)
+
+
 def test_a_target_without_a_cmf_reference_model_gets_no_cmf(tmp_path, monkeypatch):
     """NODS ships no CMF reference model, so a CMF could not declare the
     target classes and properties it references and Stage 7 failed every

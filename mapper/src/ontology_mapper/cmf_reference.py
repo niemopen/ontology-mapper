@@ -60,8 +60,9 @@ def reference_cmf_installed(target_ontology: str, target_version: str) -> bool:
     return _reference_cmf_path(target_ontology, target_version).is_file()
 
 
-CMF_OMITTED_REASON = ("No CMF reference model is installed for this target, so a CMF "
-                      "could not declare the target classes and properties it references.")
+CMF_OMITTED_REASON = ("No CMF reference model was installed for this target when this "
+                      "package was generated, so a CMF could not declare the target "
+                      "classes and properties it references.")
 
 
 def load_reference_cmf(target_ontology: str, target_version: str):
