@@ -21,6 +21,7 @@ Usage:
 
 import json
 import re
+import shutil
 import sys
 from pathlib import Path
 from ontology_mapper.run_dir_utils import utc_stamp
@@ -817,6 +818,18 @@ def main():
     # Build data model
     active_classes = build_active_classes(inv, matrix)
     relationships = build_relationships(active_classes)
+
+    # Every kg/ file is this stage's output. Query files are named after
+    # labels, so one written for an earlier run's labels survived a
+    # regeneration and was validated and listed in lineage as part of this
+    # package; a removal that fails stops the stage rather than ship it.
+    kg_root = pkg / "kg"
+    if kg_root.exists():
+        try:
+            shutil.rmtree(kg_root)
+        except OSError as exc:
+            sys.exit(f"ERROR: could not remove the earlier run's {kg_root}: {exc}. "
+                     "Remove it and re-run Stage 6.")
 
     # Create directories
     neo4j_dir = pkg / "kg" / "neo4j"
