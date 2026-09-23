@@ -142,9 +142,13 @@ def build_active_classes(inv, matrix):
         # triples find it, and its range from the shape.
         for path, spec in shape_only.get(cls_qname, {}).items():
             p = {"qname": path, "iri": source_term_iri(namespaces, path)}
-            if spec["object"]:
-                # No sh:class on this class: no range, so no relationship.
-                obj.append({**p, "range": [spec["class"]] if spec["class"] else []})
+            # Where it sits is this class's shape (a value here, a
+            # relationship where a shape gives it an sh:class); its name is
+            # decided once for the property (`graph_property_names`). Placing
+            # it by the property's kind dropped it from a class whose shape
+            # makes it a value.
+            if spec["class"]:
+                obj.append({**p, "range": [spec["class"]]})
             else:
                 dt.append({**p, "range": [spec["datatype"]] if spec["datatype"] else []})
         return (
@@ -317,8 +321,9 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
     property carries from the inventory, so classes from augmenting or other
     non-primary source namespaces are seeded alongside the primary ones. The
     seed file's own prefix declarations are not consulted. A literal's key
-    is its predicate's graph name (``property_keys``, from
-    `graph_property_keys`), whichever class owns the property.
+    is its predicate's graph name (``property_keys``, a
+    `GraphPropertyKeys`), whichever class owns the property; a node value
+    is an edge only for an object property.
     """
     now = utc_stamp()
 
@@ -343,6 +348,14 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
 
     g = RdfGraph()
     g.parse(str(seed_data_path), format="turtle")
+    if any(isinstance(term, BNode) for triple in g for term in triple):
+        # Blank nodes are named by the graph's canonical labelling: the
+        # same on every parse (rdflib's own labels are not), and distinct
+        # for distinct nodes, where a hash of a node's own statements gave
+        # two identical or nested anonymous values one identifier and the
+        # seed broke schema.cypher's uniqueness constraint.
+        from rdflib.compare import to_canonical_graph
+        g = to_canonical_graph(g)
 
     # Build class IRI -> label mapping from active classes
     if not active_classes:
@@ -397,7 +410,7 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
                 # (`graph_name`): its bare local name overwrote a declared
                 # property's value (`x:name` over `src:name`), and was not
                 # always a key Neo4j accepts (`Class.prop`, `2ndLine`).
-                prop_local = property_keys.get(pred_str) or graph_name(pred_str, None)
+                prop_local = property_keys.values.get(pred_str) or graph_name(pred_str, None)
                 props[prop_local] = _cypher_literal(obj)
 
         # A node with only relationships is still created: every
@@ -412,10 +425,9 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
         if not identifier:
             # A node with no id-like property still has its instance IRI;
             # without one its relationships were dropped from the seed. A
-            # blank node has none, and rdflib names it afresh on every
-            # parse, so seed.cypher changed on each regeneration: it is
-            # named by its own statements instead.
-            identifier = f'"{_cypher_escape(str(subj) if not isinstance(subj, BNode) else _blank_node_id(g, subj))}"'
+            # blank node has none: it is named by its canonical label
+            # (see the parse above).
+            identifier = f'"{_cypher_escape(str(subj) if not isinstance(subj, BNode) else "_:" + str(subj))}"'
         # The Cypher literal itself, so a relationship MATCHes the value the
         # node was created with: an integer `feeNumber 1001` quoted as
         # "1001" in the MATCH equalled nothing.
@@ -463,8 +475,8 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
         # whose edges were dropped here (hasFee, assignedToUnit).
         if pred_str in rel_props:
             rel_name = relationship_type(rel_props[pred_str]["label"])
-        elif pred_str in property_keys:
-            rel_name = relationship_type(property_keys[pred_str])
+        elif pred_str in property_keys.relationships:
+            rel_name = relationship_type(property_keys.relationships[pred_str])
         else:
             continue
 
@@ -499,17 +511,6 @@ def _cypher_literal(literal):
     if kind == "BOOLEAN" and val.strip().lower() in ("true", "false", "1", "0"):
         return "true" if val.strip().lower() in ("true", "1") else "false"
     return f'"{_cypher_escape(val)}"'
-
-
-def _blank_node_id(graph, node):
-    """A blank node's identifier from its own statements: stable across
-    parses of the same seed file, where rdflib's own label is not."""
-    import hashlib
-    from rdflib import BNode
-
-    statements = sorted(f"{p.n3()} {'[]' if isinstance(o, BNode) else o.n3()}"
-                        for p, o in graph.predicate_objects(node))
-    return "_:" + hashlib.sha1("\n".join(statements).encode("utf-8")).hexdigest()[:16]
 
 
 def generate_query_templates(active_classes, relationships, source):

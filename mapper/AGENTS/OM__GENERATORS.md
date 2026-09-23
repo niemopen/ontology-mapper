@@ -213,9 +213,14 @@ names every property, shape-only ones included (`shape_only_property_shapes`),
 giving node property keys and relationship types, so `src:subject` /
 `aug:subject` are two relationship types. Seed nodes always
 carry the `identifier` their relationships MATCH on (the id-like property's
-value as the same Cypher literal, else the instance IRI), a node with only
-relationships included; a seed literal's key is its predicate's graph name
-(`graph_property_keys`) whichever class owns the property.
+value as the same Cypher literal, else the instance IRI; a blank node's
+canonical label, distinct per node and the same on every parse), a node with
+only relationships included; a seed literal's key is its predicate's graph
+name (`graph_property_keys().values`) whichever class owns the property, and a
+node value is an edge only for an object property
+(`graph_property_keys().relationships`). A shape-only property sits on each
+class as that class's shape says (an edge where it gives an `sh:class`, a
+value elsewhere) under the one name the property has.
 
 A property a shape constrains is named by the class that DECLARES it — the
 one whose class block writes the term — and both halves of that identity

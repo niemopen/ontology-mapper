@@ -993,7 +993,7 @@ class TestNamingRound14:
         inv = make_inv([make_class("src:A")], shapes=[
             {"targetClasses": ["src:A"], "properties": [{"path": label}]}])
         inv["primaryNamespace"] = {"prefix": "src"}
-        assert graph_property_keys(inv)[label] == graph_property_names(inv)[label]
+        assert graph_property_keys(inv).values[label] == graph_property_names(inv)[label]
         cls = build_active_classes(inv, make_matrix([make_mapping("src:A", "extend")]))[0]
         assert [p["iri"] for p in cls["datatypeProps"]] == [label]
 
@@ -1063,4 +1063,80 @@ class TestSeedRound14:
         cypher = generate_seed_cypher(active, build_relationships(active), seed, "sample",
                                       graph_property_keys(inv))
         assert "CREATE (a)-[:UNOWNED]->(b);" in cypher
+
+
+class TestSeedRound15:
+    """Round fifteen: blank-node identity, edges only for object properties,
+    and a shape-only path that is a value on one class and an edge on another."""
+
+    SRC = "https://sample.test/src/"
+
+    def _cypher(self, tmp_path, body, dt=(), op=(), shapes=None):
+        from ontology_mapper.generate_kg_artifacts import generate_seed_cypher
+        classes = [{**make_class(f"src:{n}"), "iri": self.SRC + n} for n in ("Case", "Addr")]
+        inv = make_inv(classes,
+                       obj_props=[{**make_obj_prop(q, domain=d, range_val=r), "iri": self.SRC + q[4:]} for q, d, r in op],
+                       dt_props=[{**make_dt_prop(q, domain=d), "iri": self.SRC + q[4:]} for q, d in dt],
+                       shapes=shapes)
+        inv["primaryNamespace"] = {"prefix": "src"}
+        inv["namespaceMap"] = {self.SRC: "src:"}
+        matrix = make_matrix([make_mapping("src:Case", "extend"), make_mapping("src:Addr", "extend")])
+        seed = tmp_path / "seed.ttl"
+        seed.write_text(f"@prefix src: <{self.SRC}> .\n" + body, encoding="utf-8")
+        active = build_active_classes(inv, matrix)
+        return generate_seed_cypher(active, build_relationships(active), seed, "sample",
+                                    graph_property_keys(inv))
+
+    BLANKS = """src:c1 a src:Case ; src:addr [ a src:Addr ; src:city "Springfield" ] .
+src:c2 a src:Case ; src:addr [ a src:Addr ; src:city "Springfield" ] .
+src:c3 a src:Case ; src:addr _:x .
+_:x a src:Addr ; src:next _:y .
+_:y a src:Addr ; src:next _:x .
+"""
+
+    def test_distinct_blank_nodes_have_distinct_identifiers(self, tmp_path):
+        """A hash of a node's own statements gave two identical anonymous
+        values, and the two nodes of a cycle, one identifier; schema.cypher's
+        uniqueness constraint then stopped the seed load."""
+        import re
+        cypher = self._cypher(tmp_path, self.BLANKS,
+                              dt=[("src:city", ["src:Addr"])],
+                              op=[("src:addr", ["src:Case"], ["src:Addr"]),
+                                  ("src:next", ["src:Addr"], ["src:Addr"])])
+        ids = re.findall(r'^CREATE \(:Addr \{.*identifier: ("[^"]*")', cypher, re.M)
+        assert len(ids) == 4 and len(set(ids)) == 4, ids
+
+    def test_blank_node_identifiers_are_the_same_on_every_generation(self, tmp_path):
+        args = dict(dt=[("src:city", ["src:Addr"])],
+                    op=[("src:addr", ["src:Case"], ["src:Addr"]), ("src:next", ["src:Addr"], ["src:Addr"])])
+        strip = lambda c: [l for l in c.splitlines() if not l.startswith("//")]
+        assert strip(self._cypher(tmp_path, self.BLANKS, **args)) == strip(self._cypher(tmp_path, self.BLANKS, **args))
+
+    def test_a_datatype_property_with_a_node_value_is_no_edge(self, tmp_path):
+        """The unowned-edge branch accepted every declared property, so a
+        datatype property used with a node value became an edge whose type
+        met an object property's (part_of, partOf -> PART_OF)."""
+        cypher = self._cypher(tmp_path, "src:c1 a src:Case ; src:part_of src:a1 ; src:partOf src:a2 .\n"
+                                        "src:a1 a src:Addr .\nsrc:a2 a src:Addr .",
+                              dt=[("src:part_of", ["src:Case"])],
+                              op=[("src:partOf", ["src:Case"], ["src:Addr"])])
+        assert cypher.count("CREATE (a)-[:") == 1
+        assert '(b:Addr {identifier: "https://sample.test/src/a2"})' in cypher
+
+    def test_a_shape_only_value_stays_on_the_class_whose_shape_makes_it_a_value(self):
+        """Placed by the property's kind, the path became an edge with no
+        range on B and was dropped from B's transform, while the seed still
+        wrote its value there."""
+        shapes = [{"targetClasses": ["src:Case"], "properties": [{"path": "src:part", "class": "src:Addr"}]},
+                  {"targetClasses": ["src:Addr"], "properties": [
+                      {"path": "src:part", "datatype": "http://www.w3.org/2001/XMLSchema#string"}]}]
+        inv = make_inv([make_class("src:Case"), make_class("src:Addr")], shapes=shapes)
+        inv["primaryNamespace"] = {"prefix": "src"}
+        matrix = make_matrix([make_mapping("src:Case", "extend"), make_mapping("src:Addr", "extend")])
+        by_label = {c["label"]: c for c in build_active_classes(inv, matrix)}
+        assert [p["qname"] for p in by_label["Addr"]["datatypeProps"]] == ["src:part"]
+        assert [p["qname"] for p in by_label["Case"]["objectProps"]] == ["src:part"]
+        transform = generate_internal_to_edge_transform(list(by_label.values()))
+        rule = next(t for t in transform["transforms"] if t["targetLabel"] == "Addr")
+        assert [m["source"] for m in rule["propertyMappings"]] == ["src:part"]
 

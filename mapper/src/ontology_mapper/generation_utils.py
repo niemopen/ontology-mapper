@@ -6,6 +6,7 @@ and do not perform I/O.
 """
 
 import hashlib
+from typing import NamedTuple
 
 XSD = "http://www.w3.org/2001/XMLSchema#"
 
@@ -583,26 +584,43 @@ def source_term_iri(namespaces, qname):
     return namespaces[prefix] + local if prefix in namespaces else None
 
 
+class GraphPropertyKeys(NamedTuple):
+    """How a seed triple's predicate IRI is named in the graph.
+
+    ``values``: {IRI: graph name} for every property `graph_property_names`
+    names, the node key a literal value takes. ``relationships``: the same
+    for the object properties only (declared, and shape-only ones a shape
+    gives an ``sh:class``), the ones whose node values are edges. One set
+    for both let a datatype property used with a node value become an edge
+    whose type could meet an object property's (`part_of`, `partOf`).
+    """
+    values: dict
+    relationships: dict
+
+
 def graph_property_keys(inventory):
-    """{predicate IRI: graph name} for every property `graph_property_names`
-    names: how a seed triple's predicate finds its node key or relationship
-    type, whether or not an active class owns the property. The seed keyed
-    only the active classes' properties, so an unowned ``aug:name`` took the
-    bare key ``name`` and overwrote ``src:name`` on the same node.
+    """`GraphPropertyKeys` for every property `graph_property_names` names,
+    whether or not an active class owns it. The seed keyed only the active
+    classes' properties, so an unowned ``aug:name`` took the bare key
+    ``name`` and overwrote ``src:name`` on the same node.
     """
     names = graph_property_names(inventory)
     declared = source_declared_properties(inventory)
     namespaces = source_namespaces(inventory)
-    keys = {}
-    for kind in ("objectProperties", "datatypeProperties"):
-        for p in inventory.get(kind, []):
-            if p.get("iri"):
-                keys[p["iri"]] = names[p["qname"]]
-    for qname, name in names.items():
+    object_qnames = {p["qname"] for p in inventory.get("objectProperties", [])}
+    object_qnames |= {path for specs in shape_only_property_shapes(inventory).values()
+                      for path, spec in specs.items() if spec["object"]}
+    # A declared property is found by the IRI the inventory recorded; a
+    # shape-only one by its expanded QName (or the full IRI it is).
+    iri_qnames = {p["iri"]: p["qname"] for kind in ("objectProperties", "datatypeProperties")
+                  for p in inventory.get(kind, []) if p.get("iri")}
+    for qname in names:
         iri = None if qname in declared else source_term_iri(namespaces, qname)
         if iri:
-            keys.setdefault(iri, name)
-    return keys
+            iri_qnames.setdefault(iri, qname)
+    values = {iri: names[q] for iri, q in iri_qnames.items()}
+    relationships = {iri: names[q] for iri, q in iri_qnames.items() if q in object_qnames}
+    return GraphPropertyKeys(values, relationships)
 
 
 def graph_property_names(inventory):
