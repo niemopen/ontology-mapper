@@ -37,6 +37,7 @@ from runner_tools._present_and_apply_human_review import (
     apply_decision_with_cascade,
     apply_property_decision,
     check_stage_5_exit,
+    find_mapping_entry,
     load_cascade_context,
     save_matrix,
     validate_class_decision,
@@ -254,40 +255,29 @@ def _call_claude_interpret(prompt: str) -> dict:
 
 
 def _resolve_concept(pending: list, concept_ref: str) -> dict | None:
-    """Find a pending entry by exact qname or local name suffix match."""
-    # Exact match
-    for entry in pending:
-        if entry["sourceConcept"] == concept_ref:
-            return entry
-    # Suffix match (user typed local name without prefix)
-    suffix = f":{concept_ref}"
-    matches = [e for e in pending if e["sourceConcept"].endswith(suffix)]
-    if len(matches) == 1:
-        return matches[0]
-    # Also try case-insensitive suffix match
-    suffix_lower = suffix.lower()
-    matches = [e for e in pending if e["sourceConcept"].lower().endswith(suffix_lower)]
-    if len(matches) == 1:
-        return matches[0]
-    return None
+    """The pending entry the reviewer named (`find_mapping_entry`), or None."""
+    return find_mapping_entry(pending, concept_ref)[0]
 
 
 def _resolve_concept_anywhere(pending: list, matrix: dict, concept_ref: str) -> dict | None:
-    """The entry the reviewer named, whether or not it is pending.
+    """The entry the reviewer named, whether or not it is pending, or None.
 
-    One home for that question. An entry the class policy blocks is
-    accepted, not pending, and changing its target is the repair, so a
-    resolver that sees pending items only makes the blocker unclearable
-    from the CLI.
+    An entry the class policy blocks is accepted, not pending, and changing
+    its target is the repair, so a resolver that sees pending items only
+    makes the blocker unclearable from the CLI. The name is resolved against
+    the whole matrix by `find_mapping_entry`'s rule: a name two entries share
+    resolves to neither, whichever of them is pending.
     """
-    entry = _resolve_concept(pending, concept_ref)
-    if entry:
-        return entry
-    suffix = f":{concept_ref}"
-    for m in matrix.get("mappings", []):
-        if m["sourceConcept"] == concept_ref or m["sourceConcept"].endswith(suffix):
-            return m
-    return None
+    return find_mapping_entry(matrix.get("mappings", []), concept_ref)[0]
+
+
+def _concept_not_found(concept_ref: str, entries: list) -> str:
+    """Why a name resolved to no entry: nothing matched, or several did."""
+    candidates = find_mapping_entry(entries, concept_ref)[1]
+    if len(candidates) > 1:
+        return (f"Concept name is ambiguous: {concept_ref} could be "
+                f"{', '.join(candidates)}. Use the full name.")
+    return f"Concept not found: {concept_ref}"
 
 
 def _build_pending_summary(pending: list) -> str:
@@ -331,7 +321,7 @@ def _dispatch_review_action(
         concept_ref = action.get("concept", "")
         entry = _resolve_concept(pending, concept_ref)
         if not entry:
-            return f"Concept not found: {concept_ref}", applied, cascade_context
+            return _concept_not_found(concept_ref, pending), applied, cascade_context
         apply_accept(entry)
         accepted, skipped = apply_all_property_accepts(entry)
         applied.append({
@@ -373,7 +363,8 @@ def _dispatch_review_action(
         concept_ref = action.get("concept", "")
         entry = _resolve_concept_anywhere(pending, matrix, concept_ref)
         if not entry:
-            return f"Concept not found: {concept_ref}", applied, cascade_context
+            return (_concept_not_found(concept_ref, matrix.get("mappings", [])),
+                    applied, cascade_context)
         detail = format_review_item(entry)
         prop_detail = format_property_review(entry)
         msg = f"\n{entry['sourceConcept']}\n{detail}"
@@ -386,7 +377,8 @@ def _dispatch_review_action(
         new_target = action.get("new_target_type", "")
         entry = _resolve_concept_anywhere(pending, matrix, concept_ref)
         if not entry:
-            return f"Concept not found: {concept_ref}", applied, cascade_context
+            return (_concept_not_found(concept_ref, matrix.get("mappings", [])),
+                    applied, cascade_context)
         if not new_target:
             return "change_target requires new_target_type", applied, cascade_context
 
@@ -434,7 +426,8 @@ def _dispatch_review_action(
         # individually, and the class is then accepted, not pending.
         entry = _resolve_concept_anywhere(pending, matrix, concept_ref)
         if not entry:
-            return f"Concept not found: {concept_ref}", applied, cascade_context
+            return (_concept_not_found(concept_ref, matrix.get("mappings", [])),
+                    applied, cascade_context)
         if not src_prop:
             return "resolve_property requires source_property", applied, cascade_context
         if not prop_action:

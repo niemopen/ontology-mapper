@@ -294,6 +294,45 @@ class TestResolveConceptLookup:
         pending = _make_pending()
         assert _resolve_concept(pending, "NoSuchType") is None
 
+    def test_a_name_two_entries_share_resolves_to_neither(self):
+        pending = [{"sourceConcept": "a:Person"}, {"sourceConcept": "b:Person"}]
+        assert _resolve_concept(pending, "Person") is None
+        assert _resolve_concept(pending, "person") is None
+        assert _resolve_concept(pending, "b:Person")["sourceConcept"] == "b:Person"
+
+
+def _two_people():
+    """Two approved classes sharing a local name: a:Person's property is
+    decided, b:Person's is not."""
+    return {"mappings": [
+        {"sourceConcept": "a:Person", "action": "reuse", "targetType": "nc:PersonType",
+         "reviewStatus": "accepted", "propertyMappings": [
+             {"sourceProperty": "src:name", "action": "reuse-property",
+              "targetProperty": "nc:PersonName", "reviewStatus": "accepted"}]},
+        {"sourceConcept": "b:Person", "action": "reuse", "targetType": "nc:PersonType",
+         "reviewStatus": "accepted", "propertyMappings": [
+             {"sourceProperty": "src:name", "action": "human-must-decide",
+              "targetProperty": "[undecided]", "reviewStatus": "pending-review"}]},
+    ], "summary": {"actionCounts": {}}}
+
+
+def test_resolve_property_refuses_a_class_name_two_entries_share(tmp_path):
+    """"Person" named a:Person first and rewrote its accepted decision while
+    b:Person, the one the reviewer meant, stayed undecided."""
+    matrix = _two_people()
+    before = json.dumps(matrix, sort_keys=True)
+    action = {"action": "resolve_property", "concept": "Person",
+              "source_property": "src:name", "property_action": "create-property"}
+    msg, applied, _ = _dispatch_review_action(action, tmp_path, matrix, {"decisions": []}, [], None)
+    assert applied == []
+    assert "ambiguous" in msg and "a:Person" in msg and "b:Person" in msg
+    assert json.dumps(matrix, sort_keys=True) == before
+
+    action["concept"] = "b:Person"
+    msg, applied, _ = _dispatch_review_action(action, tmp_path, matrix, {"decisions": []}, [], None)
+    assert matrix["mappings"][1]["propertyMappings"][0]["action"] == "create-property"
+    assert matrix["mappings"][0]["propertyMappings"][0]["action"] == "reuse-property"
+
 
 # ---------------------------------------------------------------------------
 # Stage 5: _build_pending_summary

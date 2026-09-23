@@ -173,6 +173,31 @@ def format_property_review(entry):
     return "\n".join(lines)
 
 
+def find_mapping_entry(entries, concept_ref):
+    """The mapping entry a reviewer named, as ``(entry, candidates)``.
+
+    One home for the CLI review and the web routes. An exact QName wins;
+    otherwise a local name must name exactly one entry, case-sensitively
+    first, then case-insensitively. When the name fits several entries,
+    ``entry`` is None and ``candidates`` lists them: picking the first let
+    "Person" rewrite an accepted decision on ``a:Person`` when the reviewer
+    meant ``b:Person``. ``candidates`` is empty when nothing matches.
+    """
+    entries = list(entries)
+    for e in entries:
+        if e.get("sourceConcept") == concept_ref:
+            return e, [concept_ref]
+    suffix = f":{concept_ref}"
+    for fold in (lambda s: s, str.lower):
+        matches = [e for e in entries
+                   if fold(e.get("sourceConcept", "")).endswith(fold(suffix))]
+        if len(matches) == 1:
+            return matches[0], [matches[0]["sourceConcept"]]
+        if matches:
+            return None, sorted(e["sourceConcept"] for e in matches)
+    return None, []
+
+
 def apply_property_decision(entry, source_property, decision):
     """Apply a human review decision to a single property mapping.
 

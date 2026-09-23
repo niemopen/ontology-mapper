@@ -283,3 +283,24 @@ def test_reset_reports_a_snapshot_that_itself_carries_decisions(run_context):
     assert body["status"] == "reset"
     assert body["restoredDecisions"] == 1
     assert "om-build-matrix --force" in body["note"]
+
+
+def test_review_routes_refuse_a_class_name_two_entries_share(run_context):
+    """The web resolved "person" to the first local-name match: a decision
+    meant for b:Person landed on a:Person."""
+    run_dir, client, _ = run_context
+    entries = [{"sourceConcept": c, "action": "reuse", "targetType": "nc:PersonType",
+                "reviewStatus": "accepted", "propertyMappings": [
+                    {"sourceProperty": "src:name", "action": "human-must-decide",
+                     "targetProperty": "[undecided]", "reviewStatus": "pending-review"}]}
+               for c in ("a:Person", "b:Person")]
+    (run_dir / "mapping-matrix.json").write_text(json.dumps({"mappings": entries}), encoding="utf-8")
+    for name in ("decision-log.json", "human-review-decisions.json"):
+        (run_dir / name).write_text(json.dumps({"decisions": []}), encoding="utf-8")
+    before = (run_dir / "mapping-matrix.json").read_bytes()
+    response = client.post("/runs/sample/review/resolve-property", json={
+        "concept": "person", "source_property": "src:name",
+        "property_action": "create-property"})
+    assert response.status_code == 409, response.text
+    assert "a:Person" in response.json()["detail"] and "b:Person" in response.json()["detail"]
+    assert (run_dir / "mapping-matrix.json").read_bytes() == before

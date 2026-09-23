@@ -68,15 +68,18 @@ def _save(run_dir: Path, matrix: dict, dec_log: dict, applied: list):
 
 
 def _find_entry(matrix: dict, concept: str) -> dict | None:
-    """Find a mapping entry by exact qname or local name suffix."""
-    for entry in matrix.get("mappings", []):
-        sc = entry.get("sourceConcept", "")
-        if sc == concept:
-            return entry
-        local = sc.split(":")[-1] if ":" in sc else sc
-        if local.lower() == concept.lower():
-            return entry
-    return None
+    """The mapping entry a request names, by the CLI review's rule
+    (`find_mapping_entry`). A name several entries share is refused, not
+    resolved to the first of them."""
+    from runner_tools._present_and_apply_human_review import find_mapping_entry
+
+    entry, candidates = find_mapping_entry(matrix.get("mappings", []), concept)
+    if entry is None and len(candidates) > 1:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Concept name is ambiguous: {concept} could be {', '.join(candidates)}",
+        )
+    return entry
 
 
 def _get_cascade(run_id: str, run_dir: Path) -> tuple | None:
