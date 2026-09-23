@@ -163,6 +163,20 @@ def accepted_reuse_target(pm):
     return target if target and target != "[undecided]" else None
 
 
+def source_declared_properties(inventory):
+    """The properties a source property list declares, as QNames.
+
+    One home for the question every generator must answer alike: a term the
+    source declares is minted into this package when no accepted reuse
+    replaces it; a term only a SHACL shape names (``rdfs:label``, or a
+    source term the source never declared) is referenced as the term it is.
+    `build_class_properties` harvests shape paths as class properties, so
+    such a term has a decision, but no emitter declares it.
+    """
+    return {p["qname"] for key in ("objectProperties", "datatypeProperties")
+            for p in inventory.get(key, [])}
+
+
 def created_property_is_declared(pm):
     """Whether the emitters declare a created term for this decision.
 

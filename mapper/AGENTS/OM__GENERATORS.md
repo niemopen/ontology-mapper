@@ -168,6 +168,19 @@ prefix would declare a term the CMF model never declares. Testing the source
 prefix alone excluded full IRIs, and the shape then named an edge term the
 ontology files never wrote — which the closure guard below refused.
 
+A term only a SHACL shape names — `rdfs:label`, `dcterms:identifier`, or a
+source term the source never declared as a property — is not minted.
+`build_class_properties` harvests shape paths, so Stage 3/4 writes a decision
+for it under the shape's class, and that decision is the only one about it:
+an accepted reuse names the target property; otherwise the shape references
+the term as the IRI it is (a primary-namespace term included, whose prefix
+the output never binds). `generation_utils.source_declared_properties` is
+the one home for "declared by a source property list", asked by the OWL
+emitter and the extension catalog alike, so the catalog does not list as
+added a term no ontology file declares. Minting such a term named
+`edge:<local>` in the shape and the closure guard refused the package
+whatever the reviewer had decided.
+
 Two active source concepts must not emit one edge class name.
 `edge_class_name` is namespace-blind, so a local name shared across source
 namespaces — ordinary once augmenting namespaces are first-class — would

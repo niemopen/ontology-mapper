@@ -32,6 +32,7 @@ OWL_CLASS = "http://www.w3.org/2002/07/owl#Class"
 from ontology_mapper.run_dir_utils import utc_stamp
 from ontology_mapper.generation_utils import (
     component_iri,
+    source_declared_properties,
     target_qname,
     emitted_class_action,
     is_full_iri,
@@ -165,12 +166,21 @@ def main():
 
     # --- Closures that reference loaded data ---
 
+    # namespaceMap is what both producers (extraction, CSV ingest) record.
+    primary_uri = next((uri for uri, prefix in inv.get("namespaceMap", {}).items()
+                        if prefix.rstrip(":") == _source), None)
+
     def source_term_ref(qname):
         if is_full_iri(qname):
             return URIRef(qname).n3()
         prefix, separator, name = qname.partition(":")
         if separator and prefix in source_bindings:
             return f"{source_bindings[prefix][0]}:{name}"
+        # The primary prefix is never bound in the output (its terms are
+        # minted under edge/ext), so a primary term only referenced — one no
+        # source property list declares — is written as its full IRI.
+        if separator and prefix == _source and primary_uri:
+            return URIRef(component_iri(primary_uri, name)).n3()
         return qname
 
     def _target_to_qname(target_type):
@@ -230,12 +240,26 @@ def main():
                 return [(candidate, classify_concept(candidate)[0])]
         if owners:
             return [(owner, classify_concept(owner)[0]) for owner in sorted(owners)]
+        if not declared_by_source(prop_qname):
+            # Constrained by a shape but declared by no source property list
+            # (`build_class_properties` harvests shape paths too), so no
+            # class block and no global block writes it. The only decision
+            # about it is the one under the shape's own class; resolving it
+            # there lets an accepted reuse name the target property, and
+            # `resolve_property_ref` writes an unaccepted one as the term it
+            # is rather than minting a term nothing declares.
+            return [(context, classify_concept(context)[0])]
         # No active class owns the property. `emit_global_properties` writes
         # it under the edge prefix whatever any class decided, so the shape
         # names that same term — "reuse" is how `created_property_qname`
         # spells the edge prefix. Asking the inheriting leaf instead minted
         # `ext:` under an extending child and named a term nothing declares.
         return [(None, "reuse")]
+
+    source_declared = source_declared_properties(inv)
+
+    def declared_by_source(prop_qname):
+        return prop_qname in source_declared
 
     def classify_concept(qname):
         m = mapping_by_concept.get(qname)
@@ -352,8 +376,13 @@ def main():
         # A declared source namespace is referenced through its binding; a
         # term carrying its own scheme is one this package does not declare,
         # so it is minted here exactly as the CMF builder and the extension
-        # catalog mint it — the three must name one identity.
-        if not prop_qname.startswith(SOURCE_PREFIX) and not is_full_iri(prop_qname):
+        # catalog mint it — the three must name one identity. A term no
+        # source property list declares (a shape path such as `rdfs:label`)
+        # is only referenced: minting it put `edge:label` in the shape for a
+        # term no ontology file declares, and the closure guard refused the
+        # package.
+        if ((not prop_qname.startswith(SOURCE_PREFIX) and not is_full_iri(prop_qname))
+                or not declared_by_source(prop_qname)):
             return source_term_ref(prop_qname)
         return created_property_qname(
             prop_qname, cls_action, _source, source_bindings, EDGE_PREFIX)

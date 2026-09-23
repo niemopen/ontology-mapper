@@ -344,9 +344,11 @@ class TestConceptsMissingFromTheInventory:
 class TestShapeOnlyProperties:
     """`build_class_properties` harvests shape paths as class properties, so
     Stage 3/4 legitimately writes a decision for a property the source
-    declares only through a shape. Packaging must not call that unknown."""
+    declares only through a shape. Packaging must not call that unknown, and
+    must not list it as a term the package adds: the emitters reference it as
+    the term it is (`generation_utils.source_declared_properties`)."""
 
-    def test_a_property_declared_only_by_a_shape_is_packaged(self):
+    def test_a_property_declared_only_by_a_shape_is_packaged_not_minted(self):
         from pathlib import Path
         from ontology_mapper.pipeline_context import PipelineContext
         context = PipelineContext(Path("run"), Path("run/edge-package"),
@@ -370,8 +372,7 @@ class TestShapeOnlyProperties:
                                         "reviewStatus": "accepted"}])])
         catalog = build_extension_catalog(matrix, context, inventory, {})
         assert sorted(local.rsplit("#", 1)[-1]
-                      for local in catalog["extensions"][0]["properties"]) == [
-            "declared", "shapeOnly"]
+                      for local in catalog["extensions"][0]["properties"]) == ["declared"]
 
 
 class TestPendingDecisionsAreListed:

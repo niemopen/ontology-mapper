@@ -29,7 +29,8 @@ from ontology_mapper.build_strategy_reports import build_class_properties
 from ontology_mapper.generation_utils import (
     created_property_is_declared,
     component_iri, created_property_qname, edge_class_name,
-    property_qname_resolver, source_namespace_bindings, source_prefix,
+    property_qname_resolver, source_declared_properties,
+    source_namespace_bindings, source_prefix,
 )
 
 
@@ -111,6 +112,7 @@ def build_extension_catalog(matrix, ctx, inventory, target_ns_map):
     # that class, and the emitters reference it.
     class_properties = build_class_properties(inventory)
     declared_properties = {q for props in class_properties.values() for q in props}
+    minted_properties = source_declared_properties(inventory)
     unresolved = []
     extensions = []
     for m in matrix["mappings"]:
@@ -150,6 +152,10 @@ def build_extension_catalog(matrix, ctx, inventory, target_ns_map):
                 unresolved.append(
                     f"  - {concept}: {decision['sourceProperty']} "
                     f"is not in this run's concept inventory")
+                continue
+            if recorded in declared_properties and recorded not in minted_properties:
+                # Named only by a shape: the emitters reference it as the
+                # term it is and mint nothing, so it adds nothing here.
                 continue
             qname = created_property_qname(
                 recorded, m["action"], primary, bindings, ctx.edge_prefix)

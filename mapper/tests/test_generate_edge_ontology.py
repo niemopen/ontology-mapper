@@ -1619,3 +1619,59 @@ class TestAnInheritedShapeNamesTheOwnersTerm:
 
         assert "test-edge:code" in files["test-edge-core.ttl"]
         assert "sh:path test-edge:code" in files["test-edge-shapes.ttl"]
+
+
+class TestAPathOnlyAShapeNames:
+    """A shape may constrain a term no source property list declares — a
+    standard vocabulary term, or a source term the source never declared.
+    `build_class_properties` harvests shape paths, so Stage 3/4 writes a
+    decision for it under the shape's class. That decision is the only one
+    about it: an accepted reuse names the target property; otherwise the
+    term is referenced as the term it is. Minting it named `test-edge:<local>`,
+    a term no ontology file declares, and the closure guard refused the
+    package whatever the reviewer had decided."""
+
+    TARGET = TestSharedSourceProfiles.TARGET
+    SRC = "https://sample.test/src/"
+
+    def _files(self, action, path, decision=None):
+        inventory = TestNiemOWLPatterns._minimal_inventory(
+            [{"qname": "src:Thing", "iri": self.SRC + "Thing", "label": "Thing",
+              "comment": "", "subClassOf": []}],
+            dt_props=[{"qname": "src:declared", "label": "declared",
+                       "domain": ["src:Thing"], "range": []}],
+            shapes=[{"targetClasses": ["src:Thing"],
+                     "properties": [{"path": path, "minCount": 1}]}])
+        inventory["namespaceMap"] = {self.SRC: "src:"}
+        extra = {"baseType": "nc:BaseType"} if action == "extend" else (
+            {"augmentsType": "nc:BaseType"} if action == "augment" else {})
+        matrix = {"mappings": [dict({
+            "sourceConcept": "src:Thing", "action": action, "targetType": "nc:BaseType",
+            "reviewStatus": "accepted",
+            "propertyMappings": [dict({"sourceProperty": path, "reviewStatus": "accepted"},
+                                      **(decision or {"action": "create-property"}))]},
+            **extra)]}
+        return TestNiemOWLPatterns._run_generation(
+            inventory, matrix, catalog={"namespaces": {"nc": self.TARGET}})
+
+    @staticmethod
+    def _paths(files):
+        return [line.strip() for line in files["test-edge-shapes.ttl"].splitlines()
+                if "sh:path" in line]
+
+    @pytest.mark.parametrize("action", ["reuse", "extend", "augment"])
+    def test_an_accepted_reuse_names_the_target_property(self, action):
+        files = self._files(action, "src:shapeOnly", {
+            "action": "reuse-property", "targetProperty": "nc:DescriptionText"})
+        assert "sh:path nc:DescriptionText ;" in self._paths(files)
+
+    @pytest.mark.parametrize("action", ["reuse", "extend", "augment"])
+    def test_an_unreused_source_term_is_referenced_not_minted(self, action):
+        files = self._files(action, "src:shapeOnly")
+        assert f"sh:path <{self.SRC}shapeOnly> ;" in self._paths(files)
+
+    @pytest.mark.parametrize("path", ["http://www.w3.org/2000/01/rdf-schema#label",
+                                      "http://purl.org/dc/terms/identifier"])
+    def test_a_standard_vocabulary_path_is_written_as_itself(self, path):
+        files = self._files("extend", path)
+        assert f"sh:path <{path}> ;" in self._paths(files)
