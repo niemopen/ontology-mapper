@@ -20,6 +20,7 @@ from ontology_mapper.owl_cmf_bridge import (
 )
 from ontology_mapper.generation_utils import (
     emitted_class_action,
+    range_class_for,
     local_name,
     edge_class_name,
     infer_domains_from_shapes,
@@ -445,24 +446,24 @@ class MatrixToCmfBuilder:
         return "xs.string"  # default
 
     def _map_source_class_ref(self, qname: str) -> str:
-        """Map a source class reference to a CMF class id via the mapping matrix."""
-        m = self._mapping_by_concept.get(qname)
-        action = emitted_class_action(m)
-        if action is None:
+        """Map a source class reference to a CMF class id via the mapping matrix.
+
+        An excluded class resolves through `range_class_for`, the redirect
+        the OWL emitter uses too.
+        """
+        emitted = range_class_for(qname, self._mapping_by_concept, self._class_by_qname)
+        if emitted is None:
             return ""
+        m = self._mapping_by_concept[emitted]
+        action = emitted_class_action(m)
         target = m.get("targetType")
 
         if action == "reuse" and target:
             return self._qname_to_cmf_id(target)
         elif action == "extend":
-            return _cmf_id(self._ext_prefix, edge_class_name(qname))
+            return _cmf_id(self._ext_prefix, edge_class_name(emitted))
         elif action == "augment" and target:
             return self._qname_to_cmf_id(target)
-        elif action == "exclude":
-            cls = self._class_by_qname.get(qname)
-            if cls and cls.get("subClassOf"):
-                parent = cls["subClassOf"][0]
-                return self._map_source_class_ref(parent)
         return ""
 
     def _get_cardinality(self, cls_qname: str, prop_qname: str) -> tuple:

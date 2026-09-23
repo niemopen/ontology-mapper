@@ -1381,6 +1381,30 @@ class TestExclusionsAndDeclarations:
         assert "test-edge:hasGone" in core
         assert "rdfs:range owl:Thing" in core
 
+    @pytest.mark.parametrize("chain", ["grandparent-reuse", "parent-augment"])
+    def test_an_excluded_range_names_the_class_the_cmf_names(self, chain):
+        """The OWL redirect went one step and only to a reuse or extend
+        parent; the CMF recursed through any action, so one property got
+        `owl:Thing` in OWL and `nc:PersonType` in CMF."""
+        if chain == "grandparent-reuse":
+            classes = [self._cls("Active"), self._cls("A", ["B"]),
+                       self._cls("B", ["C"]), self._cls("C")]
+            rows = [self._row("A", "exclude", "pending-review"),
+                    self._row("B", "exclude", "pending-review"),
+                    self._row("C", "reuse", targetType="nc:PersonType")]
+        else:
+            classes = [self._cls("Active"), self._cls("A", ["B"]), self._cls("B")]
+            rows = [self._row("A", "exclude", "pending-review"),
+                    self._row("B", "augment", targetType="nc:PersonType",
+                              augmentsType="nc:PersonType")]
+        inventory = TestNiemOWLPatterns._minimal_inventory(
+            classes, obj_props=[{"qname": "src:rel", "label": "rel",
+                                 "domain": ["src:Active"], "range": ["src:A"]}])
+        matrix = {"mappings": [self._row("Active", "reuse")] + rows}
+        files = TestNiemOWLPatterns._run_generation(
+            inventory, matrix, catalog={"namespaces": {"nc": self.TARGET}})
+        assert "rdfs:range nc:PersonType" in files["test-edge-core.ttl"]
+
 
 class TestInheritedIdentityIsOrderIndependent:
     """`subClassOf` is a set in the source model: nothing emitted may depend

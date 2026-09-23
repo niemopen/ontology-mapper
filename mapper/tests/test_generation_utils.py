@@ -15,7 +15,38 @@ from ontology_mapper.generation_utils import (
     source_prefix,
     component_iri,
     target_qname,
+    range_class_for,
 )
+
+
+class TestRangeClassFor:
+    """One redirect for a range on an excluded class, for every emitter."""
+
+    CLASSES = {"src:A": {"subClassOf": ["src:B"]}, "src:B": {"subClassOf": ["src:C"]},
+               "src:C": {"subClassOf": []}, "src:Loop": {"subClassOf": ["src:Loop"]}}
+
+    @staticmethod
+    def _rows(**actions):
+        return {"src:" + name: {"action": action, "reviewStatus": "accepted"}
+                for name, action in actions.items()}
+
+    def test_an_emitted_class_is_its_own_range(self):
+        assert range_class_for("src:A", self._rows(A="reuse"), self.CLASSES) == "src:A"
+
+    @pytest.mark.parametrize("action", ["reuse", "extend", "augment"])
+    def test_an_exclusion_chain_reaches_the_nearest_emitted_ancestor(self, action):
+        rows = self._rows(A="exclude", B="exclude", C=action)
+        assert range_class_for("src:A", rows, self.CLASSES) == "src:C"
+
+    def test_no_emitted_ancestor_and_cycles_are_none(self):
+        assert range_class_for("src:A", self._rows(A="exclude", B="exclude", C="exclude"),
+                               self.CLASSES) is None
+        assert range_class_for("src:Loop", self._rows(Loop="exclude"), self.CLASSES) is None
+
+    def test_a_pending_class_is_not_emitted(self):
+        rows = self._rows(A="exclude")
+        rows["src:B"] = {"action": "reuse", "reviewStatus": "pending-review"}
+        assert range_class_for("src:A", rows, self.CLASSES) is None
 
 
 def test_shape_domains_preserve_all_active_named_targets():

@@ -237,8 +237,11 @@ exception: exclusions are never presented for review (`get_pending_items`
 filters them out), so their status stays `pending-review` for the life of
 the run and reading that as undecided drops the exclusion redirect —
 object properties ranged on the excluded class then disappear from the OWL
-while the CMF keeps declaring them. A property whose range this package
-does not emit is still declared, with `rdfs:range owl:Thing`.
+while the CMF keeps declaring them. A range on an excluded class names the
+nearest emitted ancestor along first parents, through any number of
+exclusions (`generation_utils.range_class_for`, the one redirect the OWL/SHACL
+and CMF emitters both call). A property whose range this package does not
+emit is still declared, with `rdfs:range owl:Thing`.
 
 Generation refuses a saved class target the target ontology's class policy
 rejects (`ontology_specific.invalid_class_targets`) before writing any artifact,

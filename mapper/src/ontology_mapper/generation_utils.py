@@ -330,6 +330,30 @@ def emitted_class_action(entry):
     return action
 
 
+def range_class_for(class_qname, mapping_by_concept, class_by_qname):
+    """The emitted source class an object range on *class_qname* stands for.
+
+    The class itself when it is emitted; for an excluded class, the nearest
+    emitted ancestor along first parents, through any number of exclusions;
+    None when there is none. One home for the redirect, so the OWL/SHACL and
+    CMF emitters name the same class for the same range: the OWL side went one
+    step and only to a reuse or extend parent while the CMF recursed through
+    any action, and the two models gave one property different ranges.
+    """
+    seen = set()
+    qname = class_qname
+    while qname and qname not in seen:
+        seen.add(qname)
+        action = emitted_class_action(mapping_by_concept.get(qname))
+        if action is None:
+            return None
+        if action != "exclude":
+            return qname
+        parents = (class_by_qname.get(qname) or {}).get("subClassOf") or []
+        qname = parents[0] if parents else None
+    return None
+
+
 def edge_class_name(qname):
     """Map source class qname to edge type name (e.g. prefix:Permit → PermitType)."""
     return local_name(qname) + "Type"

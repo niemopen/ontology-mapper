@@ -32,6 +32,7 @@ OWL_CLASS = "http://www.w3.org/2002/07/owl#Class"
 from ontology_mapper.run_dir_utils import utc_stamp
 from ontology_mapper.generation_utils import (
     component_iri,
+    range_class_for,
     source_declared_properties,
     target_qname,
     emitted_class_action,
@@ -295,25 +296,15 @@ def main():
         if range_iri == OWL_CLASS:
             return "owl:Class"
         if is_source_class_ref(range_iri) or range_iri in class_by_qname:
-            action, target = classify_concept(range_iri)
+            emitted = range_class_for(range_iri, mapping_by_concept, class_by_qname)
+            action, target = classify_concept(emitted) if emitted else (None, None)
             if action == "reuse" and target:
                 return _target_to_qname(target)
             elif action == "extend":
-                return "ext:" + edge_class_name(range_iri)
+                return "ext:" + edge_class_name(emitted)
             elif action == "augment" and target:
                 return _target_to_qname(target)
-            elif action == "exclude":
-                cls = class_by_qname.get(range_iri)
-                if cls and cls.get("subClassOf"):
-                    parent = cls["subClassOf"][0]
-                    parent_action, parent_niem = classify_concept(parent)
-                    if parent_action == "reuse" and parent_niem:
-                        return _target_to_qname(parent_niem)
-                    elif parent_action == "extend":
-                        return "ext:" + edge_class_name(parent)
-                return None
-            else:
-                return None
+            return None
         if range_iri.partition(":")[0] in source_bindings:
             return source_term_ref(range_iri)
         # A range the TARGET catalog binds is grounded the same way a class
