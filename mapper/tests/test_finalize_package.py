@@ -403,6 +403,27 @@ class TestFinalizeEndToEnd:
         assert not (pkg / "governance").exists()
         assert "finalizedAt" not in json.loads((pkg / "package-manifest.json").read_text(encoding="utf-8"))
 
+    def test_the_published_stats_come_from_the_validated_matrix(self, tmp_path, monkeypatch):
+        """Stage 7 validates and digests the package's copy of the matrix;
+        the run directory's copy is outside the digest. Reading that one
+        first published statistics nobody validated."""
+        from ontology_mapper.validate_edge_package import artifact_digests
+
+        run_dir, pkg = self._run_dir(tmp_path)
+        (pkg / "mappings").mkdir()
+        (pkg / "mappings" / "mapping-matrix.json").write_text(
+            (run_dir / "mapping-matrix.json").read_text(encoding="utf-8"), encoding="utf-8")
+        report = json.loads((run_dir / "validation-report.json").read_text(encoding="utf-8"))
+        report["validatedArtifacts"] = artifact_digests(pkg)
+        (run_dir / "validation-report.json").write_text(json.dumps(report), encoding="utf-8")
+        # Edited after validation, in the copy no digest covers.
+        (run_dir / "mapping-matrix.json").write_text(json.dumps({"mappings": [
+            {"sourceConcept": "src:Permit", "action": "exclude"}]}), encoding="utf-8")
+
+        assert self._finalize(run_dir, monkeypatch) == 0
+        stats = json.loads((pkg / "package-manifest.json").read_text(encoding="utf-8"))["stats"]
+        assert stats["actionCounts"] == {"reuse": 1}
+
     def test_a_package_stage_7_never_validated_is_not_published(self, tmp_path, monkeypatch):
         run_dir, pkg = self._run_dir(tmp_path)
         (run_dir / "validation-report.json").unlink()

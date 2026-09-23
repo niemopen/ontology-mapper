@@ -27,6 +27,7 @@ def _write_state(run_dir, stages=None, inputs=None):
 def test_stage_7_validation_fail_is_blocking(tmp_path, status):
     from runner_tools.run_pipeline import verify_stage, VerificationError
 
+    (tmp_path / "edge-package").mkdir()  # the package the report speaks for
     _write_json(tmp_path / "validation-report.json", {"checks": [{"status": status}]})
     _write_json(tmp_path / "feedback-report.json", {"stage": "7"})
     if status == "FAIL":

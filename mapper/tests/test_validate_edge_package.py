@@ -628,6 +628,18 @@ class TestStaleValidationReport:
 
         assert stale_against_package(report, tmp_path / "edge-package") is None
 
+    def test_a_missing_package_is_not_covered(self, tmp_path):
+        """A report with recorded digests and no package directory was read
+        as covering it: verify said "covers the package as validated" and
+        finalize published a package holding only its governance files."""
+        from ontology_mapper.validate_edge_package import stale_against_package
+
+        report = tmp_path / "validation-report.json"
+        report.write_text('{"validatedArtifacts": {"ontology/core.ttl": "x"}}',
+                          encoding="utf-8")
+        missing = tmp_path / "edge-package"
+        assert stale_against_package(report, missing) == str(missing)
+
 
 class TestDriftOnAMissingTarget:
     """A target that left the catalog is drift whether or not the matrix

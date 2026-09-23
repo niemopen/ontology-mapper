@@ -609,6 +609,27 @@ def test_stage_7_writes_feedback_report_before_stopping_on_failed_validation(tmp
 
 
 
+def test_a_feedback_crash_after_failed_validation_reports_the_validation(tmp_path, monkeypatch):
+    """Both orchestrators name the same cause: the web keeps the validation
+    failure when the feedback report then crashes; so does the runner."""
+    import runner_tools.run_pipeline as runner
+
+    _finalized_run(tmp_path)
+
+    def run_cmd(stage, cmd, cwd=None):
+        if cmd[0] == "om-validate":
+            (tmp_path / "validation-report.json").write_text('{"checks": []}', encoding="utf-8")
+            raise StageError(stage, "Command failed (rc=1): om-validate\nSOME CHECKS FAILED")
+        if cmd[0] == "python":
+            raise StageError(stage, "Command failed (rc=1): feedback_report.py\nTraceback KeyError")
+        return ""
+
+    monkeypatch.setattr(runner, "run_cmd", run_cmd)
+    monkeypatch.setattr(runner, "verify_stage", lambda *a: pytest.fail("verify must not run"))
+    with pytest.raises(StageError, match="SOME CHECKS FAILED"):
+        runner.run_stage_7(tmp_path, [])
+
+
 def test_stage_7_discards_a_previous_runs_report_before_validating(tmp_path, monkeypatch):
     """A stale report must not turn a validator crash into a failed validation
     with stale feedback and stale verification."""

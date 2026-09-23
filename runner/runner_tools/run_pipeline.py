@@ -777,8 +777,15 @@ def run_stage_7(run_dir: Path, timers: list[StageTimer]):
             if not (run_dir / "validation-report.json").exists():
                 raise  # the validator crashed; there is nothing to report on
             validation_failure = exc
-        run_cmd("7", ["python", "runner_tools/feedback_report.py",
-                       "--run-dir", str(run_dir)])
+        try:
+            run_cmd("7", ["python", "runner_tools/feedback_report.py",
+                           "--run-dir", str(run_dir)])
+        except StageError:
+            # The validation failure is the cause to report, as the web
+            # backend reports it; the feedback crash rides along.
+            if validation_failure is not None:
+                raise validation_failure
+            raise
         verify_stage(run_dir, "7")
         if validation_failure is not None:
             raise validation_failure

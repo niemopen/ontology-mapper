@@ -111,8 +111,12 @@ def stale_against_package(report_path, pkg_dir, report=None):
     from pathlib import Path
 
     report_path, pkg_dir = Path(report_path), Path(pkg_dir)
-    if not report_path.exists() or not pkg_dir.exists():
+    if not report_path.exists():
         return None
+    if not pkg_dir.is_dir():
+        # No package to speak for: a mistyped --package-dir, or one deleted
+        # after validation. Answering None read as "covers the package".
+        return str(pkg_dir)
     if report is None:
         try:
             report = json.loads(report_path.read_text(encoding="utf-8"))

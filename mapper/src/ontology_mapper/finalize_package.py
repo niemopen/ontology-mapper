@@ -318,11 +318,13 @@ def main():
     print(f"  Edge package:  {ctx.pkg_dir}")
     print()
 
-    # Load required artifacts
-    matrix_path = ctx.run_dir / "mapping-matrix.json"
+    # Load required artifacts. The package copy first: it is the matrix
+    # Stage 7 validated and digested, the one om-validate reads first too.
+    # The run directory's copy is outside the digest, so an edit to it after
+    # validation would reach the published statistics unrefused.
+    matrix_path = ctx.pkg_dir / "mappings" / "mapping-matrix.json"
     if not matrix_path.exists():
-        # Try edge package copy
-        matrix_path = ctx.pkg_dir / "mappings" / "mapping-matrix.json"
+        matrix_path = ctx.run_dir / "mapping-matrix.json"
     if not matrix_path.exists():
         print(f"  ERROR: mapping-matrix.json not found")
         sys.exit(1)
