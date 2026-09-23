@@ -3,11 +3,11 @@
 
 import json
 import pytest
+from ontology_mapper.generation_utils import graph_labels
 from pathlib import Path
 from ontology_mapper.pipeline_context import PipelineContext
 from ontology_mapper.generate_kg_artifacts import (
     local_name,
-    graph_label,
     relationship_type,
     xsd_to_cypher_type,
     build_active_classes,
@@ -113,12 +113,16 @@ class TestLocalName:
         assert local_name("https://example.org/ontology/Permit") == "Permit"
 
 
-class TestGraphLabel:
-    def test_basic(self):
-        assert graph_label("dbpi:PermitApplication") == "PermitApplication"
+class TestGraphLabels:
+    def test_a_unique_local_name_is_the_label(self):
+        assert graph_labels(["dbpi:PermitApplication", "dbpi:Address"]) == {
+            "dbpi:PermitApplication": "PermitApplication", "dbpi:Address": "Address"}
 
-    def test_simple(self):
-        assert graph_label("dbpi:Address") == "Address"
+    def test_classes_sharing_a_local_name_are_qualified_by_prefix(self):
+        """An augmentation and a reuse class of one local name got one
+        label: a duplicate CREATE CONSTRAINT and merged seed nodes."""
+        assert graph_labels(["src:Thing", "aug:Thing", "src:Other"]) == {
+            "src:Thing": "src_Thing", "aug:Thing": "aug_Thing", "src:Other": "Other"}
 
 
 class TestRelationshipType:

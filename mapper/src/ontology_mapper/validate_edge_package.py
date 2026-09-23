@@ -462,13 +462,13 @@ def extract_active_labels(mappings_list):
     Returns:
         Set of label strings (local names).
     """
-    labels = set()
-    for m in mappings_list:
-        if m.get("action") in ("reuse", "extend", "augment"):
-            concept = m.get("sourceConcept", "")
-            label = concept.split(":")[-1] if ":" in concept else concept
-            labels.add(label)
-    return labels
+    from ontology_mapper.generation_utils import emitted_class_action, graph_labels
+
+    # The labels the graph generator writes: graph_labels over the classes
+    # the emitters emit (emitted_class_action), not a local name per row.
+    active = [m.get("sourceConcept", "") for m in mappings_list
+              if emitted_class_action(m) in ("reuse", "extend", "augment")]
+    return set(graph_labels(active).values())
 
 
 def main():

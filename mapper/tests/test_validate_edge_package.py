@@ -83,6 +83,13 @@ class TestExtractActiveLabels:
     def test_empty_mappings(self):
         assert extract_active_labels([]) == set()
 
+    def test_labels_match_the_graph_generator_when_local_names_collide(self):
+        """Stage 7 asks graph_labels, as the KG generator does; a local name
+        per row would call the generator's qualified labels mismatches."""
+        mappings = [{"sourceConcept": "src:Thing", "action": "reuse"},
+                    {"sourceConcept": "aug:Thing", "action": "augment"}]
+        assert extract_active_labels(mappings) == {"src_Thing", "aug_Thing"}
+
 
 # ---------------------------------------------------------------------------
 # check_schema_labels

@@ -31,11 +31,6 @@ from ontology_mapper.generation_utils import local_name, XSD
 SKOS_CONCEPT = "http://www.w3.org/2004/02/skos/core#Concept"
 
 
-def graph_label(qname):
-    """Convert source qname to Neo4j node label (e.g. dbpi:PermitApplication -> PermitApplication)."""
-    return local_name(qname)
-
-
 def relationship_type(prop_qname):
     """Convert object property qname to Neo4j relationship type in SCREAMING_SNAKE_CASE."""
     name = local_name(prop_qname)
@@ -78,6 +73,7 @@ def build_active_classes(inv, matrix):
     """
     from ontology_mapper.generation_utils import (
         emitted_class_action,
+        graph_labels,
         infer_domains_from_shapes,
         range_class_for,
         assign_properties_to_classes,
@@ -93,6 +89,8 @@ def build_active_classes(inv, matrix):
         if emitted_class_action(mapping_by_concept.get(cls["qname"])) in (
                 "reuse", "extend", "augment"):
             active_qnames.add(cls["qname"])
+
+    labels = graph_labels(active_qnames)
 
     # Assign properties using the same logic as generate_edge_ontology
     shape_domains = infer_domains_from_shapes(
@@ -196,13 +194,13 @@ def build_active_classes(inv, matrix):
                 "iri": p["iri"],
                 "label": local_name(p["qname"]),
                 "rangeQname": range_qname,
-                "rangeLabel": graph_label(range_qname),
+                "rangeLabel": labels[range_qname],
             })
 
         result.append({
             "sourceQname": qname,
             "iri": cls["iri"],
-            "label": graph_label(qname),
+            "label": labels[qname],
             "comment": cls.get("comment", ""),
             "action": action,
             "targetType": m.get("targetType"),

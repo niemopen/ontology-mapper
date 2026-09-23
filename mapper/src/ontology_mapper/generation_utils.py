@@ -378,6 +378,33 @@ def emitted_class_action(entry):
     return action
 
 
+def graph_labels(class_qnames):
+    """{class QName: graph node label} for the classes a package emits.
+
+    The local name, unless two emitted classes share it (an augmentation
+    and a reuse class from different namespaces, which the OWL refusal
+    exempts): each of those is qualified by its namespace prefix,
+    `aug_Thing`, so the graph keeps two node types instead of merging
+    their seed nodes under one label with a duplicate constraint. One home
+    for the knowledge-graph generator and Stage 7's schema-label check.
+    """
+    import re
+    from collections import defaultdict
+
+    by_local = defaultdict(list)
+    for qname in class_qnames:
+        by_local[local_name(qname)].append(qname)
+    labels = {}
+    for local, qnames in by_local.items():
+        for qname in qnames:
+            if len(qnames) == 1:
+                labels[qname] = local
+            else:
+                prefix = qname.split(":", 1)[0] if ":" in qname and not is_full_iri(qname) else "ns"
+                labels[qname] = re.sub(r"[^A-Za-z0-9_]", "_", f"{prefix}_{local}")
+    return labels
+
+
 def range_class_for(class_qname, mapping_by_concept, class_by_qname):
     """The emitted source class an object range on *class_qname* stands for.
 
