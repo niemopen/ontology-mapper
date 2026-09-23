@@ -73,5 +73,5 @@ as it was and no feedback report is produced.
 | 8 | Schema-to-ontology | Cypher constraint/index labels vs active class labels |
 | 9 | Seed data consistency | MATCH labels reference CREATEd labels in seed.cypher |
 | 10 | Transform-to-matrix | internal-to-edge.json source types vs mapping matrix |
-| 11 | CMF consistency (when present; required for NIEM) | See [mapper validation contract](../../mapper/AGENTS/OM__VALIDATION.md) |
+| 11 | CMF consistency (when present; required when the target has a CMF reference model) | See [mapper validation contract](../../mapper/AGENTS/OM__VALIDATION.md) |
 | 12 | Codebook drift | `targetDefinitionHash` vs current catalog definitions — types/properties changed or removed |

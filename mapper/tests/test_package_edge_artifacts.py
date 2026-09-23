@@ -215,6 +215,18 @@ class TestBuildPackageManifest:
         assert manifest["stats"]["totalConcepts"] == 3
 
 
+@pytest.mark.parametrize("target, version, has_cmf", [("niem", "6.0", True), ("nods", "1.0", False)])
+def test_the_manifest_and_readme_say_whether_the_package_carries_cmf(ctx, target, version, has_cmf):
+    """A target without a CMF reference model gets no cmf/; the package says why
+    rather than leaving a consumer to read the gap as an error."""
+    ctx.target_ontology, ctx.target_version = target, version
+    matrix = _matrix([_mapping("src:A", "reuse")])
+    manifest, readme = build_package_manifest(ctx, matrix), build_readme(ctx, matrix)
+    assert ("omittedArtifacts" in manifest) is not has_cmf
+    assert ("- `cmf/` - Canonical Model Format" in readme) is has_cmf
+    assert ("No `cmf/`" in readme) is not has_cmf
+
+
 # ---------------------------------------------------------------------------
 # build_readme
 # ---------------------------------------------------------------------------

@@ -81,7 +81,9 @@ referent-kind checks for every `structures:ref`. XSD validation alone does not
 detect missing declarations or a class reference naming a datatype.
 Matrix class and augmentation counts use only the generated edge/extension
 namespaces; imported definitions cannot satisfy those comparisons. The CLI
-checks CMF whenever its directory is present and requires it for NIEM packages.
+checks CMF whenever its directory is present and requires it when the target has
+an installed CMF reference model (`cmf_reference.reference_cmf_installed`, the
+one home for whether a package carries CMF; today NIEM 6.0 only).
 
 Writes `{run_dir}/validation-report.json`:
 

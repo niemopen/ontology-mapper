@@ -19,6 +19,7 @@ import json
 import sys
 from pathlib import Path
 
+from ontology_mapper.cmf_reference import reference_cmf_installed
 from ontology_mapper.pipeline_context import PipelineContext
 from ontology_mapper.run_dir_utils import utc_stamp
 
@@ -327,31 +328,34 @@ def _verify_stage_6a(run_dir, state):
 
     ont_dir = pkg / "ontology"
     cmf_dir = pkg / "cmf"
+    emits_cmf = reference_cmf_installed(ctx.target_ontology, ctx.target_version)
 
     if source:
         for suffix in ("core", "extensions", "all", "combined"):
             p = ont_dir / ctx.ontology_filename(suffix)
             checks.append(_file_check(f"ontology_{suffix}_exists", p))
 
-        cmf_path = cmf_dir / f"{ctx.cmf_model_stem}.cmf"
-        cmf_xml_path = cmf_dir / f"{ctx.cmf_model_stem}.cmf.xml"
-        cmf_exists = cmf_path.exists() or cmf_xml_path.exists()
-        checks.append(_check("cmf_exists", cmf_exists,
-                             f"{cmf_path.name}" if cmf_path.exists()
-                             else f"{cmf_xml_path.name}" if cmf_xml_path.exists()
-                             else "Neither .cmf nor .cmf.xml found"))
+        if emits_cmf:
+            cmf_path = cmf_dir / f"{ctx.cmf_model_stem}.cmf"
+            cmf_xml_path = cmf_dir / f"{ctx.cmf_model_stem}.cmf.xml"
+            cmf_exists = cmf_path.exists() or cmf_xml_path.exists()
+            checks.append(_check("cmf_exists", cmf_exists,
+                                 f"{cmf_path.name}" if cmf_path.exists()
+                                 else f"{cmf_xml_path.name}" if cmf_xml_path.exists()
+                                 else "Neither .cmf nor .cmf.xml found"))
 
-        cmf_json_path = cmf_dir / f"{ctx.cmf_model_stem}.cmf.json"
-        checks.append(_file_check("cmf_json_exists", cmf_json_path))
+            cmf_json_path = cmf_dir / f"{ctx.cmf_model_stem}.cmf.json"
+            checks.append(_file_check("cmf_json_exists", cmf_json_path))
     else:
         # Glob fallback
         ttl_files = list(ont_dir.glob("*-edge-*.ttl")) if ont_dir.exists() else []
         checks.append(_check("ontology_files_found", len(ttl_files) >= 4,
                              f"{len(ttl_files)} TTL files (expected 4)"))
 
-        cmf_files = list(cmf_dir.glob("*.cmf*")) if cmf_dir.exists() else []
-        checks.append(_check("cmf_files_found", len(cmf_files) >= 2,
-                             f"{len(cmf_files)} CMF files (expected 2)"))
+        if emits_cmf:
+            cmf_files = list(cmf_dir.glob("*.cmf*")) if cmf_dir.exists() else []
+            checks.append(_check("cmf_files_found", len(cmf_files) >= 2,
+                                 f"{len(cmf_files)} CMF files (expected 2)"))
 
     # OWL pattern checks: verify augment/extend patterns in extensions TTL
     ext_path = ont_dir / ctx.ontology_filename("extensions") if source else None

@@ -10,6 +10,7 @@ All behavior is derived from the data — no domain-specific hardcoding.
 """
 
 import json
+import shutil
 import sys
 from pathlib import Path
 from datetime import datetime, timezone
@@ -1099,7 +1100,7 @@ def main():
     vocab_dir = PKG / "vocab"
     cmf_dir = PKG / "cmf"
 
-    for d in [ont_dir, shapes_dir, vocab_dir, cmf_dir]:
+    for d in [ont_dir, shapes_dir, vocab_dir]:
         d.mkdir(parents=True, exist_ok=True)
 
     files_written = {}
@@ -1159,11 +1160,18 @@ def main():
         for parent, absorbed, scheme in consolidations:
             print(f"  Synthetic scheme: {scheme} ({len(absorbed)} roles from subtype consolidation)")
 
-    # --- CMF generation (from matrix, all targets) ---
+    # --- CMF generation (targets with a CMF reference model) ---
+    from ontology_mapper.cmf_reference import (
+        CMF_OMITTED_REASON, complete_cmf_references, load_reference_cmf, reference_cmf_installed)
+    if not reference_cmf_installed(TARGET_ONTOLOGY, TARGET_VERSION):
+        # A CMF left by an earlier run would be validated as this package's.
+        shutil.rmtree(cmf_dir, ignore_errors=True)
+        print(f"\n  CMF not generated for {TARGET_ONTOLOGY} {TARGET_VERSION}: {CMF_OMITTED_REASON}")
+        return
+    cmf_dir.mkdir(parents=True, exist_ok=True)
     print(f"\n  Generating CMF artifacts...")
     from ontology_mapper.generate_cmf_from_matrix import MatrixToCmfBuilder
     from ontology_mapper.owl_cmf_bridge import CmfXmlSerializer, cmf_xml_to_json, set_niem_version
-    from ontology_mapper.cmf_reference import complete_cmf_references, load_reference_cmf
     from ontology_mapper.ontology_specific import cmf_implicit_roots, cmf_structures_version
 
     set_niem_version(cmf_structures_version(TARGET_ONTOLOGY, TARGET_VERSION))

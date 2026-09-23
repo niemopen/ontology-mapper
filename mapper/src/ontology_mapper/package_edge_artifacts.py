@@ -22,6 +22,7 @@ import json
 import shutil
 import sys
 from pathlib import Path
+from ontology_mapper.cmf_reference import CMF_OMITTED_REASON, reference_cmf_installed
 from ontology_mapper.run_dir_utils import utc_stamp
 
 from ontology_mapper.pipeline_context import load_context
@@ -233,6 +234,8 @@ def build_package_manifest(ctx, matrix):
             "excluded": excluded_count,
         },
     }
+    if not reference_cmf_installed(ctx.target_ontology, ctx.target_version):
+        manifest["omittedArtifacts"] = {"cmf/": CMF_OMITTED_REASON}
 
     return manifest
 
@@ -246,6 +249,9 @@ def build_readme(ctx, matrix):
     reuse = action_counts.get("reuse", sum(1 for m in mappings if m.get("action") == "reuse"))
     extend = action_counts.get("extend", sum(1 for m in mappings if m.get("action") == "extend"))
     augment = action_counts.get("augment", sum(1 for m in mappings if m.get("action") == "augment"))
+    cmf_line = ("- `cmf/` - Canonical Model Format exchange artifacts"
+                if reference_cmf_installed(ctx.target_ontology, ctx.target_version)
+                else f"- No `cmf/`: {CMF_OMITTED_REASON}")
 
     return f"""# {ctx.label_prefix} Edge Package
 
@@ -266,7 +272,7 @@ def build_readme(ctx, matrix):
 ## Directory Structure
 
 - `ontology/` - OWL/TTL edge ontology modules
-- `cmf/` - Canonical Model Format exchange artifacts
+{cmf_line}
 - `mappings/` - Internal-to-target-ontology alignment artifacts
 - `extensions/` - Extension namespace definitions
 - `shapes/` - SHACL validation constraints

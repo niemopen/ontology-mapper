@@ -7,14 +7,17 @@ import subprocess
 import sys
 
 
-@pytest.mark.parametrize("defect", [None, "syntax", "shacl", "valid-cmf", "cmf-unbound"])
+@pytest.mark.parametrize("defect", [None, "syntax", "shacl", "valid-cmf", "cmf-unbound", "niem-without-cmf"])
 def test_cli_reports_failure_and_exit_status(tmp_path, defect):
     """Real CLI, real parsing/validation, and synthetic files only."""
     pkg = tmp_path / "edge-package"
     for directory in ("ontology", "shapes", "kg/import"):
         (pkg / directory).mkdir(parents=True, exist_ok=True)
     (tmp_path / ".mapper-state.json").write_text(json.dumps({"inputs": {
-        "organization": "test", "source": "sample", "target_ontology": "example", "target_version": "1"}}))
+        "organization": "test", "source": "sample",
+        # A target with a CMF reference model must carry a CMF; one without need not.
+        "target_ontology": "niem" if defect == "niem-without-cmf" else "example",
+        "target_version": "6.0" if defect == "niem-without-cmf" else "1"}}))
     (tmp_path / "concept-inventory.json").write_text('{"classes": []}')
     (tmp_path / "mapping-matrix.json").write_text('{"mappings": []}')
     (tmp_path / "decision-log.json").write_text('{"decisions": []}')
@@ -41,9 +44,11 @@ def test_cli_reports_failure_and_exit_status(tmp_path, defect):
     expected_pass = defect in {None, "valid-cmf"}
     assert report["allPassed"] is expected_pass
     assert result.returncode == (0 if expected_pass else 1), result.stdout + result.stderr
-    if defect in {"valid-cmf", "cmf-unbound"}:
-        check = next(c for c in report["checks"] if c["check"] == "cmf-consistency")
-        assert check["status"] == ("pass" if expected_pass else "FAIL")
+    cmf_checks = [c for c in report["checks"] if c["check"] == "cmf-consistency"]
+    if defect in {"valid-cmf", "cmf-unbound", "niem-without-cmf"}:
+        assert cmf_checks[0]["status"] == ("pass" if expected_pass else "FAIL")
+    else:
+        assert cmf_checks == []
 
 from ontology_mapper.validate_edge_package import (
     check_cmf_consistency,

@@ -39,6 +39,37 @@ def test_generation_includes_offline_native_cmf_definitions_in_xml_and_json(tmp_
     assert any(c["structures:id"] == "xs.string" for c in data["Datatype"])
     assert any(n.get("ConformanceTargetURI") for n in data["Namespace"])
 
+def test_a_target_without_a_cmf_reference_model_gets_no_cmf(tmp_path, monkeypatch):
+    """NODS ships no CMF reference model, so a CMF could not declare the
+    target classes and properties it references and Stage 7 failed every
+    such package. Stage 6 writes none, and removes one an earlier run left."""
+    import json
+    import sys
+    from ontology_mapper.generate_edge_ontology import main
+
+    monkeypatch.delenv("OM_SPECS_DIR", raising=False)
+    inventory = {
+        "classes": [{"qname": "src:Record", "iri": "urn:source:Record", "label": "Record", "comment": "", "subClassOf": []}],
+        "datatypeProperties": [{"qname": "src:value", "iri": "urn:source:value", "label": "Value", "comment": "",
+                                "domain": ["src:Record"], "range": ["http://www.w3.org/2001/XMLSchema#string"]}],
+        "objectProperties": [], "shaclShapes": [], "codelistSchemes": [], "augmentingNamespaces": [],
+    }
+    mappings = [{"sourceConcept": "src:Record", "action": "extend", "targetType": "hs:JuvenilePlacementType",
+                 "baseType": "hs:JuvenilePlacementType", "reviewStatus": "accepted",
+                 "propertyMappings": [{"sourceProperty": "src:value", "action": "create-property", "reviewStatus": "accepted"}]}]
+    for name, content in {
+        "concept-inventory.json": inventory, "mapping-matrix.json": {"mappings": mappings},
+        ".mapper-state.json": {"inputs": {"organization": "sample", "source": "sample", "target_ontology": "nods", "target_version": "1.0"}},
+    }.items():
+        (tmp_path / name).write_text(json.dumps(content), encoding="utf-8")
+    stale = tmp_path / "edge-package" / "cmf"
+    stale.mkdir(parents=True)
+    (stale / "sample-model.cmf").write_text("<Model/>", encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["om-generate-ontology", "--run-dir", str(tmp_path)])
+    main()
+    assert not stale.exists()
+    assert any((tmp_path / "edge-package" / "ontology").glob("*.ttl"))
+
 from ontology_mapper.generate_edge_ontology import (
     xsd_qname, local_name, edge_class_name,
     infer_domains_from_shapes, assign_properties_to_classes,

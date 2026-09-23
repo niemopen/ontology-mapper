@@ -696,10 +696,12 @@ def main():
           (f", {len(transform_errors)} errors: " + "; ".join(transform_errors[:3])
            if transform_errors else ", all transforms match"))
 
-    # ── Check 11: CMF consistency (required for NIEM, otherwise when present) ──
+    # ── Check 11: CMF consistency (required when the target has a CMF
+    # reference model, otherwise when present) ──
+    from ontology_mapper.cmf_reference import reference_cmf_installed
     cmf_dir = PKG / "cmf"
     cmf_path = cmf_dir / f"{ctx.cmf_model_stem}.cmf"
-    if target_ontology == "niem" or cmf_dir.exists():
+    if reference_cmf_installed(target_ontology, target_version) or cmf_dir.exists():
         print("\n  Check 11: CMF consistency")
 
         if cmf_path.exists():

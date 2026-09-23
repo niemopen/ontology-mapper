@@ -740,8 +740,9 @@ def _handle_bootstrap_output(
     output_path = ctx.pkg_dir
     withdraw_conclusions(state, run_dir, output_path, "7")
 
+    # cmf/ is Stage 6a's to create: only a target with a CMF reference
+    # model gets one (cmf_reference.reference_cmf_installed).
     dirs_to_create = [
-        "cmf",
         "ontology",
         "mappings",
         "extensions",

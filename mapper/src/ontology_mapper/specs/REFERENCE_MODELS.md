@@ -5,6 +5,10 @@ directory (`OM_SPECS_DIR`, or this directory). These are native definitions for
 exchange generation; the separate JSON search catalogs are not complete models.
 Only referenced components and their transitive dependencies are imported.
 Missing definitions remain unresolved and fail the existing Stage 7 CMF check.
+A target with no reference model here (NODS, SALI-FOLIO) gets no CMF: a CMF
+references the target's classes and properties, and the search catalogs do not
+declare the datatypes CMF requires. The package manifest records the omission
+under `omittedArtifacts`.
 No network service or Java installation is needed during a pipeline run.
 
 ## NIEM 6.0

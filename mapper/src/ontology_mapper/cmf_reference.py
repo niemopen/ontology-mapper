@@ -30,16 +30,8 @@ _XSD_TYPES = frozenset("""
 """.split())
 
 
-def load_reference_cmf(target_ontology: str, target_version: str):
-    """Read the configured reference, if installed; never fetch during a run.
-
-    Cached: the class policy asks about one target at a time — per matrix
-    entry at review exit, per concept during collection — and this is a
-    2 MB gzip that expands to 24 MB. Reading it per call made a 50-entry
-    matrix check take ~6 seconds, and the three web review routes pay it
-    inside the request. The file ships inside the installed package and
-    does not change while a process runs.
-    """
+def _reference_cmf_path(target_ontology: str, target_version: str) -> Path:
+    """The configured reference's path, contained in the specs directory."""
     root = resolve_specs_dir().resolve()
     path = root / f"{target_ontology}_reference_model_{target_version}.cmf.gz"
 
@@ -52,6 +44,37 @@ def load_reference_cmf(target_ontology: str, target_version: str):
 
     if not inside(Path(os.path.abspath(path))) or not inside(path.resolve()):
         raise ValueError("CMF reference path escapes the configured specs directory")
+    return path
+
+
+def reference_cmf_installed(target_ontology: str, target_version: str) -> bool:
+    """Whether a package for this target carries CMF.
+
+    The one home for that question: Stage 6 writes CMF, the package
+    scaffold and README list it, and Stage 7 requires it exactly when this
+    is true. A generated CMF references the target's classes and
+    properties, and only a reference model declares them; the JSON search
+    catalogs record property types but not the datatypes CMF requires, so
+    a CMF for a target without one (NODS, SALI-FOLIO) could never validate.
+    """
+    return _reference_cmf_path(target_ontology, target_version).is_file()
+
+
+CMF_OMITTED_REASON = ("No CMF reference model is installed for this target, so a CMF "
+                      "could not declare the target classes and properties it references.")
+
+
+def load_reference_cmf(target_ontology: str, target_version: str):
+    """Read the configured reference, if installed; never fetch during a run.
+
+    Cached: the class policy asks about one target at a time — per matrix
+    entry at review exit, per concept during collection — and this is a
+    2 MB gzip that expands to 24 MB. Reading it per call made a 50-entry
+    matrix check take ~6 seconds, and the three web review routes pay it
+    inside the request. The file ships inside the installed package and
+    does not change while a process runs.
+    """
+    path = _reference_cmf_path(target_ontology, target_version)
     try:
         return _read_reference_cmf(str(path), path.stat().st_mtime_ns)
     except OSError:
