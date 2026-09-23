@@ -163,6 +163,21 @@ def accepted_reuse_target(pm):
     return target if target and target != "[undecided]" else None
 
 
+def qualified_target_property(target_prop, class_target_type):
+    """A target property named by its local name alone, in its class's
+    target namespace; any other spelling unchanged.
+
+    One home for the OWL and CMF emitters: the OWL side qualified a bare
+    local name by the class's target prefix while the CMF referenced it
+    bare, an unbound reference Check 11 rejected. A bare catalog id with no
+    prefixed class target to borrow from (SALI-FOLIO) stays as it is.
+    """
+    if (target_prop and ":" not in target_prop and class_target_type
+            and ":" in class_target_type and not is_full_iri(class_target_type)):
+        return f"{class_target_type.split(':', 1)[0]}:{target_prop}"
+    return target_prop
+
+
 def source_declared_properties(inventory):
     """The properties a source property list declares, as QNames.
 
@@ -180,12 +195,14 @@ def source_declared_properties(inventory):
 def created_property_is_declared(pm):
     """Whether the emitters declare a created term for this decision.
 
-    The OWL and CMF emitters walk the inventory: a source property with
-    no accepted reuse target is declared as a new term, whether its
-    decision is still pending or absent. The extension catalog walks the
-    decisions instead, so it asks the same question here — otherwise the
-    package's own inventory of what it adds omits terms its model
-    declares.
+    The OWL emitter walks the inventory: a source property with no accepted
+    reuse target is declared as a new term, whether its decision is still
+    pending or absent. The CMF walks the inventory for reuse and extend
+    classes, but an augmentation's properties from its `propertyMappings`
+    rows, so the CMF declares an augmentation property only when a row
+    exists. The extension catalog walks the decisions too, so it asks the
+    same question here — otherwise the package's own inventory of what it
+    adds omits terms its model declares.
     """
     return accepted_reuse_target(pm) is None
 

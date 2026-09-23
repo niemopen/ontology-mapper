@@ -16,7 +16,34 @@ from ontology_mapper.generation_utils import (
     component_iri,
     target_qname,
     range_class_for,
+    qualified_target_property,
 )
+
+
+class TestQualifiedTargetProperty:
+    """One qualification for a bare target property name, OWL and CMF alike."""
+
+    def test_a_bare_local_name_takes_its_class_targets_prefix(self):
+        assert qualified_target_property("ActivityDescriptionText", "nc:ActivityType") == \
+            "nc:ActivityDescriptionText"
+
+    @pytest.mark.parametrize("target_prop,class_target", [
+        ("nc:PersonName", "nc:PersonType"),               # already qualified
+        ("https://x.test/ns#p", "nc:PersonType"),         # full IRI
+        ("R7fFnZ", "R8aBcD"),                             # bare catalog id, bare class (SALI)
+        ("Thing", "https://x.test/ns#Type"),              # class target is an IRI
+        (None, "nc:PersonType"),
+    ])
+    def test_every_other_spelling_is_unchanged(self, target_prop, class_target):
+        assert qualified_target_property(target_prop, class_target) == target_prop
+
+
+def test_the_cmf_builder_reads_no_prefix_from_a_urn():
+    """A `urn:` IRI has no QName prefix; the builder's own "http" test read
+    `urn` as one and registered a phantom namespace for it."""
+    from ontology_mapper.generate_cmf_from_matrix import _qname_prefix
+    assert _qname_prefix("urn:example:other:value") == ""
+    assert _qname_prefix("nc:PersonType") == "nc"
 
 
 class TestRangeClassFor:

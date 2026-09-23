@@ -35,6 +35,8 @@ from ontology_mapper.generation_utils import (
     created_property_qname,
     source_prefix,
     target_qname,
+    is_full_iri,
+    qualified_target_property,
 )
 from ontology_mapper.ontology_specific import extension_conformance_target
 
@@ -85,8 +87,12 @@ def _cmf_id(prefix: str, name: str) -> str:
 
 
 def _qname_prefix(qname: str) -> str:
-    """Extract namespace prefix from a qualified name (e.g. 'nc:PersonType' → 'nc')."""
-    if ":" in qname and not qname.startswith("http"):
+    """Extract namespace prefix from a qualified name (e.g. 'nc:PersonType' → 'nc').
+
+    A full IRI has no prefix — `is_full_iri` answers that for every emitter;
+    testing for "http" read `urn:example:x` as the prefix `urn`.
+    """
+    if ":" in qname and not is_full_iri(qname):
         return qname.split(":", 1)[0]
     return ""
 
@@ -230,7 +236,8 @@ class MatrixToCmfBuilder:
             self._add_target_ns(model, base, seen_prefixes)
         for mapping in self.matrix["mappings"]:
             for pm in mapping.get("propertyMappings") or []:
-                self._add_target_ns(model, accepted_reuse_target(pm), seen_prefixes)
+                self._add_target_ns(model, qualified_target_property(
+                    accepted_reuse_target(pm), mapping.get("targetType")), seen_prefixes)
 
         # Source namespace for cross-namespace properties
         properties = self.inventory["objectProperties"] + self.inventory["datatypeProperties"]
@@ -377,7 +384,8 @@ class MatrixToCmfBuilder:
         target_prop = accepted_reuse_target(self._prop_mapping.get((cls_qname, prop_qname)))
         if target_prop:
             # Property already exists on target — just reference it
-            target_id = self._qname_to_cmf_id(target_prop)
+            target_id = self._qname_to_cmf_id(qualified_target_property(
+                target_prop, self._mapping_by_concept.get(cls_qname, {}).get("targetType")))
             min_occ, max_occ = self._get_cardinality(cls_qname, prop_qname)
             cmf_cls.properties.append(CmfHasProperty(
                 property_ref=target_id,
@@ -552,7 +560,8 @@ class MatrixToCmfBuilder:
                     # Augment is selected when a match exists elsewhere in the
                     # target ontology. Reference it; do not declare it again.
                     min_occ, max_occ = self._get_cardinality(qname, prop_qname)
-                    record(augmented_id, self._qname_to_cmf_id(target_prop),
+                    record(augmented_id, self._qname_to_cmf_id(qualified_target_property(
+                               target_prop, self._mapping_by_concept.get(qname, {}).get("targetType"))),
                            is_object, min_occ, max_occ)
                     continue
                 prop_prefix = self._property_prefix("augment", prop_qname)
@@ -640,7 +649,7 @@ class MatrixToCmfBuilder:
         if not qname:
             return ""
         qname = target_qname(qname, self.target_ns_map)
-        if ":" in qname and not qname.startswith("http"):
+        if ":" in qname and not is_full_iri(qname):
             prefix, name = qname.split(":", 1)
             return _cmf_id(prefix, name)
         return qname

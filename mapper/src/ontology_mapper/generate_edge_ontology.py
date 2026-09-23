@@ -32,6 +32,7 @@ OWL_CLASS = "http://www.w3.org/2002/07/owl#Class"
 from ontology_mapper.run_dir_utils import utc_stamp
 from ontology_mapper.generation_utils import (
     component_iri,
+    qualified_target_property,
     range_class_for,
     source_declared_properties,
     target_qname,
@@ -351,14 +352,12 @@ def main():
             # An unprefixed target property may be a LOCAL NAME the class's
             # target namespace qualifies, or a bare catalog id (SALI). Try
             # the class's prefix first, then the catalog's URI.
-            if ":" not in target_prop:
-                cls_mapping = mapping_by_concept.get(cls_qname, {})
-                target_type = cls_mapping.get("targetType", "")
-                if ":" in target_type:
-                    qualified = f"{target_type.split(':')[0]}:{target_prop}"
-                    rendered = target_term_ref(qualified, target_property_uris)
-                    if rendered:
-                        return rendered
+            qualified = qualified_target_property(
+                target_prop, mapping_by_concept.get(cls_qname, {}).get("targetType"))
+            if qualified != target_prop:
+                rendered = target_term_ref(qualified, target_property_uris)
+                if rendered:
+                    return rendered
             # The source declaration was withheld by the accepted reuse
             # decision. Falling back to it would leave a dangling sh:path.
             dropped_target_terms.append(f"{cls_qname}/{prop_qname} -> {target_prop}")
