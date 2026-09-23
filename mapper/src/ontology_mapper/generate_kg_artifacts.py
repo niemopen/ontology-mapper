@@ -401,9 +401,11 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
 
         label = matched_cls["label"]
         props = {}
+        literal_keys = set()
 
-        # Collect datatype property values
-        for pred, obj in g.predicate_objects(subj):
+        # Collect datatype property values, in sorted order: one key keeps
+        # one value, and the graph's own order followed the hash seed.
+        for pred, obj in sorted(g.predicate_objects(subj)):
             if pred == RDF.type:
                 continue
             pred_str = str(pred)
@@ -421,13 +423,20 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
                 prop_local = property_keys.values.get(pred_str) or graph_name(pred_str, None)
                 props[prop_local] = (_cypher_literal(obj) if isinstance(obj, Literal) else
                                      f'"{_cypher_escape(("_:" if isinstance(obj, BNode) else "") + str(obj))}"')
+                if isinstance(obj, Literal):
+                    literal_keys.add(prop_local)
+                else:
+                    literal_keys.discard(prop_local)
 
         # A node with only relationships is still created: every
         # relationship pointing at it was dropped when it was skipped.
-        # Track for relationships — find an identifier property generically
-        identifier = props.get("identifier")
+        # Track for relationships — find an identifier property generically,
+        # among literal values only: a node value (another node's IRI) is
+        # shared by every instance that refers to it, and as an identifier
+        # it made one MATCH bind them all.
+        identifier = props.get("identifier") if "identifier" in literal_keys else None
         if not identifier:
-            for k in sorted(props):
+            for k in sorted(literal_keys):
                 if k.endswith("Number") or k.endswith("Id"):
                     identifier = props[k]
                     break
@@ -444,7 +453,9 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
         # Relationships MATCH on `identifier` and schema.cypher constrains
         # it; a node whose identifier came from `feeNumber` never carried
         # one, so every seeded relationship matched nothing when loaded.
-        props.setdefault("identifier", identifier)
+        # It is the node's own even over a node-valued `identifier` key,
+        # which would otherwise hold the value MATCH does not use.
+        props["identifier"] = identifier
 
         prop_str = ", ".join(f"{k}: {v}" for k, v in sorted(props.items()))
         node_lines.append(f"CREATE (:{label} {{{prop_str}}});")

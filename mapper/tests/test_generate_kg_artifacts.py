@@ -1186,6 +1186,39 @@ _:y a src:Addr ; src:next _:x .
         # transform lists it.
         assert 'CREATE (:Addr {identifier: "https://sample.test/src/a1", part: "https://sample.test/src/c1"});' in cypher
 
+    def test_a_node_value_never_becomes_the_identifier(self, tmp_path):
+        """Two instances referring to one node shared its IRI as their
+        identifier, so each MATCH bound both and edges multiplied."""
+        cypher = self._cypher(tmp_path, "src:c1 a src:Case ; src:courtId src:k9 ; src:addr src:a1 .\n"
+                                        "src:c2 a src:Case ; src:courtId src:k9 ; src:addr src:a1 .\n"
+                                        "src:a1 a src:Addr .\n",
+                              dt=[("src:courtId", ["src:Case"])], op=[("src:addr", ["src:Case"], ["src:Addr"])])
+        assert '(a:Case {identifier: "https://sample.test/src/c1"})' in cypher
+        assert '(a:Case {identifier: "https://sample.test/src/c2"})' in cypher
+
+    def test_a_multi_valued_property_keeps_the_same_value_under_every_hash_seed(self, tmp_path):
+        """One key keeps one value; which one followed the graph's order,
+        and so the hash seed once blank nodes were renamed."""
+        import os
+        import subprocess
+        import sys
+        script = tmp_path / "multi.py"
+        script.write_text(f"import sys\nsys.path[:0] = {sys.path!r}\n" + r'''
+import pathlib, tempfile
+from tests.test_generate_kg_artifacts import TestSeedRound15
+body = "".join(f'src:c{i} a src:Case ; src:city "x{i}" , "y{i}" , src:k{i} , [ a src:Addr ] .\n' for i in range(6))
+out = TestSeedRound15()._cypher(pathlib.Path(tempfile.mkdtemp()), body, dt=[("src:city", ["src:Case"])])
+print("\n".join(l for l in out.splitlines() if not l.startswith("//")))
+''', encoding="utf-8")
+        outputs = set()
+        for seed in ("0", "1", "7", "99", "12345"):
+            run = subprocess.run([sys.executable, str(script)], capture_output=True, text=True,
+                                 env={**os.environ, "PYTHONHASHSEED": seed},
+                                 cwd=str(Path(__file__).parent.parent), timeout=120)
+            assert run.returncode == 0, run.stderr
+            outputs.add(run.stdout)
+        assert len(outputs) == 1
+
     def test_a_property_a_class_holds_both_ways_keeps_its_edge(self, tmp_path):
         """Declared both an object and a datatype property, it sits in the
         class's objectProps and datatypeProps; the value skip dropped the
