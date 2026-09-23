@@ -430,7 +430,9 @@ def _dispatch_review_action(
         prop_action = action.get("property_action", "")
         target_prop = action.get("target_property")
 
-        entry = _resolve_concept(pending, concept_ref)
+        # Approving a class leaves its undecided properties to be resolved
+        # individually, and the class is then accepted, not pending.
+        entry = _resolve_concept_anywhere(pending, matrix, concept_ref)
         if not entry:
             return f"Concept not found: {concept_ref}", applied, cascade_context
         if not src_prop:

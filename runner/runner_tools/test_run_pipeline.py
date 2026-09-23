@@ -548,6 +548,43 @@ def test_stage_5_loop_offers_the_repair_for_a_blocked_accepted_target(tmp_path, 
     assert saved["mappings"][0]["reviewStatus"] == "accepted"
 
 
+def test_stage_5_loop_resolves_an_undecided_property_of_an_approved_class(tmp_path, monkeypatch):
+    """Approving a class leaves its human-must-decide property pending and
+    says to resolve it individually. The class is no longer pending, so the
+    resolver must still find it, or review can never close."""
+    import runner_tools.run_pipeline as runner
+
+    (tmp_path / ".mapper-state.json").write_text(json.dumps(
+        {"inputs": {"target_ontology": "niem", "target_version": "6.0"}, "stages": {}}),
+        encoding="utf-8")
+    entry = {"sourceConcept": "src:A", "action": "reuse", "targetType": "nc:PersonType",
+             "reviewStatus": "accepted",
+             "propertyMappings": [{"sourceProperty": "src:name", "action": "human-must-decide",
+                                   "reviewStatus": "pending-review"}]}
+    (tmp_path / "mapping-matrix.json").write_text(json.dumps({"mappings": [entry]}), encoding="utf-8")
+    (tmp_path / "decision-log.json").write_text(json.dumps({"decisions": []}), encoding="utf-8")
+
+    prompts = []
+
+    def reviewer(p=""):
+        prompts.append(p)
+        if len(prompts) > 3:  # a loop that cannot close would otherwise hang
+            raise KeyboardInterrupt
+        return "name is a new property"
+
+    monkeypatch.setattr("builtins.input", reviewer)
+    monkeypatch.setattr(runner, "_call_claude_interpret", lambda prompt: {
+        "action": "resolve_property", "concept": "A", "source_property": "src:name",
+        "property_action": "create-property"})
+    monkeypatch.setattr(runner, "_cmd_present", lambda args: None)
+
+    runner.run_stage_5_loop(tmp_path)
+    assert len(prompts) == 1
+    saved = json.loads((tmp_path / "mapping-matrix.json").read_text(encoding="utf-8"))
+    prop = saved["mappings"][0]["propertyMappings"][0]
+    assert (prop["action"], prop["reviewStatus"]) == ("create-property", "accepted")
+
+
 def _finalized_run(run_dir):
     """A run whose previous Stages 7 and 8 passed and stamped the package."""
     stamp = "2026-09-01T00:00:00Z"
