@@ -349,15 +349,22 @@ def created_property_qname(prop_qname, class_action, primary_prefix, bindings, e
     return f"{prefix}:{local_name(prop_qname)}"
 
 
+def source_namespaces(inventory):
+    """{source prefix: namespace URI}: the primary map and every augmenting
+    namespace, the prefixes a source QName can carry."""
+    source = {prefix.rstrip(":"): uri for uri, prefix in inventory.get("namespaceMap", {}).items()}
+    source.update({ns["prefix"].rstrip(":"): ns["namespace"]
+                   for ns in inventory.get("augmentingNamespaces", [])})
+    return source
+
+
 def source_namespace_bindings(inventory, target_ns_map, edge_prefix):
     """Map source prefixes to (emitted prefix, URI), avoiding target collisions.
 
     QName lookup keys stay unchanged. Both emitters use the same stable alias
     only when one prefix would otherwise identify two different namespaces.
     """
-    source = {prefix.rstrip(":"): uri for uri, prefix in inventory.get("namespaceMap", {}).items()}
-    source.update({ns["prefix"].rstrip(":"): ns["namespace"]
-                   for ns in inventory.get("augmentingNamespaces", [])})
+    source = source_namespaces(inventory)
     reserved = {**target_ns_map, edge_prefix.rstrip(":"): None, "ext": None,
                 "owl": "http://www.w3.org/2002/07/owl#",
                 "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
@@ -431,8 +438,10 @@ def graph_name(qname, primary_prefix):
     holds: a name chosen only when two terms collided renamed an existing
     node label or relationship type as soon as a later package added the
     second term, and data loaded under the earlier name stopped matching.
-    A full IRI has no prefix and is qualified ``ns_``. Every name is an
-    unquoted Cypher identifier (Check 8 reads labels as \\w+).
+    A full IRI has no prefix; its namespace's hash stands in for one
+    (``ns<hash>_<local>``), so terms of two namespaces never share a name.
+    Every name is an unquoted Cypher identifier (Check 8 reads labels as
+    \\w+).
     """
     import re
 
@@ -441,36 +450,59 @@ def graph_name(qname, primary_prefix):
         prefix = qname.split(":", 1)[0]
         text = local if prefix == primary_prefix else f"{prefix}_{local}"
     else:
-        text = f"ns_{local}"
+        namespace = qname[:len(qname) - len(local)]
+        text = f"ns{hashlib.sha1(namespace.encode('utf-8')).hexdigest()[:6]}_{local}"
     text = re.sub(r"[^A-Za-z0-9_]", "_", text)
     return f"_{text}" if text[:1].isdigit() else text
 
 
-def graph_labels(qnames, primary_prefix):
+def relationship_type(prop_name):
+    """An object property's graph name (`graph_property_names`) as a Neo4j
+    relationship type in SCREAMING_SNAKE_CASE."""
+    import re
+
+    name = local_name(prop_name)
+    # Insert underscore before uppercase letters (camelCase -> SCREAMING_SNAKE)
+    snake = re.sub(r"(?<=[a-z0-9])([A-Z])", r"_\1", name)
+    return snake.upper()
+
+
+def graph_labels(qnames, primary_prefix, distinct_as=None):
     """{QName: graph name} for a set of terms, distinct by construction.
 
-    `graph_name` gives each term a name of its own; only names that still
-    meet after the identifier cleanup (two full IRIs of one local name,
-    prefixes differing in a replaced character, a primary term named what
-    another's qualified name is) take the first free ``_<n>`` suffix, terms
-    in sorted order so every caller given the same set agrees.
+    `graph_name` gives each term a name of its own; ``distinct_as`` maps a
+    name to what must differ (`relationship_type` for object properties,
+    whose ``hasPart`` and ``has_part`` are one type), the name itself by
+    default. Names can still meet: prefixes differing in a replaced
+    character (``a-b:X``, ``a_b:X``), a primary term spelled as another's
+    qualified name (``src:aug_Thing``, ``aug:Thing``). Among terms that
+    meet, a primary-namespace term whose name is its own local name keeps
+    it (the first in QName order when two primary terms meet as one
+    relationship type, ``PartOf`` before ``partOf``); each other takes a
+    suffix from its own QName's hash. A term of another namespace never
+    renames a primary term, and a suffix never depends on what else the
+    package holds: a term is renamed only when a later package adds a term
+    whose name it cannot share, and then always to the same name.
     """
-    from collections import Counter
+    from collections import defaultdict
 
-    qnames = sorted(set(qnames))
-    candidates = {q: graph_name(q, primary_prefix) for q in qnames}
-    counts = Counter(candidates.values())
-    names = {q: c for q, c in candidates.items() if counts[c] == 1}
-    taken = set(names.values())
-    for qname in qnames:
-        if qname in names:
-            continue
-        base, n, name = candidates[qname], 1, candidates[qname]
-        while name in taken:
-            n += 1
-            name = f"{base}_{n}"
-        names[qname] = name
-        taken.add(name)
+    same = distinct_as or (lambda name: name)
+    candidates = {q: graph_name(q, primary_prefix) for q in set(qnames)}
+    groups = defaultdict(list)
+    for qname in sorted(candidates):
+        groups[same(candidates[qname])].append(qname)
+    names = {}
+    for members in groups.values():
+        keeper = members[0] if len(members) == 1 else next(
+            (q for q in members if candidates[q] == local_name(q)
+             and not is_full_iri(q) and q.split(":", 1)[0] == primary_prefix), None)
+        for qname in members:
+            names[qname] = (candidates[qname] if qname == keeper else
+                            f"{candidates[qname]}_{hashlib.sha1(qname.encode('utf-8')).hexdigest()[:8]}")
+    if len({same(n) for n in names.values()}) != len(names):
+        # A suffixed name met another term's own name; say so rather than
+        # merging two terms into one label, key or relationship type.
+        raise ValueError(f"graph names collide: {sorted(names.items())}")
     return names
 
 
@@ -490,14 +522,51 @@ def emitted_graph_labels(inventory, mappings):
         source_prefix(inventory))
 
 
+def shape_only_property_shapes(inventory):
+    """{class QName: {property QName: {"class", "datatype"}}} for every
+    shape-only property (`shape_only_class_properties`): what the class's
+    evaluated shapes say its value is, an ``sh:class`` (a relationship) or
+    an ``sh:datatype`` (a node property), each None when no shape says.
+
+    A shape-only property has no entry in the source property lists, so the
+    knowledge graph, which reads those lists, left it out of its node keys,
+    relationship types and import transforms while the OWL, SHACL and CMF
+    carried it.
+    """
+    shape_only = shape_only_class_properties(inventory)
+    out = {}
+    for shape in inventory.get("shaclShapes", []):
+        if not shape_property_is_evaluated(shape):
+            continue
+        for target in shape_target_classes(shape):
+            for sp in shape.get("properties", []):
+                path = sp.get("path")
+                if path not in shape_only.get(target, ()) or not shape_property_is_evaluated(sp):
+                    continue
+                spec = out.setdefault(target, {}).setdefault(path, {"class": None, "datatype": None})
+                spec["class"] = spec["class"] or sp.get("class")
+                spec["datatype"] = spec["datatype"] or sp.get("datatype")
+    return out
+
+
 def graph_property_names(inventory):
-    """{property QName: graph name} for every inventory property: the node
-    property key of a datatype property, the relationship type (upper-cased)
-    of an object property. `src:subject` and `aug:subject` were one
-    relationship type and `src:name` / `aug:name` one node key."""
-    return graph_labels(
-        [p["qname"] for p in inventory.get("objectProperties", []) + inventory.get("datatypeProperties", [])],
-        source_prefix(inventory))
+    """{property QName: graph name} for every inventory property and every
+    shape-only one: the node property key of a datatype property, the
+    relationship type (`relationship_type`) of an object property.
+    `src:subject` and `aug:subject` were one relationship type and
+    `src:name` / `aug:name` one node key; ``hasPart`` and ``has_part``
+    were one relationship type too.
+    """
+    prefix = source_prefix(inventory)
+    shape_only = {path: spec for specs in shape_only_property_shapes(inventory).values()
+                  for path, spec in specs.items()}
+    objects = [p["qname"] for p in inventory.get("objectProperties", [])]
+    objects += [path for path, spec in shape_only.items() if spec["class"]]
+    datatypes = [p["qname"] for p in inventory.get("datatypeProperties", [])]
+    datatypes += [path for path, spec in shape_only.items() if not spec["class"]]
+    names = graph_labels(datatypes, prefix)
+    names.update(graph_labels(objects, prefix, distinct_as=relationship_type))
+    return names
 
 
 def range_class_for(class_qname, mapping_by_concept, class_by_qname):

@@ -156,6 +156,30 @@ class TestGraphLabels:
         assert graph_labels(qnames, "src") == graph_labels(list(reversed(qnames)), "src")
 
 
+class TestGraphNameStability:
+    """Round thirteen: a collision suffix was a counter in sorted order, so a
+    later package's term renamed an existing label (src:aug_Thing became
+    aug_Thing_2 when aug:Thing arrived) and the old label named a
+    different class."""
+
+    def test_a_later_namesake_does_not_rename_a_primary_term(self):
+        before = graph_labels(["src:aug_Thing"], "src")
+        after = graph_labels(["src:aug_Thing", "aug:Thing"], "src")
+        assert after["src:aug_Thing"] == before["src:aug_Thing"] == "aug_Thing"
+        assert after["aug:Thing"] != "aug_Thing"
+
+    def test_a_suffix_does_not_depend_on_the_other_terms(self):
+        one = graph_labels(["src:aug_Thing", "aug:Thing"], "src")["aug:Thing"]
+        two = graph_labels(["src:aug_Thing", "aug:Thing", "a-b:X", "a_b:X", "src:Z"], "src")["aug:Thing"]
+        assert one == two
+
+    def test_full_iris_of_two_namespaces_never_meet(self):
+        before = graph_labels(["http://b.org/x#Thing"], "src")
+        after = graph_labels(["http://b.org/x#Thing", "http://a.org/y#Thing"], "src")
+        assert after["http://b.org/x#Thing"] == before["http://b.org/x#Thing"]
+        assert len(set(after.values())) == 2
+
+
 class TestGraphPropertyNames:
     def test_properties_sharing_a_local_name_stay_distinct(self):
         """Round twelve: src:subject and aug:subject became one relationship
@@ -168,6 +192,61 @@ class TestGraphPropertyNames:
         assert names == {"src:subject": "subject", "aug:subject": "aug_subject",
                          "src:name": "name", "aug:name": "aug_name"}
         assert relationship_type(names["aug:subject"]) == "AUG_SUBJECT"
+
+    def test_relationship_types_are_distinct(self):
+        """Round thirteen: upper-casing made hasPart/has_part, partOf/PartOf
+        and aug:subject/src:augSubject one relationship type, and
+        build_relationships kept one of each pair."""
+        from ontology_mapper.generation_utils import graph_property_names
+        qnames = ["src:hasPart", "src:has_part", "src:partOf", "src:PartOf",
+                  "aug:subject", "src:augSubject"]
+        inv = {"primaryNamespace": {"prefix": "src"},
+               "objectProperties": [{"qname": q} for q in qnames], "datatypeProperties": []}
+        names = graph_property_names(inv)
+        assert len({relationship_type(names[q]) for q in qnames}) == len(qnames)
+        assert names["src:hasPart"] == "hasPart" and names["src:augSubject"] == "augSubject"
+
+    def test_node_keys_differing_in_case_stay_as_they_are(self):
+        """Node keys are case-sensitive; only relationship types fold."""
+        from ontology_mapper.generation_utils import graph_property_names
+        inv = {"primaryNamespace": {"prefix": "src"}, "objectProperties": [],
+               "datatypeProperties": [{"qname": "src:partOf"}, {"qname": "src:PartOf"}]}
+        assert graph_property_names(inv) == {"src:partOf": "partOf", "src:PartOf": "PartOf"}
+
+
+class TestShapeOnlyPropertiesInTheGraph:
+    """Round thirteen: a property only a shape names reached the OWL, SHACL
+    and CMF, and not the graph's node keys, relationships or transforms."""
+
+    def _inv(self):
+        inv = make_inv(
+            [make_class("src:Case"), make_class("src:Party")],
+            shapes=[{"targetClasses": ["src:Case"], "properties": [
+                {"path": "src:docketCode", "datatype": "http://www.w3.org/2001/XMLSchema#string"},
+                {"path": "src:filedBy", "class": "src:Party"},
+                {"path": "rdfs:label"},
+            ]}])
+        inv["primaryNamespace"] = {"prefix": "src"}
+        inv["namespaceMap"] = {"https://example.org/src#": "src"}
+        return inv
+
+    def test_shape_only_properties_reach_the_class(self):
+        matrix = make_matrix([make_mapping("src:Case", "extend"), make_mapping("src:Party", "extend")])
+        case = next(c for c in build_active_classes(self._inv(), matrix) if c["label"] == "Case")
+        assert {(p["qname"], p["label"], p["iri"]) for p in case["datatypeProps"]} == {
+            ("src:docketCode", "docketCode", "https://example.org/src#docketCode"),
+            ("rdfs:label", "rdfs_label", None)}
+        assert [(p["qname"], p["rangeLabel"]) for p in case["objectProps"]] == [("src:filedBy", "Party")]
+        transform = generate_internal_to_edge_transform(build_active_classes(self._inv(), matrix))
+        rule = next(t for t in transform["transforms"] if t["targetLabel"] == "Case")
+        assert {m["source"] for m in rule["propertyMappings"]} == {"src:docketCode", "rdfs:label"}
+        assert rule["relationMappings"] == [
+            {"source": "src:filedBy", "target": "FILED_BY", "targetNodeType": "Party"}]
+
+    def test_a_shape_only_range_that_is_not_emitted_is_no_relationship(self):
+        matrix = make_matrix([make_mapping("src:Case", "extend"), make_mapping("src:Party", "exclude")])
+        case = build_active_classes(self._inv(), matrix)[0]
+        assert case["objectProps"] == []
 
 class TestRelationshipType:
     def test_camel_case(self):

@@ -26,18 +26,9 @@ from pathlib import Path
 from ontology_mapper.run_dir_utils import utc_stamp
 
 from ontology_mapper.pipeline_context import load_context
-from ontology_mapper.generation_utils import local_name, XSD
+from ontology_mapper.generation_utils import local_name, relationship_type, XSD
 
 SKOS_CONCEPT = "http://www.w3.org/2004/02/skos/core#Concept"
-
-
-def relationship_type(prop_name):
-    """An object property's graph name (`graph_property_names`) as a Neo4j
-    relationship type in SCREAMING_SNAKE_CASE."""
-    name = local_name(prop_name)
-    # Insert underscore before uppercase letters (camelCase -> SCREAMING_SNAKE)
-    snake = re.sub(r"(?<=[a-z0-9])([A-Z])", r"_\1", name)
-    return snake.upper()
 
 
 def xsd_to_cypher_type(xsd_iri):
@@ -79,6 +70,8 @@ def build_active_classes(inv, matrix):
         infer_domains_from_shapes,
         range_class_for,
         assign_properties_to_classes,
+        shape_only_property_shapes,
+        source_namespaces,
         source_prefix as primary_source_prefix,
     )
 
@@ -87,6 +80,8 @@ def build_active_classes(inv, matrix):
 
     labels = emitted_graph_labels(inv, matrix["mappings"])
     prop_names = graph_property_names(inv)
+    shape_only = shape_only_property_shapes(inv)
+    namespaces = source_namespaces(inv)
     active_qnames = set(labels)
 
     # Assign properties using the same logic as generate_edge_ontology
@@ -134,6 +129,16 @@ def build_active_classes(inv, matrix):
         for p in inv["datatypeProperties"]:
             if cls_qname in p["domain"] and p["qname"] not in seen_dt:
                 dt.append(p)
+        # A property only this class's shape names, which the OWL, SHACL
+        # and CMF carry; its IRI from the source namespaces, so seed
+        # triples find it, and its range from the shape.
+        for path, spec in shape_only.get(cls_qname, {}).items():
+            prefix, _, local = path.partition(":")
+            p = {"qname": path, "iri": namespaces[prefix] + local if prefix in namespaces else None}
+            if spec["class"]:
+                obj.append({**p, "range": [spec["class"]]})
+            else:
+                dt.append({**p, "range": [spec["datatype"]] if spec["datatype"] else []})
         return (
             sorted(obj, key=lambda p: p["qname"]),
             sorted(dt, key=lambda p: p["qname"]),
@@ -188,7 +193,7 @@ def build_active_classes(inv, matrix):
                 continue
             object_props.append({
                 "qname": p["qname"],
-                "iri": p["iri"],
+                "iri": p.get("iri"),
                 "label": prop_names[p["qname"]],
                 "rangeQname": range_qname,
                 "rangeLabel": labels[range_qname],

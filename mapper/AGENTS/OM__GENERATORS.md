@@ -194,16 +194,23 @@ generation refuses before writing anything.
 
 Knowledge-graph names are decided by `generation_utils.graph_name`: a
 class or property in the primary source namespace keeps its local name, one
-in any other namespace is always `<prefix>_<local>` (a full IRI `ns_<local>`),
-cleaned to an unquoted Cypher identifier. Names depend only on the term, so
-adding a class or property to a later package never renames an existing node
-label, key or relationship type; a name chosen only on collision did, and
-data loaded under the earlier name stopped matching. `graph_labels` suffixes
-the rare names that still meet after cleanup. `emitted_graph_labels(inventory,
+in any other namespace is always `<prefix>_<local>` (a full IRI
+`ns<namespace hash>_<local>`), cleaned to an unquoted Cypher identifier. Names
+depend on the term, not on what else the package holds; a name chosen only on
+collision renamed existing labels as later packages added terms, and data
+loaded under the earlier name stopped matching. `graph_labels` handles the
+rare names that still meet after cleanup (`a-b:X` / `a_b:X`, `src:aug_Thing` /
+`aug:Thing`, and for relationship types `hasPart` / `has_part`): a primary
+term named by its own local name keeps it (the first in QName order when two
+primary terms meet as one relationship type, `PartOf` / `partOf`), and each
+other takes a suffix from its own QName's hash. Another namespace's term
+therefore never renames a primary one; a term is renamed only when a later
+package adds a term whose name it cannot share, and always to the same name. `emitted_graph_labels(inventory,
 mappings)` is the one home for which classes reach the graph and their labels
 (the KG generator and Stage 7 Check 8 both ask it); `graph_property_names`
-names every property, giving node property keys and relationship types, so
-`src:subject` / `aug:subject` are two relationship types. Seed nodes always
+names every property, shape-only ones included (`shape_only_property_shapes`),
+giving node property keys and relationship types, so `src:subject` /
+`aug:subject` are two relationship types. Seed nodes always
 carry the `identifier` their relationships MATCH on (the id-like property's
 value, else the instance IRI).
 
