@@ -544,6 +544,10 @@ class MatrixToCmfBuilder:
                     record(target_id, hp.property_ref, hp.is_object,
                            hp.min_occurs, hp.max_occurs)
 
+        # A property only a shape names is never minted, but its accepted
+        # reuse augments the target type as a declared one's does.
+        shape_only = shape_only_class_properties(self.inventory)
+
         # Augment classes: all new properties augment the augmented type
         for qname, target, _, _, augmented in self._augment:
             augmented_id = self._qname_to_cmf_id(augmented) if augmented else ""
@@ -563,7 +567,7 @@ class MatrixToCmfBuilder:
                 prop_qname = self._resolve_prop_qname(pm.get("sourceProperty", ""), qname)
                 prop_data = (self._obj_by_qname.get(prop_qname)
                              or self._dt_by_qname.get(prop_qname))
-                if prop_data is None:
+                if prop_data is None and prop_qname not in shape_only.get(qname, []):
                     continue  # not a property of the source inventory
                 is_object = prop_qname in self._obj_by_qname
                 target_prop = accepted_reuse_target(pm)
@@ -575,6 +579,8 @@ class MatrixToCmfBuilder:
                                target_prop, self._mapping_by_concept.get(qname, {}).get("targetType"))),
                            is_object, min_occ, max_occ)
                     continue
+                if prop_data is None:
+                    continue  # a shape-only term is referenced, never minted
                 prop_prefix = self._property_prefix("augment", prop_qname)
                 prop_id = _cmf_id(prop_prefix, local_name(prop_qname))
                 if prop_id not in declared:

@@ -21,7 +21,7 @@ from ontology_mapper.pipeline_context import load_context
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-from ontology_mapper.generation_utils import (XSD, colliding_edge_class_names,
+from ontology_mapper.generation_utils import (XSD, catalog_property_key, colliding_edge_class_names,
                                               shape_target_classes, source_prefix)
 SKOS_CONCEPT = "http://www.w3.org/2004/02/skos/core#Concept"
 OWL_CLASS = "http://www.w3.org/2002/07/owl#Class"
@@ -98,6 +98,11 @@ def load_stage_data(ctx):
             qualified, typed = decl.get("qualifiedProperty"), decl.get("qualifiedType")
             if qualified and typed:
                 target_property_types[qualified] = typed
+                # Keyed as `catalog_property_key` spells a target: its
+                # qualifiedProperty, or its uri when the namespace map
+                # cannot ground the IRI (SALI-Folio).
+                if decl.get("uri"):
+                    target_property_types.setdefault(decl["uri"], typed)
             # A catalog whose property ids are bare (SALI-Folio ships 177)
             # cannot be written into Turtle as a name; its URI can.
             if qualified and decl.get("uri"):
@@ -496,7 +501,11 @@ def main():
                 # carried by the CMF and the matrix.
                 dropped_target_terms.append(f"{cls_qname} restriction -> {target}")
                 continue
-            filler = target_property_types.get(target)
+            # The same key the CMF and Check 12 use: a bare or full-IRI
+            # spelling of the one catalog property found the QName's type
+            # only when spelled as the QName.
+            filler = target_property_types.get(catalog_property_key(
+                target, mapping_by_concept[cls_qname].get("targetType"), target_ns_map))
             filler_ref = target_term_ref(filler, target_type_uris) if filler else None
             out.append((ref, filler_ref))
         return sorted(out)
@@ -581,7 +590,8 @@ def main():
                     # Reuse emits `owl:allValuesFrom <the property's declared
                     # type>`, which may live in a namespace no decision
                     # names directly (a code-list namespace, say).
-                    filler = target_property_types.get(target_prop)
+                    filler = target_property_types.get(catalog_property_key(
+                        target_prop, m.get("targetType"), target_ns_map))
                     if filler:
                         qnames_to_check.append(filler)
             for qname in qnames_to_check:

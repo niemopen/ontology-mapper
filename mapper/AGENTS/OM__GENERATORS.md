@@ -173,7 +173,8 @@ source term the source never declared as a property — is not minted.
 `build_class_properties` harvests shape paths, so Stage 3/4 writes a decision
 for it under the shape's class, and that decision is the only one about it:
 an accepted reuse names the target property in the shape, the OWL
-restriction and the CMF class, exactly as a declared property's reuse does
+restriction and the CMF class (for an augment class, its augmentation
+record), exactly as a declared property's reuse does
 (`generation_utils.shape_only_class_properties` is the shape-only remainder
 of `build_class_properties` both emitters read); otherwise the shape references
 the term as the IRI it is (a primary-namespace term included, whose prefix

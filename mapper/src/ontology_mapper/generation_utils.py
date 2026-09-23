@@ -446,12 +446,18 @@ def graph_labels(class_qnames):
     qnames = sorted(set(class_qnames))
     local_counts = Counter(local_name(q) for q in qnames)
 
+    def identifier(text):
+        # A label is written unquoted into Cypher, and Check 8 reads it as
+        # \w+: a plain local name like `Thing-Type` was valid for neither.
+        text = re.sub(r"[^A-Za-z0-9_]", "_", text)
+        return f"_{text}" if text[:1].isdigit() else text
+
     def candidate(qname):
         local = local_name(qname)
         if local_counts[local] == 1:
-            return local
+            return identifier(local)
         prefix = qname.split(":", 1)[0] if ":" in qname and not is_full_iri(qname) else "ns"
-        return re.sub(r"[^A-Za-z0-9_]", "_", f"{prefix}_{local}")
+        return identifier(f"{prefix}_{local}")
 
     candidates = {q: candidate(q) for q in qnames}
     candidate_counts = Counter(candidates.values())

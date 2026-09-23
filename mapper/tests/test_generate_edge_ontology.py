@@ -86,6 +86,72 @@ def test_an_accepted_reuse_reaches_owl_and_cmf_whether_or_not_the_source_declare
     assert re.search(r'structures:ref="nc\.DocumentFileControlID"', record)
 
 
+def _generate_one_class(tmp_path, monkeypatch, action, target_property, declared=True):
+    """Stage 6a for one src:Record class whose src:ctl is reused; returns
+    (extensions TTL, CMF XML)."""
+    import json
+    import sys
+    from ontology_mapper.generate_edge_ontology import main
+
+    monkeypatch.delenv("OM_SPECS_DIR", raising=False)
+    string = "http://www.w3.org/2001/XMLSchema#string"
+    dt_props = [{"qname": "src:note", "iri": "urn:source:note", "label": "Note", "comment": "",
+                 "domain": ["src:Record"], "range": [string]}]
+    if declared:
+        dt_props.append({"qname": "src:ctl", "iri": "urn:source:ctl", "label": "Ctl", "comment": "",
+                         "domain": ["src:Record"], "range": [string]})
+    inventory = {
+        "classes": [{"qname": "src:Record", "iri": "urn:source:Record", "label": "Record", "comment": "", "subClassOf": []}],
+        "datatypeProperties": dt_props, "objectProperties": [], "codelistSchemes": [], "augmentingNamespaces": [],
+        "shaclShapes": [{"iri": "urn:source:RecordShape", "targetClass": "src:Record", "targetClasses": ["src:Record"],
+                         "properties": [{"path": "src:ctl", "minCount": 1}]}],
+    }
+    row = {"sourceConcept": "src:Record", "action": action, "targetType": "nc:ActivityType",
+           "reviewStatus": "accepted", "propertyMappings": [
+               {"sourceProperty": "src:note", "action": "create-property", "reviewStatus": "accepted"},
+               {"sourceProperty": "src:ctl", "action": "reuse-property",
+                "targetProperty": target_property, "reviewStatus": "accepted"}]}
+    if action == "augment":
+        row["augmentsType"] = "nc:ActivityType"
+    else:
+        row["baseType"] = "nc:ActivityType"
+    for name, content in {
+        "concept-inventory.json": inventory, "mapping-matrix.json": {"mappings": [row]},
+        ".mapper-state.json": {"inputs": {"organization": "sample", "source": "sample",
+                                          "target_ontology": "niem", "target_version": "6.0"}},
+    }.items():
+        (tmp_path / name).write_text(json.dumps(content), encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["om-generate-ontology", "--run-dir", str(tmp_path)])
+    main()
+    pkg = tmp_path / "edge-package"
+    return (next((pkg / "ontology").glob("*-extensions.ttl")).read_text(encoding="utf-8"),
+            next((pkg / "cmf").glob("*.cmf")).read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize("declared", [True, False])
+def test_an_augment_classs_accepted_reuse_reaches_its_augmentation_record(tmp_path, monkeypatch, declared):
+    """Round twelve: the CMF skipped an augment class's property the source
+    lists do not declare before asking whether it was reused, so a
+    shape-only reuse reached the OWL and SHACL but no AugmentationRecord."""
+    import re
+    _, cmf = _generate_one_class(tmp_path, monkeypatch, "augment", "nc:DocumentFileControlID", declared)
+    records = re.findall(r"<AugmentationRecord>.*?</AugmentationRecord>", cmf, re.S)
+    assert any('structures:ref="nc.ActivityType"' in r and 'structures:ref="nc.DocumentFileControlID"' in r
+               for r in records), records
+
+
+@pytest.mark.parametrize("spelling", [
+    "nc:ActivityDescriptionText", "ActivityDescriptionText",
+    "https://docs.oasis-open.org/niemopen/ns/model/niem-core/6.0/ActivityDescriptionText"])
+def test_a_reuse_restriction_takes_the_catalog_type_however_the_target_is_spelled(
+        tmp_path, monkeypatch, spelling):
+    """The filler was looked up by the raw spelling: the QName gave
+    owl:allValuesFrom nc:TextType, a bare or IRI spelling of the same
+    property only owl:minCardinality 0."""
+    ttl, _ = _generate_one_class(tmp_path, monkeypatch, "extend", spelling)
+    assert "owl:allValuesFrom nc:TextType" in ttl
+
+
 def test_a_target_without_a_cmf_reference_model_gets_no_cmf(tmp_path, monkeypatch):
     """NODS ships no CMF reference model, so a CMF could not declare the
     target classes and properties it references and Stage 7 failed every

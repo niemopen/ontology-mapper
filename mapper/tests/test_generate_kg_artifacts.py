@@ -137,6 +137,14 @@ class TestGraphLabels:
             labels = graph_labels(qnames)
             assert len(set(labels.values())) == len(qnames), labels
 
+    def test_every_label_is_a_cypher_identifier(self):
+        """A plain local name was written as is: `Thing-Type` is not an
+        unquoted Cypher label, and Check 8 reads labels as \w+."""
+        import re
+        labels = graph_labels(["src:Thing-Type", "src:9Lives", "src:Ok"])
+        assert labels == {"src:Thing-Type": "Thing_Type", "src:9Lives": "_9Lives", "src:Ok": "Ok"}
+        assert all(re.fullmatch(r"[A-Za-z_]\w*", l) for l in labels.values())
+
     def test_labels_do_not_depend_on_input_order(self):
         qnames = ["src:Thing", "aug:Thing", "src_Thing", "a-b:X", "a_b:X"]
         assert graph_labels(qnames) == graph_labels(list(reversed(qnames)))
