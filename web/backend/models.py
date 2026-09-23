@@ -1,7 +1,7 @@
 """Pydantic models for API request and response payloads."""
 
 from pydantic import BaseModel
-from typing import Optional
+from typing import Literal, Optional
 
 
 # --- Runs ---
@@ -38,7 +38,9 @@ class ChangeTargetRequest(BaseModel):
 class ResolvePropertyRequest(BaseModel):
     concept: str
     source_property: str
-    property_action: str  # "reuse-property" or "create-property"
+    # The two decisions review can make (PROPERTY_DECISION_ACTIONS); any
+    # other string was accepted and read as decided.
+    property_action: Literal["reuse-property", "create-property"]
     target_property: Optional[str] = None
     confidence: str = "confident"  # "confident" or "best-guess"
 

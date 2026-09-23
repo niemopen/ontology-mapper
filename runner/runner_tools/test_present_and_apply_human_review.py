@@ -274,9 +274,11 @@ class TestGetPendingPropertyItems:
 
     def test_only_pending_review_included(self):
         entry = {"sourceConcept": "x:Foo", "propertyMappings": [
-            {"sourceProperty": "PropA", "action": "reuse-property", "reviewStatus": "pending-review"},
+            {"sourceProperty": "PropA", "action": "reuse-property", "targetProperty": "nc:PropA",
+             "reviewStatus": "pending-review"},
             {"sourceProperty": "PropB", "action": "create-property", "reviewStatus": "pending-review"},
-            {"sourceProperty": "PropC", "action": "reuse-property", "reviewStatus": "accepted"},
+            {"sourceProperty": "PropC", "action": "reuse-property", "targetProperty": "nc:PropC",
+             "reviewStatus": "accepted"},
         ]}
         reuse, create, must_decide = get_pending_property_items(entry)
         assert len(reuse) == 1
@@ -287,7 +289,8 @@ class TestGetPendingPropertyItems:
 
     def test_human_must_decide_separated(self):
         entry = {"sourceConcept": "x:Foo", "propertyMappings": [
-            {"sourceProperty": "PropA", "action": "reuse-property", "reviewStatus": "pending-review"},
+            {"sourceProperty": "PropA", "action": "reuse-property", "targetProperty": "nc:PropA",
+             "reviewStatus": "pending-review"},
             {"sourceProperty": "PropB", "action": "human-must-decide", "reviewStatus": "pending-review",
              "targetProperty": "[undecided]"},
             {"sourceProperty": "PropC", "action": "create-property", "reviewStatus": "pending-review"},
@@ -839,8 +842,7 @@ class TestCmdAcceptWithHumanMustDecide:
         _cmd_accept(args)
 
         out = capsys.readouterr().out
-        assert "human-must-decide" in out
-        assert "1" in out  # 1 skipped
+        assert "1 undecided properties were NOT approved" in out
 
         # Verify the human-must-decide property stayed pending
         matrix = json.loads((tmp_path / "mapping-matrix.json").read_text(encoding="utf-8"))
@@ -1687,3 +1689,63 @@ def test_a_property_retargeted_in_review_does_not_read_as_codebook_drift():
     assert entry["propertyMappings"][0]["targetDefinitionHash"] == definition_hash(defs[new])
     apply_property_decision(entry, "src:name", {"action": "create-property"}, catalog)
     assert "targetDefinitionHash" not in entry["propertyMappings"][0]
+
+
+class TestPropertyUndecided:
+    """Round thirteen: the gate listed the undecided actions, so any other
+    string (a hand edit, an LLM's "create") read as decided and closed review."""
+
+    def test_only_the_two_review_decisions_are_decided(self):
+        from runner_tools._present_and_apply_human_review import property_undecided
+        assert property_undecided({"action": "create-property"}) is False
+        assert property_undecided({"action": "reuse-property", "targetProperty": "nc:PersonName"}) is False
+        assert property_undecided({"action": "reuse-property"}) is True
+        assert property_undecided({"action": "reuse-property", "targetProperty": "[undecided]"}) is True
+        for action in ("human-must-decide", "create", "exclude", None):
+            assert property_undecided({"action": action, "reviewStatus": "accepted"}) is True, action
+
+    def test_an_unknown_action_keeps_review_open(self):
+        from runner_tools._present_and_apply_human_review import undecided_properties
+        entries = [{"sourceConcept": "src:A", "propertyMappings": [
+            {"sourceProperty": "src:name", "action": "create", "reviewStatus": "accepted"}]}]
+        assert len(undecided_properties(entries)) == 1
+
+    def test_the_views_list_an_accepted_reuse_without_a_target_as_undecided(self):
+        """The views said "Already decided" for a property the gate blocked on."""
+        entry = {"sourceConcept": "src:A", "propertyMappings": [
+            {"sourceProperty": "src:name", "action": "reuse-property", "reviewStatus": "accepted"}]}
+        reuse, create, must_decide = get_pending_property_items(entry)
+        assert (reuse, create) == ([], [])
+        assert [p["sourceProperty"] for p in must_decide] == ["src:name"]
+        text = format_property_review(entry)
+        assert "Already decided" not in text
+
+
+class TestCmdResolvesConceptNames:
+    """om-review detail and accept matched names their own way; accept knew
+    only the full QName, so the name detail accepted was "not found"."""
+
+    def _write(self, tmp_path, concepts):
+        matrix = {"mappings": [
+            {"sourceConcept": c, "action": "reuse", "targetType": "nc:CaseType",
+             "reviewStatus": "pending-review", "propertyMappings": []} for c in concepts]}
+        (tmp_path / "mapping-matrix.json").write_text(json.dumps(matrix), encoding="utf-8")
+        (tmp_path / "decision-log.json").write_text(json.dumps({"decisions": []}), encoding="utf-8")
+
+    def test_accept_takes_the_local_name_detail_takes(self, tmp_path):
+        from types import SimpleNamespace
+        from runner_tools._present_and_apply_human_review import _cmd_accept
+        self._write(tmp_path, ["court:Case"])
+        _cmd_accept(SimpleNamespace(run_dir=str(tmp_path), concept="Case"))
+        saved = json.loads((tmp_path / "mapping-matrix.json").read_text(encoding="utf-8"))
+        assert saved["mappings"][0]["reviewStatus"] == "accepted"
+
+    def test_accept_refuses_a_name_two_entries_share(self, tmp_path, capsys):
+        from types import SimpleNamespace
+        from runner_tools._present_and_apply_human_review import _cmd_accept
+        self._write(tmp_path, ["a:Case", "b:Case"])
+        with pytest.raises(SystemExit):
+            _cmd_accept(SimpleNamespace(run_dir=str(tmp_path), concept="Case"))
+        assert "ambiguous" in capsys.readouterr().out
+        saved = json.loads((tmp_path / "mapping-matrix.json").read_text(encoding="utf-8"))
+        assert {m["reviewStatus"] for m in saved["mappings"]} == {"pending-review"}

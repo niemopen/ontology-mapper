@@ -38,6 +38,7 @@ from runner_tools._present_and_apply_human_review import (
     apply_property_decision,
     check_stage_5_exit,
     find_mapping_entry,
+    PROPERTY_DECISION_ACTIONS,
     load_cascade_context,
     save_matrix,
     undecided_properties,
@@ -333,14 +334,14 @@ def _dispatch_review_action(
         })
         msg = f"Approved: {entry['sourceConcept']} ({entry['action']})"
         if skipped:
-            msg += f"\n  *** {skipped} human-must-decide properties NOT approved — resolve individually ***"
+            msg += f"\n  *** {skipped} undecided properties NOT approved — resolve individually ***"
         return msg, applied, cascade_context
 
     elif action_type == "approve_all":
         # Check for human-must-decide blockers
         must_decide = len(undecided_properties(pending))
         if must_decide:
-            return (f"Cannot approve-all: {must_decide} human-must-decide properties "
+            return (f"Cannot approve-all: {must_decide} undecided properties "
                     f"must be resolved individually first."), applied, cascade_context
         for entry in pending:
             apply_accept(entry)
@@ -425,8 +426,9 @@ def _dispatch_review_action(
                     applied, cascade_context)
         if not src_prop:
             return "resolve_property requires source_property", applied, cascade_context
-        if not prop_action:
-            return "resolve_property requires property_action", applied, cascade_context
+        if prop_action not in PROPERTY_DECISION_ACTIONS:
+            return (f"resolve_property requires property_action "
+                    f"{' or '.join(PROPERTY_DECISION_ACTIONS)}, not {prop_action!r}"), applied, cascade_context
 
         decision = {"action": prop_action}
         if target_prop:

@@ -346,3 +346,51 @@ def test_validation_route_is_not_taken_for_a_concept_name(run_context, monkeypat
     assert body["canSubmit"] is False
     assert body["mustDecideProperties"] == [{"concept": "src:Item", "property": "src:count"}]
     assert client.get("/runs/sample/review/src:Item").json()["sourceConcept"] == "src:Item"
+
+
+def _undecided_run(run_dir):
+    entry = {"sourceConcept": "src:Item", "action": "extend", "targetType": None,
+             "reviewStatus": "pending-review", "propertyMappings": [
+                 {"sourceProperty": "src:count", "action": "human-must-decide",
+                  "targetProperty": "[undecided]", "reviewStatus": "pending-review"}]}
+    (run_dir / "mapping-matrix.json").write_text(json.dumps({"mappings": [entry]}), encoding="utf-8")
+    for name in ("decision-log.json", "human-review-decisions.json"):
+        (run_dir / name).write_text(json.dumps({"decisions": []}), encoding="utf-8")
+
+
+def test_resolve_property_refuses_an_action_review_cannot_make(run_context):
+    """Any string was accepted as property_action and read as decided."""
+    run_dir, client, _ = run_context
+    _undecided_run(run_dir)
+    before = (run_dir / "mapping-matrix.json").read_bytes()
+    response = client.post("/runs/sample/review/resolve-property", json={
+        "concept": "src:Item", "source_property": "src:count", "property_action": "create"})
+    assert response.status_code == 422, response.text
+    assert (run_dir / "mapping-matrix.json").read_bytes() == before
+
+
+def test_create_property_needs_no_catalog(run_context, monkeypatch):
+    """A create names no catalog target, yet was refused with a 500 when the
+    catalog could not load; a reuse is refused as the run's state (503)."""
+    run_dir, client, _ = run_context
+    _undecided_run(run_dir)
+    monkeypatch.setattr(review, "_get_cascade", lambda *args: None)
+    reuse = client.post("/runs/sample/review/resolve-property", json={
+        "concept": "src:Item", "source_property": "src:count",
+        "property_action": "reuse-property", "target_property": "nc:ItemQuantity"})
+    assert reuse.status_code == 503, reuse.text
+    create = client.post("/runs/sample/review/resolve-property", json={
+        "concept": "src:Item", "source_property": "src:count", "property_action": "create-property"})
+    assert create.status_code == 200, create.text
+    prop = json.loads((run_dir / "mapping-matrix.json").read_text(encoding="utf-8"))["mappings"][0]["propertyMappings"][0]
+    assert (prop["action"], prop["reviewStatus"]) == ("create-property", "accepted")
+
+
+def test_approve_reports_the_number_of_properties_left_undecided(run_context):
+    """apply_all_property_accepts returns (accepted, skipped); the route sent
+    the pair as skippedMustDecide."""
+    run_dir, client, _ = run_context
+    _undecided_run(run_dir)
+    response = client.post("/runs/sample/review/approve", json={"concept": "src:Item"})
+    assert response.status_code == 200, response.text
+    assert response.json()["skippedMustDecide"] == 1

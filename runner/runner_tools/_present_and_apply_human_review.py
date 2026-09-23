@@ -99,11 +99,14 @@ def get_pending_property_items(entry):
     - must_decide_props: human-must-decide (evaluator could not choose)
     """
     props = entry.get("propertyMappings") or []
-    pending = [p for p in props if p.get("reviewStatus") == "pending-review"]
+    # Undecided whatever its status (`property_undecided`): a reuse accepted
+    # without a target is listed here, not under "Already decided".
+    must_decide = [p for p in props if property_undecided(p)]
+    pending = [p for p in props
+               if p.get("reviewStatus") == "pending-review" and not property_undecided(p)]
 
     reuse = [p for p in pending if p["action"] == "reuse-property"]
     create = [p for p in pending if p["action"] == "create-property"]
-    must_decide = [p for p in pending if p["action"] == "human-must-decide"]
 
     return reuse, create, must_decide
 
@@ -124,7 +127,8 @@ def format_property_review(entry):
     concept = entry["sourceConcept"]
 
     reuse_props, create_props, must_decide_props = get_pending_property_items(entry)
-    decided = [p for p in props if p.get("reviewStatus") != "pending-review"]
+    decided = [p for p in props
+               if p.get("reviewStatus") != "pending-review" and not property_undecided(p)]
 
     lines = [f"\n  Property mappings for {concept} ({len(props)} total):"]
 
@@ -173,23 +177,29 @@ def format_property_review(entry):
     return "\n".join(lines)
 
 
+# The two decisions a reviewer can make about a property.
+PROPERTY_DECISION_ACTIONS = ("reuse-property", "create-property")
+
+
 def property_undecided(prop):
     """Does this property still need a human decision?
 
-    One home for Stage 5's exit gate and every count of blocking properties
-    (CLI and web). A ``human-must-decide`` property is undecided; so is a
-    ``reuse-property`` with no real target, which the emitters would not
-    reuse (`accepted_reuse_target`). Counting only the first let a reuse
-    resolved without a target close review with the property unmapped.
+    One home for Stage 5's exit gate and every count and view of blocking
+    properties (CLI and web). A property is decided only by the two
+    decisions review can make: ``create-property``, or ``reuse-property``
+    with a real target (the one the emitters reuse, `accepted_reuse_target`).
+    Everything else is undecided: ``human-must-decide``, a reuse without a
+    target, and any other action string. Listing the undecided cases
+    instead let an unlisted action ("create", "exclude") close review.
     """
     from ontology_mapper.generation_utils import real_target_property
 
     action = prop.get("action")
-    if action == "human-must-decide":
-        return prop.get("reviewStatus") == "pending-review"
+    if action == "create-property":
+        return False
     if action == "reuse-property":
         return real_target_property(prop.get("targetProperty")) is None
-    return False
+    return True
 
 
 def undecided_properties(entries):
@@ -782,7 +792,7 @@ def _prop_counts(entry):
     props = entry.get("propertyMappings") or []
     reuse = sum(1 for p in props if p.get("action") == "reuse-property")
     create = sum(1 for p in props if p.get("action") == "create-property")
-    must_decide = sum(1 for p in props if p.get("action") == "human-must-decide")
+    must_decide = sum(1 for p in props if property_undecided(p))
     return len(props), reuse, create, must_decide
 
 
@@ -835,7 +845,7 @@ def _cmd_present(args):
     ]
     reuse_props = sum(1 for p in all_props if p.get("action") == "reuse-property")
     create_props = sum(1 for p in all_props if p.get("action") == "create-property")
-    must_decide_props = sum(1 for p in all_props if p.get("action") == "human-must-decide")
+    must_decide_props = sum(1 for p in all_props if property_undecided(p))
     total_props = len(all_props)
 
     summary = matrix.get("summary", {})
@@ -869,19 +879,13 @@ def _cmd_detail(args):
     # Also check non-pending items so detail works after accept
     all_entries = {m["sourceConcept"]: m for m in matrix["mappings"]}
 
-    # Try exact match, then suffix match
-    entry = all_entries.get(args.concept)
+    entry, candidates = find_mapping_entry(all_entries.values(), args.concept)
     if not entry:
-        suffix = f":{args.concept}"
-        matches = [e for qname, e in all_entries.items() if qname.endswith(suffix)]
-        if len(matches) == 1:
-            entry = matches[0]
-        elif len(matches) > 1:
-            print(f"Ambiguous: {args.concept} matches {[m['sourceConcept'] for m in matches]}")
-            return
+        if len(candidates) > 1:
+            print(f"Ambiguous: {args.concept} matches {candidates}")
         else:
             print(f"Not found: {args.concept}")
-            return
+        return
 
     print(f"\n  {entry['sourceConcept']}")
     print(format_review_item(entry))
@@ -906,7 +910,7 @@ def _cmd_accept_all(args):
     # Block accept-all if any human-must-decide properties remain
     must_decide_count = len(undecided_properties(pending))
     if must_decide_count:
-        print(f"Cannot approve-all: {must_decide_count} human-must-decide "
+        print(f"Cannot approve-all: {must_decide_count} undecided "
               f"properties must be resolved individually first.")
         return
 
@@ -967,15 +971,14 @@ def _cmd_accept(args):
     """Accept a single concept's current recommendation and save."""
     run_dir, matrix, dec_log = load_inputs(args.run_dir)
 
-    target_entry = None
-    for m in matrix["mappings"]:
-        if m["sourceConcept"] == args.concept:
-            target_entry = m
-            break
-
+    target_entry, candidates = find_mapping_entry(matrix["mappings"], args.concept)
     if target_entry is None:
-        print(f"Error: concept '{args.concept}' not found in mapping matrix.")
+        if len(candidates) > 1:
+            print(f"Error: concept '{args.concept}' is ambiguous: {candidates}")
+        else:
+            print(f"Error: concept '{args.concept}' not found in mapping matrix.")
         raise SystemExit(1)
+    args.concept = target_entry["sourceConcept"]
 
     if target_entry.get("reviewStatus") != "pending-review":
         print(f"Concept '{args.concept}' is not pending review (status: {target_entry.get('reviewStatus')}).")
@@ -995,7 +998,7 @@ def _cmd_accept(args):
     save_matrix(run_dir, matrix, dec_log, applied)
     print(f"Approved: {args.concept} ({target_entry['action']})")
     if skipped:
-        print(f"  *** {skipped} human-must-decide properties were NOT approved ***")
+        print(f"  *** {skipped} undecided properties were NOT approved ***")
         print(f"  *** These must be resolved individually ***")
 
 

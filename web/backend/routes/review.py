@@ -174,7 +174,7 @@ async def approve_concept(
 
     apply_accept(entry)
     entry["confidence"] = req.confidence
-    skipped = apply_all_property_accepts(entry, confidence=req.confidence)
+    _accepted, skipped = apply_all_property_accepts(entry, confidence=req.confidence)
 
     _save(run_dir, matrix, dec_log, [entry])
 
@@ -209,7 +209,7 @@ async def approve_all(run_id: str, user: dict = Depends(require_auth), org: str 
         raise HTTPException(
             status_code=409,
             detail={
-                "message": "Cannot approve-all: human-must-decide properties exist",
+                "message": "Cannot approve-all: undecided properties exist",
                 "mustDecide": must_decide,
             },
         )
@@ -281,17 +281,20 @@ async def resolve_property(
     from runner_tools._present_and_apply_human_review import apply_property_decision
 
     cascade = _get_cascade(run_id, run_dir)
-    if not cascade:
+    if not cascade and req.property_action == "reuse-property":
+        # Only a reuse names a catalog target to fingerprint; the run's
+        # state, not the request, is at fault.
         raise HTTPException(
-            status_code=500,
-            detail="Could not load catalog to fingerprint the property's target",
+            status_code=503,
+            detail="The run's reference catalog could not be loaded, so a reused "
+                   "target cannot be recorded; create-property decisions still can",
         )
     decision = {
         "action": req.property_action,
         "targetProperty": req.target_property,
         "confidence": req.confidence,
     }
-    apply_property_decision(entry, req.source_property, decision, cascade[1])
+    apply_property_decision(entry, req.source_property, decision, cascade[1] if cascade else {})
 
     _save(run_dir, matrix, dec_log, [entry])
 

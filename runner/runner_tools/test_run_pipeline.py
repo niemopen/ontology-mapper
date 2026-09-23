@@ -450,6 +450,22 @@ class TestDispatchReviewAction:
         assert prop["action"] == "reuse-property"
         assert prop["reviewStatus"] == "accepted"
 
+    @pytest.mark.parametrize("prop_action", ["create", "exclude", "human-must-decide"])
+    def test_resolve_property_refuses_an_action_review_cannot_make(self, tmp_path, prop_action):
+        """Round thirteen: any non-empty property_action was written, and the
+        exit gate read the unknown action as decided."""
+        matrix, dec_log, pending = self._make_context(tmp_path)
+        pending[0]["propertyMappings"] = [{
+            "sourceProperty": "personName", "action": "human-must-decide",
+            "reviewStatus": "pending-review"}]
+        action = {"action": "resolve_property", "concept": "PersonType",
+                  "source_property": "personName", "property_action": prop_action}
+        msg, applied, _ = _dispatch_review_action(
+            action, tmp_path, matrix, dec_log, pending, ("niem", {}))
+        assert applied == []
+        assert "reuse-property or create-property" in msg
+        assert pending[0]["propertyMappings"][0]["action"] == "human-must-decide"
+
     def test_change_target_to_the_same_class_in_another_spelling_keeps_the_action(self, tmp_path):
         """A same-identity selection is applied, not cascaded; the dispatcher must
         supply the action apply_decision requires, or the review loop dies."""
