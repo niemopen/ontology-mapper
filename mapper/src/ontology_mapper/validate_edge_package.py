@@ -447,9 +447,17 @@ def check_codebook_drift(mappings_list, catalog):
                         f"not found in catalog"
                     )
                 elif prop_hash and current_prop_hash != prop_hash:
+                    # A review decision saved before decisions were
+                    # refingerprinted still carries the hash of Stage 3's
+                    # candidate, not of the chosen target; say how to tell
+                    # that from a catalog change and how to clear it.
                     errors.append(
                         f"{concept}/{src_prop}: {target_prop} definition "
-                        f"changed (was {prop_hash}, now {current_prop_hash})"
+                        f"changed (was {prop_hash}, now {current_prop_hash}); "
+                        f"if the catalog has not changed since review, the "
+                        f"fingerprint predates the review decision, and "
+                        f"re-resolving the property in Stage 5 review records "
+                        f"the current one"
                     )
 
     return errors
