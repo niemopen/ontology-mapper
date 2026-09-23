@@ -4,6 +4,7 @@
 import json
 import pytest
 from ontology_mapper.generation_utils import graph_labels
+from ontology_mapper.generate_kg_artifacts import relationship_type
 from pathlib import Path
 from ontology_mapper.pipeline_context import PipelineContext
 from ontology_mapper.generate_kg_artifacts import (
@@ -114,41 +115,59 @@ class TestLocalName:
 
 
 class TestGraphLabels:
-    def test_a_unique_local_name_is_the_label(self):
-        assert graph_labels(["dbpi:PermitApplication", "dbpi:Address"]) == {
+    def test_a_primary_term_keeps_its_local_name(self):
+        assert graph_labels(["dbpi:PermitApplication", "dbpi:Address"], "dbpi") == {
             "dbpi:PermitApplication": "PermitApplication", "dbpi:Address": "Address"}
 
-    def test_classes_sharing_a_local_name_are_qualified_by_prefix(self):
-        """An augmentation and a reuse class of one local name got one
-        label: a duplicate CREATE CONSTRAINT and merged seed nodes."""
-        assert graph_labels(["src:Thing", "aug:Thing", "src:Other"]) == {
-            "src:Thing": "src_Thing", "aug:Thing": "aug_Thing", "src:Other": "Other"}
+    def test_a_term_of_another_namespace_is_always_qualified(self):
+        """Decided by the term's namespace, not by what else is present."""
+        assert graph_labels(["src:Other", "aug:Thing"], "src") == {
+            "src:Other": "Other", "aug:Thing": "aug_Thing"}
 
-    def test_qualified_labels_that_still_meet_are_suffixed(self):
-        """Qualifying by prefix is not enough on its own: two full IRIs both
-        qualify as ns_, `a-b` and `a_b` sanitize alike, and a class can be
-        named what another qualifies to. Each keeps a distinct label."""
+    def test_a_label_does_not_change_when_a_later_package_adds_a_namesake(self):
+        """Round twelve (open lens): adding aug:Thing renamed src:Thing from
+        Thing to src_Thing, so data loaded under the earlier package's
+        label stopped matching the new schema."""
+        before = graph_labels(["src:Thing", "src:Other"], "src")
+        after = graph_labels(["src:Thing", "src:Other", "aug:Thing", "http://x.org/y#Thing"], "src")
+        assert after["src:Thing"] == before["src:Thing"] == "Thing"
+        assert after["src:Other"] == before["src:Other"]
+
+    def test_names_that_still_meet_after_cleanup_are_suffixed(self):
         cases = [
             ["http://a.org/x#Thing", "http://b.org/y#Thing"],
             ["a-b:Thing", "a_b:Thing"],
-            ["src:Thing", "aug:Thing", "src_Thing"],
+            ["src:aug_Thing", "aug:Thing"],
         ]
         for qnames in cases:
-            labels = graph_labels(qnames)
+            labels = graph_labels(qnames, "src")
             assert len(set(labels.values())) == len(qnames), labels
 
     def test_every_label_is_a_cypher_identifier(self):
         """A plain local name was written as is: `Thing-Type` is not an
-        unquoted Cypher label, and Check 8 reads labels as \w+."""
+        unquoted Cypher label, and Check 8 reads labels as \\w+."""
         import re
-        labels = graph_labels(["src:Thing-Type", "src:9Lives", "src:Ok"])
+        labels = graph_labels(["src:Thing-Type", "src:9Lives", "src:Ok"], "src")
         assert labels == {"src:Thing-Type": "Thing_Type", "src:9Lives": "_9Lives", "src:Ok": "Ok"}
         assert all(re.fullmatch(r"[A-Za-z_]\w*", l) for l in labels.values())
 
     def test_labels_do_not_depend_on_input_order(self):
-        qnames = ["src:Thing", "aug:Thing", "src_Thing", "a-b:X", "a_b:X"]
-        assert graph_labels(qnames) == graph_labels(list(reversed(qnames)))
+        qnames = ["src:Thing", "aug:Thing", "src:aug_Thing", "a-b:X", "a_b:X"]
+        assert graph_labels(qnames, "src") == graph_labels(list(reversed(qnames)), "src")
 
+
+class TestGraphPropertyNames:
+    def test_properties_sharing_a_local_name_stay_distinct(self):
+        """Round twelve: src:subject and aug:subject became one relationship
+        type SUBJECT, and src:name / aug:name one node key `name`."""
+        from ontology_mapper.generation_utils import graph_property_names
+        inv = {"primaryNamespace": {"prefix": "src"},
+               "objectProperties": [{"qname": "src:subject"}, {"qname": "aug:subject"}],
+               "datatypeProperties": [{"qname": "src:name"}, {"qname": "aug:name"}]}
+        names = graph_property_names(inv)
+        assert names == {"src:subject": "subject", "aug:subject": "aug_subject",
+                         "src:name": "name", "aug:name": "aug_name"}
+        assert relationship_type(names["aug:subject"]) == "AUG_SUBJECT"
 
 class TestRelationshipType:
     def test_camel_case(self):
@@ -640,11 +659,30 @@ class TestSeedDataIdentity:
             '    abc:owns <https://data.test/fee1> .\n'
         ), tmp_path)
 
-        assert 'CREATE (:Fee {feeNumber: "F-1"});' in out
-        assert 'CREATE (:Thing {thingId: "T-1"});' in out
-        assert 'MATCH (a:Thing {identifier: "T-1"})' in out
+        # abc is not the primary namespace: its class, property key and
+        # relationship type are qualified (graph_name). Every node carries
+        # the `identifier` its relationships MATCH on.
+        assert 'CREATE (:Fee {feeNumber: "F-1", identifier: "F-1"});' in out
+        assert 'CREATE (:abc_Thing {abc_thingId: "T-1", identifier: "T-1"});' in out
+        assert 'MATCH (a:abc_Thing {identifier: "T-1"})' in out
         assert 'MATCH (b:Fee {identifier: "F-1"})' in out
-        assert "CREATE (a)-[:OWNS]->(b);" in out
+        assert "CREATE (a)-[:ABC_OWNS]->(b);" in out
+
+    def test_a_node_without_an_id_like_property_keeps_its_relationships(self, tmp_path):
+        """Relationships MATCH on `identifier`. A node carried one only when
+        a property was named `identifier` or ended in Number/Id, so a thing
+        with just a note got none and its relationship left the seed."""
+        inv, matrix = self._two_namespace_domain()
+        out = self._generate(inv, matrix, (
+            f"@prefix dbpi: <{self.DBPI}> .\n@prefix abc: <{self.ABC}> .\n"
+            '<https://data.test/fee1> a dbpi:Fee ; dbpi:feeNumber "F-1" .\n'
+            '<https://data.test/thing1> a abc:Thing ; abc:note "only a note" ;\n'
+            '    abc:owns <https://data.test/fee1> .\n'
+        ), tmp_path)
+
+        assert 'identifier: "https://data.test/thing1"' in out
+        assert 'MATCH (a:abc_Thing {identifier: "https://data.test/thing1"})' in out
+        assert "CREATE (a)-[:ABC_OWNS]->(b);" in out
 
     def test_seed_prefix_declarations_are_not_consulted(self, tmp_path):
         """A seed file that binds no prefixes, or binds them differently, still matches."""
@@ -655,8 +693,8 @@ class TestSeedDataIdentity:
             f'<urn:thing1> a <{self.ABC}Thing> ; <{self.ABC}thingId> "T-1" .\n'
         ), tmp_path)
 
-        assert 'CREATE (:Fee {feeNumber: "F-1"});' in out
-        assert 'CREATE (:Thing {thingId: "T-1"});' in out
+        assert 'CREATE (:Fee {feeNumber: "F-1", identifier: "F-1"});' in out
+        assert 'CREATE (:abc_Thing {abc_thingId: "T-1", identifier: "T-1"});' in out
 
     def test_relationship_type_comes_from_the_property_qname_not_the_predicate_iri(self, tmp_path):
         """CSV ingest records property IRIs as `{ns}#{Class}.{prop}`; the seeded

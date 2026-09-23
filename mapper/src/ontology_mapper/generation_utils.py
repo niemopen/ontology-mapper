@@ -423,77 +423,81 @@ def emitted_class_action(entry):
     return action
 
 
-def graph_labels(class_qnames):
-    """{class QName: graph node label} for the classes a package emits.
+def graph_name(qname, primary_prefix):
+    """The knowledge-graph name of a class or property: its local name in
+    the primary source namespace, ``<prefix>_<local>`` in any other.
 
-    The local name, unless two emitted classes share it (an augmentation
-    and a reuse class from different namespaces, which the OWL refusal
-    exempts): each of those is qualified by its namespace prefix,
-    `aug_Thing`, so the graph keeps two node types instead of merging
-    their seed nodes under one label with a duplicate constraint.
-
-    Labels are distinct by construction: a qualified label that still meets
-    another class's label (two full IRIs both qualified `ns_`, prefixes
-    that differ only in a character the label replaces, or a class whose
-    local name IS another's qualified label) takes the first free `_<n>`
-    suffix, classes taken in sorted order so every caller given the same
-    set gets the same labels. Callers take the set from
-    `emitted_graph_labels`.
+    Decided by the term's own namespace, never by what else the package
+    holds: a name chosen only when two terms collided renamed an existing
+    node label or relationship type as soon as a later package added the
+    second term, and data loaded under the earlier name stopped matching.
+    A full IRI has no prefix and is qualified ``ns_``. Every name is an
+    unquoted Cypher identifier (Check 8 reads labels as \\w+).
     """
     import re
+
+    local = local_name(qname)
+    if ":" in qname and not is_full_iri(qname):
+        prefix = qname.split(":", 1)[0]
+        text = local if prefix == primary_prefix else f"{prefix}_{local}"
+    else:
+        text = f"ns_{local}"
+    text = re.sub(r"[^A-Za-z0-9_]", "_", text)
+    return f"_{text}" if text[:1].isdigit() else text
+
+
+def graph_labels(qnames, primary_prefix):
+    """{QName: graph name} for a set of terms, distinct by construction.
+
+    `graph_name` gives each term a name of its own; only names that still
+    meet after the identifier cleanup (two full IRIs of one local name,
+    prefixes differing in a replaced character, a primary term named what
+    another's qualified name is) take the first free ``_<n>`` suffix, terms
+    in sorted order so every caller given the same set agrees.
+    """
     from collections import Counter
 
-    qnames = sorted(set(class_qnames))
-    local_counts = Counter(local_name(q) for q in qnames)
-
-    def identifier(text):
-        # A label is written unquoted into Cypher, and Check 8 reads it as
-        # \w+: a plain local name like `Thing-Type` was valid for neither.
-        text = re.sub(r"[^A-Za-z0-9_]", "_", text)
-        return f"_{text}" if text[:1].isdigit() else text
-
-    def candidate(qname):
-        local = local_name(qname)
-        if local_counts[local] == 1:
-            return identifier(local)
-        prefix = qname.split(":", 1)[0] if ":" in qname and not is_full_iri(qname) else "ns"
-        return identifier(f"{prefix}_{local}")
-
-    candidates = {q: candidate(q) for q in qnames}
-    candidate_counts = Counter(candidates.values())
-    labels, taken = {}, set()
-    # Unique candidates keep their label; the rest are suffixed after them.
+    qnames = sorted(set(qnames))
+    candidates = {q: graph_name(q, primary_prefix) for q in qnames}
+    counts = Counter(candidates.values())
+    names = {q: c for q, c in candidates.items() if counts[c] == 1}
+    taken = set(names.values())
     for qname in qnames:
-        if candidate_counts[candidates[qname]] == 1:
-            labels[qname] = candidates[qname]
-            taken.add(candidates[qname])
-    for qname in qnames:
-        if qname in labels:
+        if qname in names:
             continue
-        base, n = candidates[qname], 1
-        label = base
-        while label in taken:
+        base, n, name = candidates[qname], 1, candidates[qname]
+        while name in taken:
             n += 1
-            label = f"{base}_{n}"
-        labels[qname] = label
-        taken.add(label)
-    return labels
+            name = f"{base}_{n}"
+        names[qname] = name
+        taken.add(name)
+    return names
 
 
-def emitted_graph_labels(inventory_classes, mappings):
-    """{class QName: graph label} for the inventory classes the KG emits.
+def emitted_graph_labels(inventory, mappings):
+    """{class QName: node label} for the inventory classes the KG emits.
 
     The one home for which classes reach the knowledge graph (inventory
     classes whose `emitted_class_action` is reuse, extend or augment) and
     what they are called there. The KG generator writes these labels and
     Stage 7's schema check expects them; deciding the class set apart let a
-    matrix row with no inventory class qualify labels the generator left
-    plain.
+    matrix row with no inventory class change the labels.
     """
     by_concept = {m.get("sourceConcept"): m for m in mappings}
     return graph_labels(
-        c["qname"] for c in inventory_classes
-        if emitted_class_action(by_concept.get(c["qname"])) in ("reuse", "extend", "augment"))
+        (c["qname"] for c in inventory.get("classes", [])
+         if emitted_class_action(by_concept.get(c["qname"])) in ("reuse", "extend", "augment")),
+        source_prefix(inventory))
+
+
+def graph_property_names(inventory):
+    """{property QName: graph name} for every inventory property: the node
+    property key of a datatype property, the relationship type (upper-cased)
+    of an object property. `src:subject` and `aug:subject` were one
+    relationship type and `src:name` / `aug:name` one node key."""
+    return graph_labels(
+        [p["qname"] for p in inventory.get("objectProperties", []) + inventory.get("datatypeProperties", [])],
+        source_prefix(inventory))
 
 
 def range_class_for(class_qname, mapping_by_concept, class_by_qname):

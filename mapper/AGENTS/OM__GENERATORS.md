@@ -192,15 +192,20 @@ collapse into one type carrying both superclasses, both labels and both
 property sets. `generation_utils.colliding_edge_class_names` asks this and
 generation refuses before writing anything.
 
-The knowledge graph labels a class by its local name, and a reuse class and
-an augmentation of one local name emit no shared edge class yet both reach the
-graph. `generation_utils.emitted_graph_labels` is the one home for which
-classes reach the graph and what they are called there: the local name when
-unique, else `<prefix>_<local>`, with a `_<n>` suffix wherever a qualified
-label still meets another. The KG generator and Stage 7's label check both
-ask it; a label per class name alone merged the two classes' seed nodes
-under one constraint, and a check choosing its class set from matrix rows
-rather than inventory classes could expect labels the generator never wrote.
+Knowledge-graph names are decided by `generation_utils.graph_name`: a
+class or property in the primary source namespace keeps its local name, one
+in any other namespace is always `<prefix>_<local>` (a full IRI `ns_<local>`),
+cleaned to an unquoted Cypher identifier. Names depend only on the term, so
+adding a class or property to a later package never renames an existing node
+label, key or relationship type; a name chosen only on collision did, and
+data loaded under the earlier name stopped matching. `graph_labels` suffixes
+the rare names that still meet after cleanup. `emitted_graph_labels(inventory,
+mappings)` is the one home for which classes reach the graph and their labels
+(the KG generator and Stage 7 Check 8 both ask it); `graph_property_names`
+names every property, giving node property keys and relationship types, so
+`src:subject` / `aug:subject` are two relationship types. Seed nodes always
+carry the `identifier` their relationships MATCH on (the id-like property's
+value, else the instance IRI).
 
 A property a shape constrains is named by the class that DECLARES it — the
 one whose class block writes the term — and both halves of that identity

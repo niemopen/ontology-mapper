@@ -31,9 +31,10 @@ from ontology_mapper.generation_utils import local_name, XSD
 SKOS_CONCEPT = "http://www.w3.org/2004/02/skos/core#Concept"
 
 
-def relationship_type(prop_qname):
-    """Convert object property qname to Neo4j relationship type in SCREAMING_SNAKE_CASE."""
-    name = local_name(prop_qname)
+def relationship_type(prop_name):
+    """An object property's graph name (`graph_property_names`) as a Neo4j
+    relationship type in SCREAMING_SNAKE_CASE."""
+    name = local_name(prop_name)
     # Insert underscore before uppercase letters (camelCase -> SCREAMING_SNAKE)
     snake = re.sub(r"(?<=[a-z0-9])([A-Z])", r"_\1", name)
     return snake.upper()
@@ -74,6 +75,7 @@ def build_active_classes(inv, matrix):
     from ontology_mapper.generation_utils import (
         emitted_class_action,
         emitted_graph_labels,
+        graph_property_names,
         infer_domains_from_shapes,
         range_class_for,
         assign_properties_to_classes,
@@ -83,7 +85,8 @@ def build_active_classes(inv, matrix):
     mapping_by_concept = {m["sourceConcept"]: m for m in matrix["mappings"]}
     class_by_qname = {c["qname"]: c for c in inv["classes"]}
 
-    labels = emitted_graph_labels(inv["classes"], matrix["mappings"])
+    labels = emitted_graph_labels(inv, matrix["mappings"])
+    prop_names = graph_property_names(inv)
     active_qnames = set(labels)
 
     # Assign properties using the same logic as generate_edge_ontology
@@ -158,7 +161,7 @@ def build_active_classes(inv, matrix):
                 # the IRI by hand gives a key with a dot in it, which
                 # Neo4j rejects.
                 "iri": p.get("iri"),
-                "label": local_name(p["qname"]),
+                "label": prop_names[p["qname"]],
                 "range": ranges[0] if ranges else XSD + "string",
             })
 
@@ -186,7 +189,7 @@ def build_active_classes(inv, matrix):
             object_props.append({
                 "qname": p["qname"],
                 "iri": p["iri"],
-                "label": local_name(p["qname"]),
+                "label": prop_names[p["qname"]],
                 "rangeQname": range_qname,
                 "rangeLabel": labels[range_qname],
             })
@@ -214,7 +217,7 @@ def build_relationships(active_classes):
     rels = []
     for cls in active_classes:
         for op in cls["objectProps"]:
-            key = (relationship_type(op["qname"]), cls["label"], op["rangeLabel"])
+            key = (relationship_type(op["label"]), cls["label"], op["rangeLabel"])
             if key not in seen:
                 seen.add(key)
                 rels.append({
@@ -386,7 +389,11 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source):
             # Only include literal (datatype) values for node creation
             if hasattr(obj, "datatype") or hasattr(obj, "language") or not hasattr(obj, "n3"):
                 # It's a literal
-                prop_local = local_name(dt_prop_qnames.get(pred_str, pred_str))
+                # The key schema.cypher and the transforms name
+                # (graph_property_names); a local name of its own merged
+                # two namespaces' properties into one key.
+                known = dt_prop_qnames.get(pred_str)
+                prop_local = dt_prop_labels[known] if known in dt_prop_labels else local_name(pred_str)
                 val = str(obj)
                 # Detect type for proper Cypher literal formatting
                 if hasattr(obj, "datatype") and obj.datatype:
@@ -414,10 +421,19 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source):
                 if k.endswith("Number") or k.endswith("Id"):
                     identifier = props[k]
                     break
+        if not identifier:
+            # A node with no id-like property still has its instance IRI;
+            # without one its relationships were dropped from the seed.
+            identifier = f'"{_cypher_escape(str(subj))}"'
         if identifier:
             # Strip quotes if present
             id_val = identifier.strip('"')
             node_identifiers[str(subj)] = (label, id_val)
+            # Relationships MATCH on `identifier` and schema.cypher
+            # constrains it; a node whose identifier came from `feeNumber`
+            # never carried one, so every seeded relationship matched
+            # nothing when loaded.
+            props.setdefault("identifier", identifier)
 
         prop_str = ", ".join(f"{k}: {v}" for k, v in sorted(props.items()))
         node_lines.append(f"CREATE (:{label} {{{prop_str}}});")
@@ -459,7 +475,7 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source):
 
         src_label, src_id = node_identifiers[subj_str]
         tgt_label, tgt_id = node_identifiers[obj_str]
-        rel_name = relationship_type(rel_props[pred_str]["qname"])
+        rel_name = relationship_type(rel_props[pred_str]["label"])
 
         rel_lines.append(f"MATCH (a:{src_label} {{identifier: \"{src_id}\"}})")
         rel_lines.append(f"MATCH (b:{tgt_label} {{identifier: \"{tgt_id}\"}})")
@@ -724,7 +740,7 @@ def generate_internal_to_edge_transform(active_classes):
         for op in cls["objectProps"]:
             rel_mappings.append({
                 "source": op["qname"],
-                "target": relationship_type(op["qname"]),
+                "target": relationship_type(op["label"]),
                 "targetNodeType": op["rangeLabel"],
             })
 
