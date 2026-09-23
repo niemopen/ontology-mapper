@@ -201,11 +201,12 @@ collision renamed existing labels as later packages added terms, and data
 loaded under the earlier name stopped matching. `graph_labels` handles the
 rare names that still meet after cleanup (`a-b:X` / `a_b:X`, `src:aug_Thing` /
 `aug:Thing`, and for relationship types `hasPart` / `has_part`): a primary
-term named by its own local name keeps it (the first in QName order when two
-primary terms meet as one relationship type, `PartOf` / `partOf`), and each
-other takes a suffix from its own QName's hash. Another namespace's term
-therefore never renames a primary one; a term is renamed only when a later
-package adds a term whose name it cannot share, and always to the same name. `emitted_graph_labels(inventory,
+term named by its own (cleaned) local name keeps it (one needing no cleanup
+first, then the first in QName order, `PartOf` / `partOf`), and each other
+takes a suffix from its own QName's hash. Another namespace's term therefore
+never renames a primary one, and a suffix never depends on the rest of the
+package; a term takes its suffix when a term it cannot share a name with is
+added, and loses it when that term is removed. `emitted_graph_labels(inventory,
 mappings)` is the one home for which classes reach the graph and their labels
 (the KG generator and Stage 7 Check 8 both ask it); `graph_property_names`
 names every property, shape-only ones included (`shape_only_property_shapes`),

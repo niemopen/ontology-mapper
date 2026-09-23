@@ -929,7 +929,10 @@ src:n1 a src:Note .
         assert 'name: "primary name"' in cypher
 
     def test_an_undeclared_key_is_a_cypher_identifier(self, tmp_path):
-        assert '_2ndLine: "two"' in self._cypher(tmp_path)
+        from ontology_mapper.generation_utils import graph_name
+        key = graph_name("http://other.test/x#2ndLine", None)
+        assert key.startswith("ns") and key.endswith("_2ndLine")
+        assert f'{key}: "two"' in self._cypher(tmp_path)
 
     def test_a_node_with_only_relationships_is_created(self, tmp_path):
         """src:n1 has no literal, so it was never created and the
@@ -938,4 +941,108 @@ src:n1 a src:Note .
         iri = self.SRC + "n1"
         assert f'CREATE (:Note {{identifier: "{iri}"}});' in cypher
         assert f'MATCH (b:Note {{identifier: "{iri}"}})' in cypher
+
+
+class TestNamingRound14:
+    """Round fourteen: the naming guarantee, shape order and full-IRI paths."""
+
+    def test_a_primary_term_needing_cleanup_keeps_its_name(self):
+        for primary in ("src:aug-Thing", "src:aug.Thing"):
+            before = graph_labels([primary], "src")[primary]
+            after = graph_labels([primary, "aug:Thing"], "src")[primary]
+            assert before == after == "aug_Thing", primary
+
+    def test_a_primary_relationship_needing_cleanup_keeps_its_type(self):
+        from ontology_mapper.generation_utils import graph_property_names
+        inv = {"primaryNamespace": {"prefix": "src"}, "datatypeProperties": [],
+               "objectProperties": [{"qname": "src:aug-has-part"}, {"qname": "aug:hasPart"}]}
+        names = graph_property_names(inv)
+        assert relationship_type(names["src:aug-has-part"]) == "AUG_HAS_PART"
+        assert relationship_type(names["aug:hasPart"]) != "AUG_HAS_PART"
+
+    def _shape_inv(self, order):
+        shapes = [{"targetClasses": ["src:A"], "properties": [{"path": "src:has_part", "class": "src:B"}]},
+                  {"targetClasses": ["src:B"], "properties": [
+                      {"path": "src:has_part", "datatype": "http://www.w3.org/2001/XMLSchema#string"}]}]
+        inv = make_inv([make_class("src:A"), make_class("src:B")],
+                       obj_props=[make_obj_prop("src:hasPart", domain=["src:A"], range_val=["src:B"])],
+                       shapes=shapes if order else list(reversed(shapes)))
+        inv["primaryNamespace"] = {"prefix": "src"}
+        return inv
+
+    def test_a_shape_only_path_is_named_the_same_whatever_the_shape_order(self):
+        """A path that is a relationship on one class and a value on another
+        was named by whichever shape came last, and could share HAS_PART
+        with src:hasPart, which build_relationships then kept alone."""
+        from ontology_mapper.generation_utils import graph_property_names
+        matrix = make_matrix([make_mapping("src:A", "extend"), make_mapping("src:B", "extend")])
+        results = []
+        for order in (True, False):
+            inv = self._shape_inv(order)
+            names = graph_property_names(inv)
+            rels = build_relationships(build_active_classes(inv, matrix))
+            results.append((names, sorted((r["name"], r["propQname"]) for r in rels)))
+        assert results[0] == results[1]
+        names, rels = results[0]
+        assert relationship_type(names["src:has_part"]) != relationship_type(names["src:hasPart"])
+        assert {q for _, q in rels} == {"src:hasPart", "src:has_part"}
+
+    def test_a_full_iri_shape_path_has_its_own_iri_and_seed_key(self):
+        from ontology_mapper.generation_utils import graph_property_keys, graph_property_names
+        label = "http://www.w3.org/2000/01/rdf-schema#label"
+        inv = make_inv([make_class("src:A")], shapes=[
+            {"targetClasses": ["src:A"], "properties": [{"path": label}]}])
+        inv["primaryNamespace"] = {"prefix": "src"}
+        assert graph_property_keys(inv)[label] == graph_property_names(inv)[label]
+        cls = build_active_classes(inv, make_matrix([make_mapping("src:A", "extend")]))[0]
+        assert [p["iri"] for p in cls["datatypeProps"]] == [label]
+
+
+class TestSeedRound14:
+    """Round fourteen: seed literals, undeclared keys, urn: and blank nodes."""
+
+    SRC = "https://sample.test/src/"
+
+    def _cypher(self, tmp_path, body):
+        from ontology_mapper.generate_kg_artifacts import generate_seed_cypher
+        classes = [{**make_class(f"src:{n}"), "iri": self.SRC + n} for n in ("Case", "Party")]
+        dt = [{**make_dt_prop(q, domain=["src:Case"], range_val=[r]), "iri": self.SRC + q.split(":")[1]}
+              for q, r in (("src:name", "http://www.w3.org/2001/XMLSchema#string"),
+                           ("src:filed", "http://www.w3.org/2001/XMLSchema#date"),
+                           ("src:count", "http://www.w3.org/2001/XMLSchema#integer"))]
+        op = [{**make_obj_prop("src:party", domain=["src:Case", "src:Party"], range_val=["src:Party"]),
+               "iri": self.SRC + "party"}]
+        inv = make_inv(classes, obj_props=op, dt_props=dt)
+        inv["primaryNamespace"] = {"prefix": "src"}
+        inv["namespaceMap"] = {self.SRC: "src:"}
+        matrix = make_matrix([make_mapping("src:Case", "extend"), make_mapping("src:Party", "extend")])
+        seed = tmp_path / "seed.ttl"
+        seed.write_text(f"@prefix src: <{self.SRC}> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n"
+                        + body, encoding="utf-8")
+        active = build_active_classes(inv, matrix)
+        return generate_seed_cypher(active, build_relationships(active), seed, "sample",
+                                    graph_property_keys(inv))
+
+    def test_an_undeclared_predicate_does_not_overwrite_a_declared_value(self, tmp_path):
+        cypher = self._cypher(tmp_path, 'src:c1 a src:Case ; src:name "primary" ; <http://x.test/v#name> "other" .')
+        assert 'name: "primary"' in cypher and '"other"' in cypher
+
+    def test_literals_are_valid_cypher(self, tmp_path):
+        cypher = self._cypher(tmp_path, 'src:c1 a src:Case ; src:filed "2020-01-01\\" oops"^^xsd:date ; '
+                                        'src:count "eight"^^xsd:integer ; src:name "a\\nb" .')
+        assert 'filed: "2020-01-01\\" oops"' in cypher
+        assert 'count: "eight"' in cypher
+        assert 'name: "a\\nb"' in cypher
+
+    def test_an_edge_to_a_urn_instance_is_seeded(self, tmp_path):
+        cypher = self._cypher(tmp_path, 'src:c1 a src:Case ; src:party <urn:uuid:1234> .\n'
+                                        '<urn:uuid:1234> a src:Party .')
+        assert 'MATCH (b:Party {identifier: "urn:uuid:1234"})' in cypher
+
+    def test_a_blank_node_seed_is_the_same_on_every_generation(self, tmp_path):
+        body = 'src:p1 a src:Party .\n[] a src:Party ; src:party src:p1 .'
+        first, second = self._cypher(tmp_path, body), self._cypher(tmp_path, body)
+        strip = lambda c: [l for l in c.splitlines() if not l.startswith("//")]
+        assert strip(first) == strip(second)
+        assert '(b:Party {identifier: "https://sample.test/src/p1"})' in first
 

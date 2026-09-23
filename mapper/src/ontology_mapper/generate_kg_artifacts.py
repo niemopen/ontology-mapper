@@ -27,7 +27,7 @@ from ontology_mapper.run_dir_utils import utc_stamp
 
 from ontology_mapper.pipeline_context import load_context
 from ontology_mapper.generation_utils import (
-    graph_identifier,
+    graph_name,
     graph_property_keys,
     local_name,
     relationship_type,
@@ -141,8 +141,9 @@ def build_active_classes(inv, matrix):
         # triples find it, and its range from the shape.
         for path, spec in shape_only.get(cls_qname, {}).items():
             p = {"qname": path, "iri": source_term_iri(namespaces, path)}
-            if spec["class"]:
-                obj.append({**p, "range": [spec["class"]]})
+            if spec["object"]:
+                # No sh:class on this class: no range, so no relationship.
+                obj.append({**p, "range": [spec["class"]] if spec["class"] else []})
             else:
                 dt.append({**p, "range": [spec["datatype"]] if spec["datatype"] else []})
         return (
@@ -334,7 +335,7 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
         return "\n".join(header)
 
     try:
-        from rdflib import Graph as RdfGraph, URIRef, RDF
+        from rdflib import Graph as RdfGraph, BNode, Literal, URIRef, RDF
     except ImportError:
         header.append("// rdflib not available — seed data generation skipped.")
         return "\n".join(header)
@@ -386,32 +387,17 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
             if pred == RDF.type:
                 continue
             pred_str = str(pred)
-            # Only include literal (datatype) values for node creation
-            if hasattr(obj, "datatype") or hasattr(obj, "language") or not hasattr(obj, "n3"):
-                # It's a literal
+            # Only literal values are node properties
+            if isinstance(obj, Literal):
                 # The key schema.cypher and the transforms name
                 # (graph_property_names); a local name of its own merged
                 # two namespaces' properties into one key. A predicate the
-                # inventory does not declare keeps its local name, as a key
-                # Neo4j accepts (`Class.prop` from a CSV-shaped IRI and
-                # `2ndLine` were not).
-                prop_local = property_keys.get(pred_str) or graph_identifier(local_name(pred_str))
-                val = str(obj)
-                # Detect type for proper Cypher literal formatting
-                if hasattr(obj, "datatype") and obj.datatype:
-                    dt = str(obj.datatype)
-                    if "integer" in dt or "int" in dt:
-                        props[prop_local] = val  # numeric, no quotes
-                    elif "decimal" in dt or "float" in dt or "double" in dt:
-                        props[prop_local] = val
-                    elif "boolean" in dt:
-                        props[prop_local] = val.lower()
-                    elif "date" in dt.lower():
-                        props[prop_local] = f'"{val}"'
-                    else:
-                        props[prop_local] = f'"{_cypher_escape(val)}"'
-                else:
-                    props[prop_local] = f'"{_cypher_escape(val)}"'
+                # inventory does not declare is named as the full IRI it is
+                # (`graph_name`): its bare local name overwrote a declared
+                # property's value (`x:name` over `src:name`), and was not
+                # always a key Neo4j accepts (`Class.prop`, `2ndLine`).
+                prop_local = property_keys.get(pred_str) or graph_name(pred_str, None)
+                props[prop_local] = _cypher_literal(obj)
 
         # A node with only relationships is still created: every
         # relationship pointing at it was dropped when it was skipped.
@@ -424,8 +410,11 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
                     break
         if not identifier:
             # A node with no id-like property still has its instance IRI;
-            # without one its relationships were dropped from the seed.
-            identifier = f'"{_cypher_escape(str(subj))}"'
+            # without one its relationships were dropped from the seed. A
+            # blank node has none, and rdflib names it afresh on every
+            # parse, so seed.cypher changed on each regeneration: it is
+            # named by its own statements instead.
+            identifier = f'"{_cypher_escape(str(subj) if not isinstance(subj, BNode) else _blank_node_id(g, subj))}"'
         # The Cypher literal itself, so a relationship MATCHes the value the
         # node was created with: an integer `feeNumber 1001` quoted as
         # "1001" in the MATCH equalled nothing.
@@ -459,10 +448,9 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
         subj_str = str(subj)
         obj_str = str(obj)
 
-        # Only process object properties (obj must be a URI, not a literal)
-        if hasattr(obj, "datatype") or hasattr(obj, "language"):
-            continue
-        if not obj_str.startswith("http"):
+        # Only process object properties: a node, whatever its IRI scheme
+        # (a `urn:` instance was created, and every edge to it dropped).
+        if isinstance(obj, Literal):
             continue
 
         # Both subject and object must be known nodes
@@ -487,7 +475,35 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
 
 def _cypher_escape(s):
     """Escape a string for use in Cypher string literals."""
-    return s.replace("\\", "\\\\").replace('"', '\\"').replace("'", "\\'")
+    return (s.replace("\\", "\\\\").replace('"', '\\"').replace("'", "\\'")
+            .replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t"))
+
+
+def _cypher_literal(literal):
+    """A seed literal as a Cypher literal: a number or boolean unquoted only
+    when its datatype (`xsd_to_cypher_type`) says so and its lexical form is
+    one, everything else a quoted, escaped string. A date was quoted but not
+    escaped, and a malformed number written bare, both broken Cypher."""
+    val = str(literal)
+    kind = xsd_to_cypher_type(str(literal.datatype)) if literal.datatype else "STRING"
+    if kind == "INTEGER" and re.fullmatch(r"[+-]?\d+", val.strip()):
+        return str(int(val))
+    if kind == "FLOAT" and re.fullmatch(r"[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?", val.strip()):
+        return val.strip()
+    if kind == "BOOLEAN" and val.strip().lower() in ("true", "false", "1", "0"):
+        return "true" if val.strip().lower() in ("true", "1") else "false"
+    return f'"{_cypher_escape(val)}"'
+
+
+def _blank_node_id(graph, node):
+    """A blank node's identifier from its own statements: stable across
+    parses of the same seed file, where rdflib's own label is not."""
+    import hashlib
+    from rdflib import BNode
+
+    statements = sorted(f"{p.n3()} {'[]' if isinstance(o, BNode) else o.n3()}"
+                        for p, o in graph.predicate_objects(node))
+    return "_:" + hashlib.sha1("\n".join(statements).encode("utf-8")).hexdigest()[:16]
 
 
 def generate_query_templates(active_classes, relationships, source):

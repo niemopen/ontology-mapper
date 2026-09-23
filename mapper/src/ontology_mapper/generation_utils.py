@@ -483,14 +483,16 @@ def graph_labels(qnames, primary_prefix, distinct_as=None):
     whose ``hasPart`` and ``has_part`` are one type), the name itself by
     default. Names can still meet: prefixes differing in a replaced
     character (``a-b:X``, ``a_b:X``), a primary term spelled as another's
-    qualified name (``src:aug_Thing``, ``aug:Thing``). Among terms that
-    meet, a primary-namespace term whose name is its own local name keeps
-    it (the first in QName order when two primary terms meet as one
-    relationship type, ``PartOf`` before ``partOf``); each other takes a
-    suffix from its own QName's hash. A term of another namespace never
-    renames a primary term, and a suffix never depends on what else the
-    package holds: a term is renamed only when a later package adds a term
-    whose name it cannot share, and then always to the same name.
+    qualified name (``src:aug_Thing`` or ``src:aug-Thing``, ``aug:Thing``).
+    Among terms that meet, a primary-namespace term named by its own
+    (cleaned) local name keeps it: one whose local name needed no cleanup
+    first, then the first in QName order (``PartOf`` before ``partOf`` as
+    one relationship type). Each other term takes a suffix from its own
+    QName's hash. So another namespace's term never renames a primary one,
+    and a suffix never depends on the rest of the package; but a term's
+    name does depend on whether a term it cannot share a name with is
+    present: it takes its suffix when such a term is added and loses it
+    when that term is removed.
     """
     from collections import defaultdict
 
@@ -500,10 +502,14 @@ def graph_labels(qnames, primary_prefix, distinct_as=None):
     for qname in sorted(candidates):
         groups[same(candidates[qname])].append(qname)
     names = {}
+    def keeps_own_name(qname):
+        return (not is_full_iri(qname) and qname.split(":", 1)[0] == primary_prefix
+                and candidates[qname] == graph_identifier(local_name(qname)))
+
     for members in groups.values():
-        keeper = members[0] if len(members) == 1 else next(
-            (q for q in members if candidates[q] == local_name(q)
-             and not is_full_iri(q) and q.split(":", 1)[0] == primary_prefix), None)
+        keepers = [q for q in members if keeps_own_name(q)]
+        keeper = members[0] if len(members) == 1 else min(
+            keepers, key=lambda q: (candidates[q] != local_name(q), q), default=None)
         for qname in members:
             names[qname] = (candidates[qname] if qname == keeper else
                             f"{candidates[qname]}_{hashlib.sha1(qname.encode('utf-8')).hexdigest()[:8]}")
@@ -531,10 +537,15 @@ def emitted_graph_labels(inventory, mappings):
 
 
 def shape_only_property_shapes(inventory):
-    """{class QName: {property QName: {"class", "datatype"}}} for every
-    shape-only property (`shape_only_class_properties`): what the class's
-    evaluated shapes say its value is, an ``sh:class`` (a relationship) or
-    an ``sh:datatype`` (a node property), each None when no shape says.
+    """{class QName: {property QName: {"class", "datatype", "object"}}} for
+    every shape-only property (`shape_only_class_properties`): what the
+    class's evaluated shapes say its value is, an ``sh:class`` or an
+    ``sh:datatype``, each None when no shape says, and ``object``: whether
+    the property is a relationship. ``object`` is decided per property, not
+    per class (any shape giving it an ``sh:class``), so every consumer names
+    it the same way; decided per class, a path that is a relationship on
+    one class and a value on another was named by whichever shape came
+    last, and could share a relationship type with another property.
 
     A shape-only property has no entry in the source property lists, so the
     knowledge graph, which reads those lists, left it out of its node keys,
@@ -554,12 +565,20 @@ def shape_only_property_shapes(inventory):
                 spec = out.setdefault(target, {}).setdefault(path, {"class": None, "datatype": None})
                 spec["class"] = spec["class"] or sp.get("class")
                 spec["datatype"] = spec["datatype"] or sp.get("datatype")
+    relationships = {path for specs in out.values() for path, spec in specs.items() if spec["class"]}
+    for specs in out.values():
+        for path, spec in specs.items():
+            spec["object"] = path in relationships
     return out
 
 
 def source_term_iri(namespaces, qname):
-    """A source QName's IRI from `source_namespaces`; None for a prefix no
-    source namespace declares."""
+    """A source term's IRI: a full IRI as it is (extraction keeps a shape
+    path outside the source namespaces, such as ``rdfs:label``, that way),
+    a QName from `source_namespaces`; None for a prefix no source namespace
+    declares."""
+    if is_full_iri(qname):
+        return qname
     prefix, _, local = qname.partition(":")
     return namespaces[prefix] + local if prefix in namespaces else None
 
@@ -598,9 +617,9 @@ def graph_property_names(inventory):
     shape_only = {path: spec for specs in shape_only_property_shapes(inventory).values()
                   for path, spec in specs.items()}
     objects = [p["qname"] for p in inventory.get("objectProperties", [])]
-    objects += [path for path, spec in shape_only.items() if spec["class"]]
+    objects += [path for path, spec in shape_only.items() if spec["object"]]
     datatypes = [p["qname"] for p in inventory.get("datatypeProperties", [])]
-    datatypes += [path for path, spec in shape_only.items() if not spec["class"]]
+    datatypes += [path for path, spec in shape_only.items() if not spec["object"]]
     names = graph_labels(datatypes, prefix)
     names.update(graph_labels(objects, prefix, distinct_as=relationship_type))
     return names
