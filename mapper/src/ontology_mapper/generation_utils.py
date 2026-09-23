@@ -385,24 +385,64 @@ def graph_labels(class_qnames):
     and a reuse class from different namespaces, which the OWL refusal
     exempts): each of those is qualified by its namespace prefix,
     `aug_Thing`, so the graph keeps two node types instead of merging
-    their seed nodes under one label with a duplicate constraint. One home
-    for the knowledge-graph generator and Stage 7's schema-label check.
+    their seed nodes under one label with a duplicate constraint.
+
+    Labels are distinct by construction: a qualified label that still meets
+    another class's label (two full IRIs both qualified `ns_`, prefixes
+    that differ only in a character the label replaces, or a class whose
+    local name IS another's qualified label) takes the first free `_<n>`
+    suffix, classes taken in sorted order so every caller given the same
+    set gets the same labels. Callers take the set from
+    `emitted_graph_labels`.
     """
     import re
-    from collections import defaultdict
+    from collections import Counter
 
-    by_local = defaultdict(list)
-    for qname in class_qnames:
-        by_local[local_name(qname)].append(qname)
-    labels = {}
-    for local, qnames in by_local.items():
-        for qname in qnames:
-            if len(qnames) == 1:
-                labels[qname] = local
-            else:
-                prefix = qname.split(":", 1)[0] if ":" in qname and not is_full_iri(qname) else "ns"
-                labels[qname] = re.sub(r"[^A-Za-z0-9_]", "_", f"{prefix}_{local}")
+    qnames = sorted(set(class_qnames))
+    local_counts = Counter(local_name(q) for q in qnames)
+
+    def candidate(qname):
+        local = local_name(qname)
+        if local_counts[local] == 1:
+            return local
+        prefix = qname.split(":", 1)[0] if ":" in qname and not is_full_iri(qname) else "ns"
+        return re.sub(r"[^A-Za-z0-9_]", "_", f"{prefix}_{local}")
+
+    candidates = {q: candidate(q) for q in qnames}
+    candidate_counts = Counter(candidates.values())
+    labels, taken = {}, set()
+    # Unique candidates keep their label; the rest are suffixed after them.
+    for qname in qnames:
+        if candidate_counts[candidates[qname]] == 1:
+            labels[qname] = candidates[qname]
+            taken.add(candidates[qname])
+    for qname in qnames:
+        if qname in labels:
+            continue
+        base, n = candidates[qname], 1
+        label = base
+        while label in taken:
+            n += 1
+            label = f"{base}_{n}"
+        labels[qname] = label
+        taken.add(label)
     return labels
+
+
+def emitted_graph_labels(inventory_classes, mappings):
+    """{class QName: graph label} for the inventory classes the KG emits.
+
+    The one home for which classes reach the knowledge graph (inventory
+    classes whose `emitted_class_action` is reuse, extend or augment) and
+    what they are called there. The KG generator writes these labels and
+    Stage 7's schema check expects them; deciding the class set apart let a
+    matrix row with no inventory class qualify labels the generator left
+    plain.
+    """
+    by_concept = {m.get("sourceConcept"): m for m in mappings}
+    return graph_labels(
+        c["qname"] for c in inventory_classes
+        if emitted_class_action(by_concept.get(c["qname"])) in ("reuse", "extend", "augment"))
 
 
 def range_class_for(class_qname, mapping_by_concept, class_by_qname):

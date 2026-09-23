@@ -73,7 +73,7 @@ def build_active_classes(inv, matrix):
     """
     from ontology_mapper.generation_utils import (
         emitted_class_action,
-        graph_labels,
+        emitted_graph_labels,
         infer_domains_from_shapes,
         range_class_for,
         assign_properties_to_classes,
@@ -83,14 +83,8 @@ def build_active_classes(inv, matrix):
     mapping_by_concept = {m["sourceConcept"]: m for m in matrix["mappings"]}
     class_by_qname = {c["qname"]: c for c in inv["classes"]}
 
-    # Determine active classes
-    active_qnames = set()
-    for cls in inv["classes"]:
-        if emitted_class_action(mapping_by_concept.get(cls["qname"])) in (
-                "reuse", "extend", "augment"):
-            active_qnames.add(cls["qname"])
-
-    labels = graph_labels(active_qnames)
+    labels = emitted_graph_labels(inv["classes"], matrix["mappings"])
+    active_qnames = set(labels)
 
     # Assign properties using the same logic as generate_edge_ontology
     shape_domains = infer_domains_from_shapes(

@@ -124,6 +124,23 @@ class TestGraphLabels:
         assert graph_labels(["src:Thing", "aug:Thing", "src:Other"]) == {
             "src:Thing": "src_Thing", "aug:Thing": "aug_Thing", "src:Other": "Other"}
 
+    def test_qualified_labels_that_still_meet_are_suffixed(self):
+        """Qualifying by prefix is not enough on its own: two full IRIs both
+        qualify as ns_, `a-b` and `a_b` sanitize alike, and a class can be
+        named what another qualifies to. Each keeps a distinct label."""
+        cases = [
+            ["http://a.org/x#Thing", "http://b.org/y#Thing"],
+            ["a-b:Thing", "a_b:Thing"],
+            ["src:Thing", "aug:Thing", "src_Thing"],
+        ]
+        for qnames in cases:
+            labels = graph_labels(qnames)
+            assert len(set(labels.values())) == len(qnames), labels
+
+    def test_labels_do_not_depend_on_input_order(self):
+        qnames = ["src:Thing", "aug:Thing", "src_Thing", "a-b:X", "a_b:X"]
+        assert graph_labels(qnames) == graph_labels(list(reversed(qnames)))
+
 
 class TestRelationshipType:
     def test_camel_case(self):

@@ -453,22 +453,21 @@ def check_codebook_drift(mappings_list, catalog):
     return errors
 
 
-def extract_active_labels(mappings_list):
-    """Extract active class labels from mapping matrix entries.
+def extract_active_labels(inventory_classes, mappings_list):
+    """The node labels the graph generator writes for this run.
 
     Args:
+        inventory_classes: The concept inventory's class entries.
         mappings_list: List of mapping entry dicts.
 
     Returns:
-        Set of label strings (local names).
+        Set of label strings, from `emitted_graph_labels` — the generator's
+        own answer, so the check cannot disagree with it about the class
+        set or the naming.
     """
-    from ontology_mapper.generation_utils import emitted_class_action, graph_labels
+    from ontology_mapper.generation_utils import emitted_graph_labels
 
-    # The labels the graph generator writes: graph_labels over the classes
-    # the emitters emit (emitted_class_action), not a local name per row.
-    active = [m.get("sourceConcept", "") for m in mappings_list
-              if emitted_class_action(m) in ("reuse", "extend", "augment")]
-    return set(graph_labels(active).values())
+    return set(emitted_graph_labels(inventory_classes, mappings_list).values())
 
 
 def main():
@@ -636,7 +635,7 @@ def main():
     # ── Check 8: Schema labels match active classes ───────────────────────
     print("\n  Check 8: Schema-to-ontology consistency")
     schema_path = kg_dir / "neo4j" / "schema.cypher" if kg_dir.exists() else None
-    active_labels = extract_active_labels(mappings_list)
+    active_labels = extract_active_labels(inv.get("classes", []), mappings_list)
 
     if schema_path and schema_path.exists():
         schema_errors = check_schema_labels(

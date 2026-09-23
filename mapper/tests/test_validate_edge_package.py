@@ -65,6 +65,10 @@ from ontology_mapper.validate_edge_package import (
 # ---------------------------------------------------------------------------
 # extract_active_labels
 # ---------------------------------------------------------------------------
+def _classes(mappings):
+    return [{"qname": m["sourceConcept"]} for m in mappings]
+
+
 class TestExtractActiveLabels:
     def test_extracts_reuse_extend_augment(self):
         mappings = [
@@ -73,22 +77,31 @@ class TestExtractActiveLabels:
             {"sourceConcept": "src:Person", "action": "augment"},
             {"sourceConcept": "src:Deleted", "action": "exclude"},
         ]
-        labels = extract_active_labels(mappings)
+        labels = extract_active_labels(_classes(mappings), mappings)
         assert labels == {"Permit", "Agency", "Person"}
 
     def test_excludes_excluded(self):
         mappings = [{"sourceConcept": "src:Foo", "action": "exclude"}]
-        assert extract_active_labels(mappings) == set()
+        assert extract_active_labels(_classes(mappings), mappings) == set()
 
     def test_empty_mappings(self):
-        assert extract_active_labels([]) == set()
+        assert extract_active_labels([], []) == set()
 
     def test_labels_match_the_graph_generator_when_local_names_collide(self):
         """Stage 7 asks graph_labels, as the KG generator does; a local name
         per row would call the generator's qualified labels mismatches."""
         mappings = [{"sourceConcept": "src:Thing", "action": "reuse"},
                     {"sourceConcept": "aug:Thing", "action": "augment"}]
-        assert extract_active_labels(mappings) == {"src_Thing", "aug_Thing"}
+        assert extract_active_labels(_classes(mappings), mappings) == {"src_Thing", "aug_Thing"}
+
+    def test_a_matrix_row_without_an_inventory_class_does_not_rename_labels(self):
+        """The generator labels inventory classes only. A row for a concept
+        the inventory lacks qualified `src:Thing` here while the generator,
+        seeing one Thing, wrote plain `Thing`: a false mismatch."""
+        mappings = [{"sourceConcept": "src:Thing", "action": "reuse"},
+                    {"sourceConcept": "old:Thing", "action": "reuse"}]
+        classes = [{"qname": "src:Thing"}]
+        assert extract_active_labels(classes, mappings) == {"Thing"}
 
 
 # ---------------------------------------------------------------------------

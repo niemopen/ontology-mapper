@@ -193,10 +193,13 @@ generation refuses before writing anything.
 
 The knowledge graph labels a class by its local name, and a reuse class and
 an augmentation of one local name emit no shared edge class yet both reach the
-graph. `generation_utils.graph_labels` is the one home for a class's graph
-label: the local name when unique, else `<prefix>_<local>` for every class
-sharing it. The KG generator and Stage 7's label check both ask it; a label
-per class name alone merged the two classes' seed nodes under one constraint.
+graph. `generation_utils.emitted_graph_labels` is the one home for which
+classes reach the graph and what they are called there: the local name when
+unique, else `<prefix>_<local>`, with a `_<n>` suffix wherever a qualified
+label still meets another. The KG generator and Stage 7's label check both
+ask it; a label per class name alone merged the two classes' seed nodes
+under one constraint, and a check choosing its class set from matrix rows
+rather than inventory classes could expect labels the generator never wrote.
 
 A property a shape constrains is named by the class that DECLARES it — the
 one whose class block writes the term — and both halves of that identity
