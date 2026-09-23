@@ -26,7 +26,13 @@ from pathlib import Path
 from ontology_mapper.run_dir_utils import utc_stamp
 
 from ontology_mapper.pipeline_context import load_context
-from ontology_mapper.generation_utils import local_name, relationship_type, XSD
+from ontology_mapper.generation_utils import (
+    graph_identifier,
+    graph_property_keys,
+    local_name,
+    relationship_type,
+    XSD,
+)
 
 SKOS_CONCEPT = "http://www.w3.org/2004/02/skos/core#Concept"
 
@@ -72,6 +78,7 @@ def build_active_classes(inv, matrix):
         assign_properties_to_classes,
         shape_only_property_shapes,
         source_namespaces,
+        source_term_iri,
         source_prefix as primary_source_prefix,
     )
 
@@ -133,8 +140,7 @@ def build_active_classes(inv, matrix):
         # and CMF carry; its IRI from the source namespaces, so seed
         # triples find it, and its range from the shape.
         for path, spec in shape_only.get(cls_qname, {}).items():
-            prefix, _, local = path.partition(":")
-            p = {"qname": path, "iri": namespaces[prefix] + local if prefix in namespaces else None}
+            p = {"qname": path, "iri": source_term_iri(namespaces, path)}
             if spec["class"]:
                 obj.append({**p, "range": [spec["class"]]})
             else:
@@ -302,13 +308,15 @@ def generate_schema_cypher(active_classes, relationships, source):
     return "\n".join(lines)
 
 
-def generate_seed_cypher(active_classes, relationships, seed_data_path, source):
+def generate_seed_cypher(active_classes, relationships, seed_data_path, source, property_keys):
     """Generate kg/neo4j/seed.cypher — sample data from source seed TTL.
 
     Seed instances are matched on the ``iri`` each active class and object
     property carries from the inventory, so classes from augmenting or other
     non-primary source namespaces are seeded alongside the primary ones. The
-    seed file's own prefix declarations are not consulted.
+    seed file's own prefix declarations are not consulted. A literal's key
+    is its predicate's graph name (``property_keys``, from
+    `graph_property_keys`), whichever class owns the property.
     """
     now = utc_stamp()
 
@@ -350,19 +358,6 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source):
                       "file types instances as " + example_seed + "; this run's "
                       "inventory records " + example_active + ".")
 
-    # Collect datatype property label lookups, and the inventory's own
-    # name for each predicate IRI: a CSV-shaped property IRI
-    # (`{ns}#{Class}.{prop}`) tailed by hand gives a key with a dot in
-    # it, which Neo4j rejects — the hazard this file already fixed for
-    # relationship type names.
-    dt_prop_labels = {}
-    dt_prop_qnames = {}
-    for cls in active_classes:
-        for dp in cls["datatypeProps"]:
-            dt_prop_labels[dp["qname"]] = dp["label"]
-            if dp.get("iri"):
-                dt_prop_qnames[str(dp["iri"])] = dp["qname"]
-
     # Phase 1: Create nodes
     node_lines = [
         "// ── Node Creation ─────────────────────────────────────────────",
@@ -396,13 +391,11 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source):
                 # It's a literal
                 # The key schema.cypher and the transforms name
                 # (graph_property_names); a local name of its own merged
-                # two namespaces' properties into one key.
-                known = dt_prop_qnames.get(pred_str)
-                # A predicate the inventory does not declare keeps its local
-                # name, cleaned to a key Neo4j accepts (`Class.prop` from a
-                # CSV-shaped IRI was not one).
-                prop_local = (dt_prop_labels[known] if known in dt_prop_labels
-                              else re.sub(r"[^A-Za-z0-9_]", "_", local_name(pred_str)))
+                # two namespaces' properties into one key. A predicate the
+                # inventory does not declare keeps its local name, as a key
+                # Neo4j accepts (`Class.prop` from a CSV-shaped IRI and
+                # `2ndLine` were not).
+                prop_local = property_keys.get(pred_str) or graph_identifier(local_name(pred_str))
                 val = str(obj)
                 # Detect type for proper Cypher literal formatting
                 if hasattr(obj, "datatype") and obj.datatype:
@@ -420,9 +413,8 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source):
                 else:
                     props[prop_local] = f'"{_cypher_escape(val)}"'
 
-        if not props:
-            continue
-
+        # A node with only relationships is still created: every
+        # relationship pointing at it was dropped when it was skipped.
         # Track for relationships — find an identifier property generically
         identifier = props.get("identifier")
         if not identifier:
@@ -434,15 +426,14 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source):
             # A node with no id-like property still has its instance IRI;
             # without one its relationships were dropped from the seed.
             identifier = f'"{_cypher_escape(str(subj))}"'
-        if identifier:
-            # Strip quotes if present
-            id_val = identifier.strip('"')
-            node_identifiers[str(subj)] = (label, id_val)
-            # Relationships MATCH on `identifier` and schema.cypher
-            # constrains it; a node whose identifier came from `feeNumber`
-            # never carried one, so every seeded relationship matched
-            # nothing when loaded.
-            props.setdefault("identifier", identifier)
+        # The Cypher literal itself, so a relationship MATCHes the value the
+        # node was created with: an integer `feeNumber 1001` quoted as
+        # "1001" in the MATCH equalled nothing.
+        node_identifiers[str(subj)] = (label, identifier)
+        # Relationships MATCH on `identifier` and schema.cypher constrains
+        # it; a node whose identifier came from `feeNumber` never carried
+        # one, so every seeded relationship matched nothing when loaded.
+        props.setdefault("identifier", identifier)
 
         prop_str = ", ".join(f"{k}: {v}" for k, v in sorted(props.items()))
         node_lines.append(f"CREATE (:{label} {{{prop_str}}});")
@@ -486,8 +477,8 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source):
         tgt_label, tgt_id = node_identifiers[obj_str]
         rel_name = relationship_type(rel_props[pred_str]["label"])
 
-        rel_lines.append(f"MATCH (a:{src_label} {{identifier: \"{src_id}\"}})")
-        rel_lines.append(f"MATCH (b:{tgt_label} {{identifier: \"{tgt_id}\"}})")
+        rel_lines.append(f"MATCH (a:{src_label} {{identifier: {src_id}}})")
+        rel_lines.append(f"MATCH (b:{tgt_label} {{identifier: {tgt_id}}})")
         rel_lines.append(f"CREATE (a)-[:{rel_name}]->(b);")
         rel_lines.append("")
 
@@ -836,7 +827,8 @@ def main():
     seed_path = Path(ctx.input_package_path) / "seed-data" / f"{ctx.source}-seed-data.ttl"
     write_artifact(
         neo4j_dir / "seed.cypher",
-        generate_seed_cypher(active_classes, relationships, seed_path, ctx.source),
+        generate_seed_cypher(active_classes, relationships, seed_path, ctx.source,
+                             graph_property_keys(inv)),
     )
 
     for name, content in generate_query_templates(active_classes, relationships, ctx.source).items():

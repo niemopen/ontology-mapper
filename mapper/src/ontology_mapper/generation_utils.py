@@ -443,8 +443,6 @@ def graph_name(qname, primary_prefix):
     Every name is an unquoted Cypher identifier (Check 8 reads labels as
     \\w+).
     """
-    import re
-
     local = local_name(qname)
     if ":" in qname and not is_full_iri(qname):
         prefix = qname.split(":", 1)[0]
@@ -452,6 +450,16 @@ def graph_name(qname, primary_prefix):
     else:
         namespace = qname[:len(qname) - len(local)]
         text = f"ns{hashlib.sha1(namespace.encode('utf-8')).hexdigest()[:6]}_{local}"
+    return graph_identifier(text)
+
+
+def graph_identifier(text):
+    """``text`` as an unquoted Cypher identifier: every other character
+    becomes ``_``, and a leading digit is prefixed with ``_``. One home for
+    graph names and the seed's key for an undeclared predicate, which kept
+    a leading digit (``2ndLine``) Neo4j does not accept unquoted."""
+    import re
+
     text = re.sub(r"[^A-Za-z0-9_]", "_", text)
     return f"_{text}" if text[:1].isdigit() else text
 
@@ -547,6 +555,35 @@ def shape_only_property_shapes(inventory):
                 spec["class"] = spec["class"] or sp.get("class")
                 spec["datatype"] = spec["datatype"] or sp.get("datatype")
     return out
+
+
+def source_term_iri(namespaces, qname):
+    """A source QName's IRI from `source_namespaces`; None for a prefix no
+    source namespace declares."""
+    prefix, _, local = qname.partition(":")
+    return namespaces[prefix] + local if prefix in namespaces else None
+
+
+def graph_property_keys(inventory):
+    """{predicate IRI: graph name} for every property `graph_property_names`
+    names: how a seed triple's predicate finds its node key or relationship
+    type, whether or not an active class owns the property. The seed keyed
+    only the active classes' properties, so an unowned ``aug:name`` took the
+    bare key ``name`` and overwrote ``src:name`` on the same node.
+    """
+    names = graph_property_names(inventory)
+    declared = source_declared_properties(inventory)
+    namespaces = source_namespaces(inventory)
+    keys = {}
+    for kind in ("objectProperties", "datatypeProperties"):
+        for p in inventory.get(kind, []):
+            if p.get("iri"):
+                keys[p["iri"]] = names[p["qname"]]
+    for qname, name in names.items():
+        iri = None if qname in declared else source_term_iri(namespaces, qname)
+        if iri:
+            keys.setdefault(iri, name)
+    return keys
 
 
 def graph_property_names(inventory):

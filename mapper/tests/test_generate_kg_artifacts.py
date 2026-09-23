@@ -3,7 +3,7 @@
 
 import json
 import pytest
-from ontology_mapper.generation_utils import graph_labels
+from ontology_mapper.generation_utils import graph_labels, graph_property_keys
 from ontology_mapper.generate_kg_artifacts import relationship_type
 from pathlib import Path
 from ontology_mapper.pipeline_context import PipelineContext
@@ -720,7 +720,8 @@ class TestSeedDataIdentity:
         active = build_active_classes(inv, matrix)
         seed = tmp_path / "seed.ttl"
         seed.write_text(seed_text, encoding="utf-8")
-        return generate_seed_cypher(active, build_relationships(active), seed, "dbpi")
+        return generate_seed_cypher(active, build_relationships(active), seed, "dbpi",
+                                    graph_property_keys(inv))
 
     def test_active_classes_carry_inventory_iris(self):
         inv, matrix = self._two_namespace_domain()
@@ -818,7 +819,7 @@ def test_a_seed_file_matching_no_active_class_says_so(tmp_path):
     active = [{"qname": "src:Record", "label": "Record",
                "iri": "https://sample.test/src/Record/",  # trailing slash
                "datatypeProps": [], "objectProps": []}]
-    cypher = generate_seed_cypher(active, [], seed, "sample")
+    cypher = generate_seed_cypher(active, [], seed, "sample", {})
 
     assert "No seed instance matches an active class" in cypher
     assert "https://sample.test/src/Record" in cypher
@@ -834,7 +835,7 @@ def test_a_matching_seed_file_still_seeds_without_the_note(tmp_path):
     active = [{"qname": "src:Record", "label": "Record",
                "iri": "https://sample.test/src/Record",
                "datatypeProps": [], "objectProps": []}]
-    cypher = generate_seed_cypher(active, [], seed, "sample")
+    cypher = generate_seed_cypher(active, [], seed, "sample", {})
 
     # Only the note is under test here: an instance whose type the inventory
     # records is a match, whatever the node emitter then writes for it.
@@ -865,3 +866,76 @@ class TestSeedPropertyKeys:
 
         assert "accountId:" in out or "accountId =" in out or "accountId" in out
         assert "Account.accountId" not in out
+
+
+class TestSeedRound13:
+    """Round thirteen (emitters): seed identity and keys."""
+
+    SRC = "https://sample.test/src/"
+    AUG = "https://aug.test/ns#"
+    XSD = "http://www.w3.org/2001/XMLSchema#"
+
+    def _cypher(self, tmp_path):
+        from ontology_mapper.generate_kg_artifacts import generate_seed_cypher
+
+        def dt(qname, domain, iri, rng=None):
+            return {**make_dt_prop(qname, domain=domain, range_val=rng), "iri": iri}
+
+        def obj(qname, domain, rng, iri):
+            return {**make_obj_prop(qname, domain=domain, range_val=rng), "iri": iri}
+
+        classes = []
+        for name in ("Case", "Fee", "Note", "Gone"):
+            classes.append({**make_class(f"src:{name}"), "iri": self.SRC + name})
+        inv = make_inv(
+            classes,
+            obj_props=[obj("src:fee", ["src:Case"], ["src:Fee"], self.SRC + "fee"),
+                       obj("src:note", ["src:Case"], ["src:Note"], self.SRC + "note")],
+            dt_props=[dt("src:feeNumber", ["src:Fee"], self.SRC + "feeNumber", [self.XSD + "integer"]),
+                      dt("src:caseNumber", ["src:Case"], self.SRC + "caseNumber"),
+                      dt("src:name", ["src:Case"], self.SRC + "name"),
+                      # declared, but only on an excluded class
+                      dt("aug:name", ["src:Gone"], self.AUG + "name")])
+        inv["primaryNamespace"] = {"prefix": "src"}
+        inv["namespaceMap"] = {self.SRC: "src:", self.AUG: "aug:"}
+        matrix = make_matrix([make_mapping("src:Case", "extend"), make_mapping("src:Fee", "extend"),
+                              make_mapping("src:Note", "extend"), make_mapping("src:Gone", "exclude")])
+        seed = tmp_path / "seed.ttl"
+        seed.write_text(f"""
+@prefix src: <{self.SRC}> .
+@prefix aug: <{self.AUG}> .
+@prefix xsd: <{self.XSD}> .
+src:c1 a src:Case ; src:caseNumber "C-1" ; src:name "primary name" ; aug:name "augmenting name" ;
+   <http://other.test/x#2ndLine> "two" ; src:fee src:f1 ; src:note src:n1 .
+src:f1 a src:Fee ; src:feeNumber "1001"^^xsd:integer .
+src:n1 a src:Note .
+""", encoding="utf-8")
+        active = build_active_classes(inv, matrix)
+        return generate_seed_cypher(active, build_relationships(active), seed, "sample",
+                                    graph_property_keys(inv))
+
+    def test_an_integer_identifier_is_matched_as_an_integer(self, tmp_path):
+        """The node was written `identifier: 1001` and the MATCH looked for
+        "1001", which Neo4j never equals, so the relationship was lost."""
+        cypher = self._cypher(tmp_path)
+        assert "CREATE (:Fee {feeNumber: 1001, identifier: 1001});" in cypher
+        assert "MATCH (b:Fee {identifier: 1001})" in cypher
+
+    def test_an_unowned_property_keeps_its_own_key(self, tmp_path):
+        """aug:name, owned by no active class, took the bare key `name` and
+        overwrote src:name on the same node."""
+        cypher = self._cypher(tmp_path)
+        assert 'aug_name: "augmenting name"' in cypher
+        assert 'name: "primary name"' in cypher
+
+    def test_an_undeclared_key_is_a_cypher_identifier(self, tmp_path):
+        assert '_2ndLine: "two"' in self._cypher(tmp_path)
+
+    def test_a_node_with_only_relationships_is_created(self, tmp_path):
+        """src:n1 has no literal, so it was never created and the
+        relationship to it matched nothing."""
+        cypher = self._cypher(tmp_path)
+        iri = self.SRC + "n1"
+        assert f'CREATE (:Note {{identifier: "{iri}"}});' in cypher
+        assert f'MATCH (b:Note {{identifier: "{iri}"}})' in cypher
+

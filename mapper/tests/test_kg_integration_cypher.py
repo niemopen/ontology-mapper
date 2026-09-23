@@ -18,6 +18,7 @@ import re
 import pytest
 from pathlib import Path
 
+from ontology_mapper.generation_utils import graph_property_keys
 from ontology_mapper.generate_kg_artifacts import (
     build_active_classes,
     build_relationships,
@@ -216,7 +217,7 @@ class TestCypherStructuralIntegration:
         # Seed cypher with no seed file — produces a stub
         self.seed = generate_seed_cypher(
             self.active_classes, self.relationships,
-            tmp_path / "nonexistent-seed.ttl", "dbpi",
+            tmp_path / "nonexistent-seed.ttl", "dbpi", graph_property_keys(inv),
         )
 
         self.queries = generate_query_templates(
@@ -373,7 +374,7 @@ class TestCypherWithSeedData:
         )
 
         self.seed = generate_seed_cypher(
-            self.active_classes, self.relationships, seed_path, "dbpi",
+            self.active_classes, self.relationships, seed_path, "dbpi", graph_property_keys(inv),
         )
 
     def test_seed_creates_nodes(self):
