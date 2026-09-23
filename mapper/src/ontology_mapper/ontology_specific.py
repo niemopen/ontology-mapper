@@ -39,6 +39,19 @@ def extension_conformance_target(target_ontology: str, target_version: str) -> s
     return ""
 
 
+def cmf_structures_version(target_ontology: str, target_version: str) -> str:
+    """The NIEM release whose structures namespace a generated CMF uses.
+
+    The structures namespace belongs to the CMF format, not to the target
+    ontology: CMF 1.0's schema (specs/cmf-xsd/cmf.xsd) imports
+    structures/6.0, so a CMF for a non-NIEM target uses it too. A NIEM
+    target names its own release.
+    """
+    if target_ontology.lower() == "niem":
+        return target_version
+    return "6.0"
+
+
 def cmf_implicit_roots(target_ontology: str, target_version: str):
     """NIEM's XSD infrastructure root is implicit, not a declared CMF Class."""
     if target_ontology.lower() == "niem" and target_version == "6.0":

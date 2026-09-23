@@ -1164,9 +1164,9 @@ def main():
     from ontology_mapper.generate_cmf_from_matrix import MatrixToCmfBuilder
     from ontology_mapper.owl_cmf_bridge import CmfXmlSerializer, cmf_xml_to_json, set_niem_version
     from ontology_mapper.cmf_reference import complete_cmf_references, load_reference_cmf
-    from ontology_mapper.ontology_specific import cmf_implicit_roots
+    from ontology_mapper.ontology_specific import cmf_implicit_roots, cmf_structures_version
 
-    set_niem_version(TARGET_VERSION)
+    set_niem_version(cmf_structures_version(TARGET_ONTOLOGY, TARGET_VERSION))
 
     cmf_model = MatrixToCmfBuilder(matrix, inv, ctx, target_ns_map).build()
 

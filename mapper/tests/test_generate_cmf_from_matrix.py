@@ -790,6 +790,25 @@ class TestSpecCompliance:
             assert ns.prefix, f"Namespace missing prefix: {ns.ns_id}"
             assert ns.category, f"Namespace missing category: {ns.ns_id}"
 
+    @pytest.mark.parametrize("target, version", [("nods", "1.0"), ("sali-folio", "2.0"), ("niem", "6.0")])
+    def test_the_cmf_for_any_target_uses_the_structures_namespace_the_cmf_schema_imports(
+            self, tmp_path, target, version):
+        """The structures namespace belongs to the CMF format. A target's own
+        version (NODS 1.0, SALI 2.0) put there made the CMF XSD reject every
+        structures:id and structures:ref."""
+        from ontology_mapper.ontology_specific import cmf_structures_version
+        from ontology_mapper.validate_edge_package import validate_cmf_schema
+
+        set_niem_version(cmf_structures_version(target, version))
+        inv = _make_inventory(
+            classes=[_make_class("src:Permit")],
+            dt_props=[_make_dt_prop("src:permitNumber", domain=["src:Permit"])],
+        )
+        model = _build(_make_matrix([_make_mapping("src:Permit", "extend", "nc:PermitType")]), inv)
+        cmf_path = tmp_path / "model.cmf"
+        cmf_path.write_text(CmfXmlSerializer(model).serialize(), encoding="utf-8")
+        assert validate_cmf_schema(cmf_path) == []
+
     def test_xml_serialization_roundtrip(self):
         """Build → serialize XML → parse back → compare counts."""
         set_niem_version("6.0")
