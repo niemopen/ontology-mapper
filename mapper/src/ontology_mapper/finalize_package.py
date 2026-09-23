@@ -342,9 +342,11 @@ def main():
         sys.exit(1)
     stale = stale_against_package(val_path, ctx.pkg_dir, validation_report)
     if stale:
-        print(f"  [!] validation-report.json predates {stale}")
-        print("      Stage 7 certified the package as it was before that "
-              "file changed; re-run validation before finalizing.")
+        # The same wording as the runner's freshness check: `stale` names a
+        # changed, added or removed file, or a package directory that is gone.
+        print(f"  [!] validation-report.json does not cover {stale}")
+        print("      Stage 7 validated a different package than the one here; "
+              "re-run validation before finalizing.")
         sys.exit(1)
     if not validation_report.get("allPassed"):
         failed = [c.get("check", "?") for c in validation_report.get("checks", [])

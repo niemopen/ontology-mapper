@@ -585,6 +585,23 @@ def test_stage_5_loop_resolves_an_undecided_property_of_an_approved_class(tmp_pa
     assert (prop["action"], prop["reviewStatus"]) == ("create-property", "accepted")
 
 
+def test_stage_5_loop_without_a_catalog_fails_the_stage_rather_than_crashing(tmp_path):
+    """No catalog means no class target can be proven; the runner reports a
+    Stage 5 error the pipeline summarises, not a traceback."""
+    import runner_tools.run_pipeline as runner
+
+    (tmp_path / ".mapper-state.json").write_text(json.dumps(
+        {"inputs": {"target_ontology": "niem", "target_version": "9.9"}, "stages": {}}),
+        encoding="utf-8")
+    entry = {"sourceConcept": "src:A", "action": "reuse", "targetType": "nc:PersonType",
+             "reviewStatus": "pending-review", "propertyMappings": []}
+    (tmp_path / "mapping-matrix.json").write_text(json.dumps({"mappings": [entry]}), encoding="utf-8")
+    (tmp_path / "decision-log.json").write_text(json.dumps({"decisions": []}), encoding="utf-8")
+
+    with pytest.raises(StageError, match="exit criteria could not be checked"):
+        runner.run_stage_5_loop(tmp_path)
+
+
 def _finalized_run(run_dir):
     """A run whose previous Stages 7 and 8 passed and stamped the package."""
     stamp = "2026-09-01T00:00:00Z"

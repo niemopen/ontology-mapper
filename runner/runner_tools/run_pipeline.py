@@ -516,7 +516,12 @@ def run_stage_5_loop(run_dir: Path) -> list:
 
     _, matrix, dec_log = review_load_inputs(run_dir)
     all_applied = []
-    cascade_context = load_cascade_context(run_dir)
+    # Without the catalog no class target can be proven, so review cannot
+    # close; say so as complete_stage_5 does, not as a traceback.
+    try:
+        cascade_context = load_cascade_context(run_dir)
+    except Exception as exc:
+        raise StageError("5", f"Stage 5 exit criteria could not be checked: {exc}") from exc
 
     # Initial presentation
     can_exit, blockers = check_stage_5_exit(matrix, cascade_context)

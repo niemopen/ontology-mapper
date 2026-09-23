@@ -390,6 +390,18 @@ class TestFinalizeEndToEnd:
         assert self._finalize(run_dir, monkeypatch) == 1
         assert "core.ttl" in capsys.readouterr().out
 
+    def test_a_missing_package_is_refused_for_what_it_is(self, tmp_path, monkeypatch, capsys):
+        """No package directory: the refusal must not claim a file changed
+        after validation, which sends the operator to re-validate files
+        that are not there."""
+        import shutil
+        run_dir, pkg = self._run_dir(tmp_path)
+        shutil.rmtree(pkg)
+        assert self._finalize(run_dir, monkeypatch) == 1
+        out = capsys.readouterr().out
+        assert f"does not cover {pkg}" in out
+        assert "before that file changed" not in out
+
     def test_a_package_whose_validation_failed_is_not_published(self, tmp_path, monkeypatch, capsys):
         """`--from-stage 8` after a failed Stage 7: the report covers the
         package, and it failed, so nothing is stamped or published."""
