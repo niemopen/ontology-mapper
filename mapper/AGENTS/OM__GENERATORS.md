@@ -157,11 +157,16 @@ refusal covers the run: every unqualifiable decision is named and counted
 together, so a reviewer who fixes the first is not refused again by the
 second.
 
-Global properties — those belonging to no active class — are emitted for the
-primary source namespace only, and `emit_global_properties` applies that
-filter itself. A property with no class and a namespace this package does
-not mint into is not part of the edge model; emitting it under the edge
-prefix would declare a term the CMF model never declares.
+Global properties — those belonging to no active class — are the ones this
+package mints a term for: a primary-namespace property, or one extraction
+left as a full IRI. `emit_global_properties` applies that filter itself and
+resolves its own name through `created_property_qname`, so it and the shape
+emitter cannot disagree about which unowned properties exist. A property
+with no class in a source namespace the package merely binds is referenced
+through that binding and declared elsewhere; emitting it under the edge
+prefix would declare a term the CMF model never declares. Testing the source
+prefix alone excluded full IRIs, and the shape then named an edge term the
+ontology files never wrote — which the closure guard below refused.
 
 Two active source concepts must not emit one edge class name.
 `edge_class_name` is namespace-blind, so a local name shared across source
@@ -170,14 +175,20 @@ collapse into one type carrying both superclasses, both labels and both
 property sets. `generation_utils.colliding_edge_class_names` asks this and
 generation refuses before writing anything.
 
-A property inherited from a class that emits nothing — one the reviewer
-excluded, or one with no decision — is named by the nearest ancestor that
-does emit, walking up from the declaring class and falling back to the leaf
-carrying the shape. Taking the leaf directly named `edge:` for a term only
-a grandparent's extension declares. Where two declaring parents mapped one
-source property to different target properties, the shape offers them as a
-single `sh:alternativePath` — one source property, either identity, the
-source model's bounds counted across both. A consequence worth knowing
+A property a shape constrains is named by the class that DECLARES it — the
+one whose class block writes the term — and both halves of that identity
+come from that same class: its action decides the namespace, and its own
+property decision decides whether an accepted reuse target replaces the
+source term. `emitting_identities` returns one (class, action) pair per
+declaring class. An ancestor walk let `subClassOf` order pick the class;
+taking the action from the owner while resolving the decision under the
+shape's class named neither. When no active class declares the property,
+the answer is the term `emit_global_properties` writes, not the inheriting
+leaf's action. Where several declaring classes mint the term differently —
+two parents mapping one source property to different target properties, or
+one reusing where another creates — the shape offers every identity as a
+single `sh:alternativePath`: one source property, either term, the source
+model's bounds counted across both. A consequence worth knowing
 downstream: `sh:maxCount` then counts values across the alternatives, so
 data carrying two of the target properties fails the source model's
 single-value bound; that is the source model speaking, not a data error.

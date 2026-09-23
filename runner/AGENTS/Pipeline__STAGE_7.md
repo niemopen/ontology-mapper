@@ -1,5 +1,25 @@
 # Stage 7: Validate
 
+## What the report speaks for
+
+The report records `validatedArtifacts`: a SHA-256 per package file Stage 7
+validated — every file except the five Stage 8 writes itself
+(`governance/version-manifest.json`, `governance/lineage-manifest.json`,
+`governance/validation-report.json`, `governance/change-impact.md` and the
+root `package-manifest.json`). `governance/` is not Stage 8's alone: Stage 6b
+writes the decision log, generation audit, quality-gate report and coherence
+manifest there, and Check 5 reads the first of them.
+
+Stage 8 compares those digests before publishing
+(`validate_edge_package.stale_against_package`) and refuses a report that
+does not cover the package — regenerating after validation, or
+`--from-stage 8`, which never runs Stage 7 at all. The comparison is by
+content, not timestamp: a package is rewritten in less than a filesystem
+timestamp tick, so a report written straight afterwards looks newer than
+every file it should have refused. A report from before digests were
+recorded falls back to the clock, which under-reports rather than refusing
+a package it cannot speak to.
+
 **Artifacts**: `validation-report.json`, `feedback-report.json`
 
 ```
