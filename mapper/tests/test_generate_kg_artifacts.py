@@ -1140,3 +1140,26 @@ _:y a src:Addr ; src:next _:x .
         rule = next(t for t in transform["transforms"] if t["targetLabel"] == "Addr")
         assert [m["source"] for m in rule["propertyMappings"]] == ["src:part"]
 
+    def test_identical_anonymous_values_of_one_subject_have_distinct_identifiers(self, tmp_path):
+        """Groups of linked blank nodes are named apart; two identical ones
+        on the same subject still need two identifiers."""
+        import re
+        cypher = self._cypher(tmp_path, 'src:c1 a src:Case ; src:addr [ a src:Addr ; src:city "X" ] ,'
+                                        ' [ a src:Addr ; src:city "X" ] .\n',
+                              dt=[("src:city", ["src:Addr"])], op=[("src:addr", ["src:Case"], ["src:Addr"])])
+        ids = re.findall(r'^CREATE \(:Addr \{.*identifier: ("[^"]*")', cypher, re.M)
+        assert len(ids) == 2 and len(set(ids)) == 2, ids
+        assert cypher.count("CREATE (a)-[:") == 2
+
+    def test_blank_node_naming_cost_grows_with_the_data_not_its_square(self, tmp_path):
+        """Canonicalizing the whole graph at once took 27 s for 1,280 blank
+        nodes and grew faster than their square; 6,000 must take seconds."""
+        import time
+        body = "\n".join(f'src:c{i} a src:Case ; src:addr [ a src:Addr ; src:city "City{i % 50}" ;'
+                         f' src:next [ a src:Addr ; src:city "{i % 7}" ] ] .' for i in range(3000))
+        start = time.perf_counter()
+        cypher = self._cypher(tmp_path, body + "\n", dt=[("src:city", ["src:Addr"])],
+                              op=[("src:addr", ["src:Case"], ["src:Addr"]), ("src:next", ["src:Addr"], ["src:Addr"])])
+        assert time.perf_counter() - start < 30
+        assert cypher.count("CREATE (:Addr ") == 6000
+

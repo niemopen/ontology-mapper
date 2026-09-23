@@ -349,13 +349,7 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
     g = RdfGraph()
     g.parse(str(seed_data_path), format="turtle")
     if any(isinstance(term, BNode) for triple in g for term in triple):
-        # Blank nodes are named by the graph's canonical labelling: the
-        # same on every parse (rdflib's own labels are not), and distinct
-        # for distinct nodes, where a hash of a node's own statements gave
-        # two identical or nested anonymous values one identifier and the
-        # seed broke schema.cypher's uniqueness constraint.
-        from rdflib.compare import to_canonical_graph
-        g = to_canonical_graph(g)
+        g = _name_blank_nodes(g)
 
     # Build class IRI -> label mapping from active classes
     if not active_classes:
@@ -489,6 +483,65 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
         rel_lines.append("")
 
     return "\n".join(header + node_lines + rel_lines)
+
+
+def _name_blank_nodes(g):
+    """A copy of ``g`` whose blank nodes carry labels that are the same on
+    every parse (rdflib's own labels are not) and distinct for distinct
+    nodes (a hash of a node's own statements gave two identical or nested
+    anonymous values one identifier, and the seed broke schema.cypher's
+    uniqueness constraint).
+
+    Each group of blank nodes linked to one another is canonicalized on its
+    own, with the triples that touch it, and labelled
+    ``<digest of its canonical form>.<copy>.<canonical label>``; ``copy``
+    numbers groups whose canonical forms are identical, which are
+    interchangeable. Canonicalizing the whole graph at once cost time
+    growing faster than the square of its blank nodes (1,280 took 27 s).
+    """
+    import hashlib
+    from collections import Counter, defaultdict
+    from rdflib import Graph as RdfGraph, BNode
+    from rdflib.compare import to_canonical_graph
+
+    parent = {}
+
+    def find(node):
+        parent.setdefault(node, node)
+        while parent[node] != node:
+            parent[node] = parent[parent[node]]
+            node = parent[node]
+        return node
+
+    for s, _, o in g:
+        if isinstance(s, BNode) and isinstance(o, BNode):
+            parent[find(s)] = find(o)
+
+    named = RdfGraph()
+    groups = defaultdict(RdfGraph)
+    for triple in g:
+        s, _, o = triple
+        blank = s if isinstance(s, BNode) else o if isinstance(o, BNode) else None
+        if blank is None:
+            named.add(triple)
+        else:
+            groups[find(blank)].add(triple)
+
+    canonical = []
+    for group in groups.values():
+        cg = to_canonical_graph(group)
+        form = "\n".join(sorted(cg.serialize(format="nt").splitlines()))
+        canonical.append((form, cg))
+    canonical.sort(key=lambda fc: fc[0])
+    copies = Counter()
+    for form, cg in canonical:
+        digest = hashlib.sha256(form.encode("utf-8")).hexdigest()[:16]
+        prefix = f"{digest}.{copies[digest]}."
+        copies[digest] += 1
+        for s, p, o in cg:
+            named.add((BNode(prefix + s) if isinstance(s, BNode) else s, p,
+                       BNode(prefix + o) if isinstance(o, BNode) else o))
+    return named
 
 
 def _cypher_escape(s):
