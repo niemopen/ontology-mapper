@@ -40,6 +40,7 @@ from runner_tools._present_and_apply_human_review import (
     find_mapping_entry,
     load_cascade_context,
     save_matrix,
+    undecided_properties,
     validate_class_decision,
     validate_property_decision,
     _cmd_present,
@@ -290,8 +291,7 @@ def _build_pending_summary(pending: list) -> str:
             concept = entry["sourceConcept"]
             target = entry.get("targetType") or "(none)"
             props = entry.get("propertyMappings") or []
-            must_decide = sum(1 for p in props if p.get("action") == "human-must-decide"
-                              and p.get("reviewStatus") == "pending-review")
+            must_decide = len(undecided_properties([entry]))
             prop_note = ""
             if must_decide:
                 prop_note = f"  [{must_decide} UNDECIDED properties]"
@@ -338,12 +338,7 @@ def _dispatch_review_action(
 
     elif action_type == "approve_all":
         # Check for human-must-decide blockers
-        must_decide = sum(
-            1 for e in pending
-            for p in (e.get("propertyMappings") or [])
-            if p.get("action") == "human-must-decide"
-            and p.get("reviewStatus") == "pending-review"
-        )
+        must_decide = len(undecided_properties(pending))
         if must_decide:
             return (f"Cannot approve-all: {must_decide} human-must-decide properties "
                     f"must be resolved individually first."), applied, cascade_context

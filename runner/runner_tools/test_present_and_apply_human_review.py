@@ -1506,6 +1506,24 @@ class TestStageFiveExitValidatesSavedTargets:
         can_exit, blockers = check_stage_5_exit(matrix, self._cascade())
         assert not can_exit and "pending review" in blockers[0]
 
+    @pytest.mark.parametrize("target", ["[undecided]", None, ""])
+    def test_a_reuse_resolved_without_a_target_blocks_exit(self, target):
+        """"Resolve it as a reuse" with no target accepted the property and
+        review closed; the emitters then reused nothing."""
+        from runner_tools._present_and_apply_human_review import (
+            check_stage_5_exit, undecided_properties)
+        matrix = self._matrix("nc:PersonType")
+        matrix["mappings"][0]["propertyMappings"] = [
+            {"sourceProperty": "src:count", "action": "reuse-property",
+             "targetProperty": target, "reviewStatus": "accepted"},
+            {"sourceProperty": "src:name", "action": "reuse-property",
+             "targetProperty": "nc:PersonName", "reviewStatus": "accepted"}]
+        can_exit, blockers = check_stage_5_exit(matrix, self._cascade())
+        assert not can_exit
+        assert blockers == ["1 properties require human decision: src:A src:count"]
+        assert undecided_properties(matrix["mappings"]) == [
+            {"concept": "src:A", "property": "src:count"}]
+
 
 class TestStageFiveCompletionEnforcesExit:
     """Marking the stage complete is the boundary the web and the CLI share.

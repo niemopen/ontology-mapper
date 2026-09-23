@@ -152,6 +152,14 @@ def property_mapping_index(matrix, inventory=None):
     return index
 
 
+def real_target_property(target):
+    """*target* when it names a property, else None: absent, empty, and the
+    evaluator's "[undecided]" sentinel are not targets. One home for the
+    emitters (via `accepted_reuse_target`) and Stage 5's exit gate, which
+    must agree that a reuse without a target reuses nothing."""
+    return target if target and target != "[undecided]" else None
+
+
 def accepted_reuse_target(pm):
     """The target property an accepted ``reuse-property`` decision names, or
     None. One home for the three conditions the emitters must agree on."""
@@ -159,8 +167,7 @@ def accepted_reuse_target(pm):
         return None
     if pm.get("reviewStatus") != "accepted":
         return None
-    target = pm.get("targetProperty")
-    return target if target and target != "[undecided]" else None
+    return real_target_property(pm.get("targetProperty"))
 
 
 def qualified_target_property(target_prop, class_target_type):

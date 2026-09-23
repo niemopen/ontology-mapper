@@ -59,7 +59,12 @@ decision, and every accepted class target passes the target ontology's class
 policy (`ontology_specific.invalid_class_targets`). The third applies to
 decisions saved before the policy existed: they make no selection for the
 interactive check to catch, so the exit check and the Stage 6 entry are the
-seams that see them. `check_stage_5_exit(matrix, cascade)` takes the run's
+seams that see them. "Still needs a human decision" is
+`property_undecided`: a pending `human-must-decide` property, or a
+`reuse-property` with no real target (absent or `[undecided]`), which the
+emitters would not reuse (`generation_utils.accepted_reuse_target`). Every
+count of blocking properties, CLI and web, asks the same function, and the
+blocker names each one. `check_stage_5_exit(matrix, cascade)` takes the run's
 `(target_ontology, catalog)`; when that cannot be loaded the targets cannot
 be proven valid and that is itself a blocker.
 

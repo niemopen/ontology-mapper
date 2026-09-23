@@ -125,14 +125,12 @@ async def get_review_state(run_id: str, user: dict = Depends(require_auth), org:
     accepted = total - len(pending)
 
     # Count human-must-decide properties and best-guess items
-    must_decide_count = 0
-    best_guess_count = 0
-    for entry in matrix.get("mappings", []):
-        if entry.get("confidence") == "best-guess" and entry.get("reviewStatus") == "accepted":
-            best_guess_count += 1
-        for prop in entry.get("propertyMappings", []):
-            if prop.get("action") == "human-must-decide" and prop.get("reviewStatus") == "pending-review":
-                must_decide_count += 1
+    from runner_tools._present_and_apply_human_review import undecided_properties
+
+    must_decide_count = len(undecided_properties(matrix.get("mappings", [])))
+    best_guess_count = sum(
+        1 for entry in matrix.get("mappings", [])
+        if entry.get("confidence") == "best-guess" and entry.get("reviewStatus") == "accepted")
 
     # Whether Submit is offered is the question submit itself asks, answered
     # by the same gate: counting pending items here offered Submit on a
@@ -217,14 +215,9 @@ async def approve_all(run_id: str, user: dict = Depends(require_auth), org: str 
     pending = get_pending_items(matrix)
 
     # Check for human-must-decide blockers
-    must_decide = []
-    for entry in pending:
-        for prop in entry.get("propertyMappings", []):
-            if prop.get("action") == "human-must-decide" and prop.get("reviewStatus") == "pending-review":
-                must_decide.append({
-                    "concept": entry["sourceConcept"],
-                    "property": prop["sourceProperty"],
-                })
+    from runner_tools._present_and_apply_human_review import undecided_properties
+
+    must_decide = undecided_properties(pending)
     if must_decide:
         raise HTTPException(
             status_code=409,
@@ -330,19 +323,11 @@ async def get_validation(run_id: str, user: dict = Depends(require_auth), org: s
     run_dir = _run_dir(org, run_id)
     matrix = _load_matrix(run_dir)
 
-    from runner_tools._present_and_apply_human_review import get_pending_items
+    from runner_tools._present_and_apply_human_review import get_pending_items, undecided_properties
 
     can_exit, blockers = stage_5_gate(run_id, run_dir, matrix)
     pending = get_pending_items(matrix)
-
-    must_decide = []
-    for entry in matrix.get("mappings", []):
-        for prop in entry.get("propertyMappings", []):
-            if prop.get("action") == "human-must-decide" and prop.get("reviewStatus") == "pending-review":
-                must_decide.append({
-                    "concept": entry["sourceConcept"],
-                    "property": prop["sourceProperty"],
-                })
+    must_decide = undecided_properties(matrix.get("mappings", []))
 
     return {
         "canSubmit": can_exit,

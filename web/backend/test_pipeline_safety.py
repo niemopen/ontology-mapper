@@ -304,3 +304,26 @@ def test_review_routes_refuse_a_class_name_two_entries_share(run_context):
     assert response.status_code == 409, response.text
     assert "a:Person" in response.json()["detail"] and "b:Person" in response.json()["detail"]
     assert (run_dir / "mapping-matrix.json").read_bytes() == before
+
+
+def test_validation_lists_a_reuse_resolved_without_a_target(run_context, monkeypatch):
+    """The web accepted a reuse with no target_property, and /validation
+    offered Submit with the property unmapped."""
+    run_dir, client, _ = run_context
+    monkeypatch.setattr(review, "_get_cascade", lambda *args: ("niem", {"types": [], "namespaces": {}}))
+    monkeypatch.setattr("ontology_mapper.ontology_specific.invalid_class_targets", lambda *a: [])
+    entry = {"sourceConcept": "src:Item", "action": "extend", "targetType": None,
+             "reviewStatus": "accepted", "propertyMappings": [
+                 {"sourceProperty": "src:count", "action": "human-must-decide",
+                  "targetProperty": "[undecided]", "reviewStatus": "pending-review"}]}
+    (run_dir / "mapping-matrix.json").write_text(json.dumps({"mappings": [entry]}), encoding="utf-8")
+    for name in ("decision-log.json", "human-review-decisions.json"):
+        (run_dir / name).write_text(json.dumps({"decisions": []}), encoding="utf-8")
+    response = client.post("/runs/sample/review/resolve-property", json={
+        "concept": "src:Item", "source_property": "src:count",
+        "property_action": "reuse-property"})
+    assert response.status_code == 200, response.text
+    validation = client.get("/runs/sample/review").json()["validation"]
+    assert validation["canSubmit"] is False
+    assert validation["humanMustDecide"] == 1
+    assert "src:Item src:count" in " ".join(validation["blockers"])

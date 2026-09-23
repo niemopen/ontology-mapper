@@ -173,6 +173,38 @@ def format_property_review(entry):
     return "\n".join(lines)
 
 
+def property_undecided(prop):
+    """Does this property still need a human decision?
+
+    One home for Stage 5's exit gate and every count of blocking properties
+    (CLI and web). A ``human-must-decide`` property is undecided; so is a
+    ``reuse-property`` with no real target, which the emitters would not
+    reuse (`accepted_reuse_target`). Counting only the first let a reuse
+    resolved without a target close review with the property unmapped.
+    """
+    from ontology_mapper.generation_utils import real_target_property
+
+    action = prop.get("action")
+    if action == "human-must-decide":
+        return prop.get("reviewStatus") == "pending-review"
+    if action == "reuse-property":
+        return real_target_property(prop.get("targetProperty")) is None
+    return False
+
+
+def undecided_properties(entries):
+    """``[{"concept", "property"}]`` for every undecided property of *entries*.
+
+    A ``propertyMappings`` of the wrong shape raises rather than reading as
+    "no properties": the exit gate reports such a matrix as unreadable,
+    since Stage 6 could not read it either.
+    """
+    return [{"concept": e["sourceConcept"], "property": p["sourceProperty"]}
+            for e in entries
+            for p in e.get("propertyMappings", [])
+            if property_undecided(p)]
+
+
 def find_mapping_entry(entries, concept_ref):
     """The mapping entry a reviewer named, as ``(entry, candidates)``.
 
@@ -428,7 +460,7 @@ def validate_property_decision(prop):
     action = prop.get("action")
 
     if action == "reuse-property":
-        if not prop.get("targetProperty"):
+        if property_undecided(prop):
             issues.append("reuse-property requires targetProperty")
 
     elif action == "create-property":
@@ -662,16 +694,11 @@ def check_stage_5_exit(matrix, cascade):
     if pending:
         blockers.append(f"{len(pending)} concepts still pending review")
 
-    must_decide = []
-    for entry in matrix.get("mappings", []):
-        for prop in entry.get("propertyMappings", []):
-            if prop.get("action") == "human-must-decide" and prop.get("reviewStatus") == "pending-review":
-                must_decide.append({
-                    "concept": entry["sourceConcept"],
-                    "property": prop["sourceProperty"],
-                })
+    must_decide = undecided_properties(matrix.get("mappings", []))
     if must_decide:
-        blockers.append(f"{len(must_decide)} properties require human decision")
+        # Named, so a resumed CLI session can resolve them without a hunt.
+        blockers.append(f"{len(must_decide)} properties require human decision: "
+                        + ", ".join(f"{m['concept']} {m['property']}" for m in must_decide))
 
     from ontology_mapper.ontology_specific import invalid_class_targets
 
@@ -868,12 +895,7 @@ def _cmd_accept_all(args):
         return
 
     # Block accept-all if any human-must-decide properties remain
-    must_decide_count = sum(
-        1 for entry in pending
-        for p in (entry.get("propertyMappings") or [])
-        if p.get("action") == "human-must-decide"
-        and p.get("reviewStatus") == "pending-review"
-    )
+    must_decide_count = len(undecided_properties(pending))
     if must_decide_count:
         print(f"Cannot approve-all: {must_decide_count} human-must-decide "
               f"properties must be resolved individually first.")
