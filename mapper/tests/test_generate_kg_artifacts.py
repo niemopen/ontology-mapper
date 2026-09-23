@@ -1152,14 +1152,34 @@ _:y a src:Addr ; src:next _:x .
         assert cypher.count("CREATE (a)-[:") == 2
 
     def test_blank_node_naming_cost_grows_with_the_data_not_its_square(self, tmp_path):
-        """Canonicalizing the whole graph at once took 27 s for 1,280 blank
-        nodes and grew faster than their square; 6,000 must take seconds."""
+        """Canonicalizing with rdflib grew faster than the square of the
+        blank nodes in one linked group (whole graph: 1,280 small groups took
+        27 s; per group: a 1,000-item list 13 s, 100 identical children of
+        one anonymous value 169 s). Many small groups, one long chain and one
+        hub of identical children must each take seconds."""
         import time
-        body = "\n".join(f'src:c{i} a src:Case ; src:addr [ a src:Addr ; src:city "City{i % 50}" ;'
-                         f' src:next [ a src:Addr ; src:city "{i % 7}" ] ] .' for i in range(3000))
-        start = time.perf_counter()
-        cypher = self._cypher(tmp_path, body + "\n", dt=[("src:city", ["src:Addr"])],
-                              op=[("src:addr", ["src:Case"], ["src:Addr"]), ("src:next", ["src:Addr"], ["src:Addr"])])
-        assert time.perf_counter() - start < 30
-        assert cypher.count("CREATE (:Addr ") == 6000
+        op = [("src:addr", ["src:Case"], ["src:Addr"]), ("src:next", ["src:Addr"], ["src:Addr"])]
+        small = "\n".join(f'src:c{i} a src:Case ; src:addr [ a src:Addr ; src:city "City{i % 50}" ;'
+                          f' src:next [ a src:Addr ; src:city "{i % 7}" ] ] .' for i in range(3000))
+        chain = "src:k a src:Case ; src:addr _:n0 .\n" + "\n".join(
+            f'_:n{i} a src:Addr ; src:city "{i % 3}" ; src:next _:n{i + 1} .' for i in range(1499)) + \
+            '\n_:n1499 a src:Addr ; src:city "0" .'
+        hub = "[] a src:Addr ; src:next " + " , ".join('[ a src:Addr ; src:city "X" ]' for _ in range(200)) + " ."
+        for body, addrs in ((small, 6000), (chain, 1500), (hub, 201)):
+            start = time.perf_counter()
+            cypher = self._cypher(tmp_path, body + "\n", dt=[("src:city", ["src:Addr"])], op=op)
+            assert time.perf_counter() - start < 30
+            assert cypher.count("CREATE (:Addr ") == addrs
+
+    def test_a_node_value_of_a_property_this_class_holds_as_a_value_is_no_edge(self, tmp_path):
+        """A shape-only path that is an edge on Case and a value on Addr:
+        keyed by property alone, an Addr's node value became an edge
+        Addr's transform and schema.cypher do not have."""
+        shapes = [{"targetClasses": ["src:Case"], "properties": [{"path": "src:part", "class": "src:Addr"}]},
+                  {"targetClasses": ["src:Addr"], "properties": [
+                      {"path": "src:part", "datatype": "http://www.w3.org/2001/XMLSchema#string"}]}]
+        cypher = self._cypher(tmp_path, "src:c1 a src:Case ; src:part src:a1 .\n"
+                                        "src:a1 a src:Addr ; src:part src:c1 .\n", shapes=shapes)
+        assert cypher.count("CREATE (a)-[:") == 1
+        assert '(a:Case {identifier: "https://sample.test/src/c1"})' in cypher
 

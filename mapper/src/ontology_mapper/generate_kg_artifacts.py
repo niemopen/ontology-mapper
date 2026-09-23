@@ -447,6 +447,12 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
     # transform use, not from the predicate string: a CSV-shaped property IRI
     # (`{ns}#{Class}.{prop}`) would otherwise yield `[:CLASS.PROP]`.
     rel_props = {op["iri"]: op for cls in active_classes for op in cls["objectProps"]}
+    # A property this subject's class holds as a value is no edge here, as
+    # in its transform and schema (`build_active_classes` places a
+    # shape-only property per class); keyed by property alone, a node value
+    # on such a class became an edge the schema does not document.
+    values_by_label = {cls["label"]: {p.get("iri") for p in cls["datatypeProps"]}
+                       for cls in active_classes}
 
     for subj, pred, obj in sorted(g):
         if pred == RDF.type:
@@ -467,6 +473,9 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
         # A declared property: one an active class owns, or one declared
         # with no owner (no domain), which the OWL declares globally and
         # whose edges were dropped here (hasFee, assignedToUnit).
+        src_label, src_id = node_identifiers[subj_str]
+        if pred_str in values_by_label[src_label]:
+            continue
         if pred_str in rel_props:
             rel_name = relationship_type(rel_props[pred_str]["label"])
         elif pred_str in property_keys.relationships:
@@ -474,7 +483,6 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
         else:
             continue
 
-        src_label, src_id = node_identifiers[subj_str]
         tgt_label, tgt_id = node_identifiers[obj_str]
 
         rel_lines.append(f"MATCH (a:{src_label} {{identifier: {src_id}}})")
@@ -488,61 +496,52 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
 def _name_blank_nodes(g):
     """A copy of ``g`` whose blank nodes carry labels that are the same on
     every parse (rdflib's own labels are not) and distinct for distinct
-    nodes (a hash of a node's own statements gave two identical or nested
-    anonymous values one identifier, and the seed broke schema.cypher's
-    uniqueness constraint).
+    nodes (a hash of a node's own statements alone gave two identical or
+    nested anonymous values one identifier, and the seed broke
+    schema.cypher's uniqueness constraint).
 
-    Each group of blank nodes linked to one another is canonicalized on its
-    own, with the triples that touch it, and labelled
-    ``<digest of its canonical form>.<copy>.<canonical label>``; ``copy``
-    numbers groups whose canonical forms are identical, which are
-    interchangeable. Canonicalizing the whole graph at once cost time
-    growing faster than the square of its blank nodes (1,280 took 27 s).
+    A node's label is ``<digest of its own statements>.<k>``: the digest
+    covers its outgoing and incoming statements, a blank neighbour written
+    as ``_``, and ``k`` numbers nodes sharing a digest in the order the
+    parser created them (the counter ending rdflib's blank-node ids), which
+    follows the seed file. The cost is linear in the triples; canonicalizing
+    with rdflib (whole graph, or per linked group) grew faster than the
+    square of the blank nodes in one group (a 1,000-item list took 13 s).
+    Should rdflib's ids stop ending in that counter, ties fall back to the
+    ids themselves: labels stay distinct but may differ between parses.
     """
     import hashlib
-    from collections import Counter, defaultdict
+    import re
+    from collections import defaultdict
     from rdflib import Graph as RdfGraph, BNode
-    from rdflib.compare import to_canonical_graph
 
-    parent = {}
+    def term(t):
+        return "_" if isinstance(t, BNode) else t.n3()
 
-    def find(node):
-        parent.setdefault(node, node)
-        while parent[node] != node:
-            parent[node] = parent[parent[node]]
-            node = parent[node]
-        return node
+    outgoing, incoming = defaultdict(list), defaultdict(list)
+    for s, p, o in g:
+        if isinstance(s, BNode):
+            outgoing[s].append((p.n3(), term(o)))
+        if isinstance(o, BNode):
+            incoming[o].append((term(s), p.n3()))
 
-    for s, _, o in g:
-        if isinstance(s, BNode) and isinstance(o, BNode):
-            parent[find(s)] = find(o)
+    def created(node):
+        m = re.search(r"(\d+)$", str(node))
+        return (int(m.group(1)) if m else -1, str(node))
+
+    by_digest = defaultdict(list)
+    for node in set(outgoing) | set(incoming):
+        signature = repr((sorted(outgoing[node]), sorted(incoming[node])))
+        by_digest[hashlib.sha256(signature.encode("utf-8")).hexdigest()[:16]].append(node)
+    label = {}
+    for digest, nodes in by_digest.items():
+        for k, node in enumerate(sorted(nodes, key=created)):
+            label[node] = BNode(f"{digest}.{k}")
 
     named = RdfGraph()
-    groups = defaultdict(RdfGraph)
-    for triple in g:
-        s, _, o = triple
-        blank = s if isinstance(s, BNode) else o if isinstance(o, BNode) else None
-        if blank is None:
-            named.add(triple)
-        else:
-            groups[find(blank)].add(triple)
-
-    canonical = []
-    for group in groups.values():
-        cg = to_canonical_graph(group)
-        form = "\n".join(sorted(cg.serialize(format="nt").splitlines()))
-        canonical.append((form, cg))
-    canonical.sort(key=lambda fc: fc[0])
-    copies = Counter()
-    for form, cg in canonical:
-        digest = hashlib.sha256(form.encode("utf-8")).hexdigest()[:16]
-        prefix = f"{digest}.{copies[digest]}."
-        copies[digest] += 1
-        for s, p, o in cg:
-            named.add((BNode(prefix + s) if isinstance(s, BNode) else s, p,
-                       BNode(prefix + o) if isinstance(o, BNode) else o))
+    for s, p, o in g:
+        named.add((label.get(s, s), p, label.get(o, o)))
     return named
-
 
 def _cypher_escape(s):
     """Escape a string for use in Cypher string literals."""

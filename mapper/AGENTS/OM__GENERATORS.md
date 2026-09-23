@@ -214,8 +214,9 @@ giving node property keys and relationship types, so `src:subject` /
 `aug:subject` are two relationship types. Seed nodes always
 carry the `identifier` their relationships MATCH on (the id-like property's
 value as the same Cypher literal, else the instance IRI; a blank node's
-canonical label within its group of linked blank nodes, distinct per node and
-the same on every parse: `_name_blank_nodes`), a node with
+digest of its own statements, numbered in seed-file order where digests
+meet, distinct per node and the same on every parse: `_name_blank_nodes`), a
+node with
 only relationships included; a seed literal's key is its predicate's graph
 name (`graph_property_keys().values`) whichever class owns the property, and a
 node value is an edge only for an object property

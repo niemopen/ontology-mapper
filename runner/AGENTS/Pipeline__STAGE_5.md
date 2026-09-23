@@ -67,10 +67,11 @@ reuse, `generation_utils.accepted_reuse_target`). Everything else is
 undecided whatever its status: `human-must-decide`, a reuse without a target,
 any other action string. Every count and view of blocking properties, CLI
 and web (the web page reads each property's `undecided` flag), bulk accept
-included, asks the same function, and the blocker names each one. Approve-all
-asks it of the pending concepts it would approve (`approve_all_blockers`, one
-home for the route, the page's button and the CLI); the exit gate asks it of
-every concept. `check_stage_5_exit(matrix, cascade)` takes the run's
+included, asks the same function. Approve-all asks it of the pending concepts
+it would approve (`approve_all_blockers`, one home for the route, the page's
+button and the CLI); its refusal gives the count (the web route's 409 also
+lists them as `mustDecide`). The exit gate asks it of every concept, and its
+blocker names each one. `check_stage_5_exit(matrix, cascade)` takes the run's
 `(target_ontology, catalog)`; when that cannot be loaded the targets cannot
 be proven valid and that is itself a blocker.
 
