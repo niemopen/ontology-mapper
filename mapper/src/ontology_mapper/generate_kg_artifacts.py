@@ -323,7 +323,8 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
     seed file's own prefix declarations are not consulted. A literal's key
     is its predicate's graph name (``property_keys``, a
     `GraphPropertyKeys`), whichever class owns the property; a node value
-    is an edge only for an object property.
+    is an edge only for an object property, and is a node key instead on an
+    instance whose class holds the property as a value (see OM__GENERATORS).
     """
     now = utc_stamp()
 
@@ -375,10 +376,21 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
 
     # Track created node identifiers for relationship creation
     node_identifiers = {}  # subject IRI -> (label, identifier_value)
+    # The properties each class holds as values (`build_active_classes`
+    # places a shape-only property per class): a node value on one of them
+    # is a node key here, as in the class's transform, not an edge. One the
+    # class also holds as a relationship (a property declared both ways)
+    # keeps its edge, as its objectProps and schema.cypher document.
+    values_by_label = {cls["label"]: {p.get("iri") for p in cls["datatypeProps"]}
+                       - {p.get("iri") for p in cls["objectProps"]}
+                       for cls in active_classes}
 
     for subj in sorted(set(g.subjects(RDF.type, None))):
         # Find which active class this instance belongs to
-        types = list(g.objects(subj, RDF.type))
+        # In IRI order: an instance of two active classes took whichever
+        # the graph listed first, which changed with the hash seed, and with
+        # it the instance's label and edges.
+        types = sorted(g.objects(subj, RDF.type))
         matched_cls = None
         for t in types:
             if t in active_labels:
@@ -395,8 +407,10 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
             if pred == RDF.type:
                 continue
             pred_str = str(pred)
-            # Only literal values are node properties
-            if isinstance(obj, Literal):
+            # Literal values are node properties, and so is a node value
+            # of a property this class holds as a value (its IRI, or a
+            # blank node's label): skipped as an edge, it was lost.
+            if isinstance(obj, Literal) or pred_str in values_by_label[matched_cls["label"]]:
                 # The key schema.cypher and the transforms name
                 # (graph_property_names); a local name of its own merged
                 # two namespaces' properties into one key. A predicate the
@@ -405,7 +419,8 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
                 # property's value (`x:name` over `src:name`), and was not
                 # always a key Neo4j accepts (`Class.prop`, `2ndLine`).
                 prop_local = property_keys.values.get(pred_str) or graph_name(pred_str, None)
-                props[prop_local] = _cypher_literal(obj)
+                props[prop_local] = (_cypher_literal(obj) if isinstance(obj, Literal) else
+                                     f'"{_cypher_escape(("_:" if isinstance(obj, BNode) else "") + str(obj))}"')
 
         # A node with only relationships is still created: every
         # relationship pointing at it was dropped when it was skipped.
@@ -447,12 +462,6 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
     # transform use, not from the predicate string: a CSV-shaped property IRI
     # (`{ns}#{Class}.{prop}`) would otherwise yield `[:CLASS.PROP]`.
     rel_props = {op["iri"]: op for cls in active_classes for op in cls["objectProps"]}
-    # A property this subject's class holds as a value is no edge here, as
-    # in its transform and schema (`build_active_classes` places a
-    # shape-only property per class); keyed by property alone, a node value
-    # on such a class became an edge the schema does not document.
-    values_by_label = {cls["label"]: {p.get("iri") for p in cls["datatypeProps"]}
-                       for cls in active_classes}
 
     for subj, pred, obj in sorted(g):
         if pred == RDF.type:
@@ -474,6 +483,9 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source, 
         # with no owner (no domain), which the OWL declares globally and
         # whose edges were dropped here (hasFee, assignedToUnit).
         src_label, src_id = node_identifiers[subj_str]
+        # A property this subject's class holds as a value was written as a
+        # node key above; keyed by property alone, it became an edge the
+        # class's transform and schema.cypher do not document.
         if pred_str in values_by_label[src_label]:
             continue
         if pred_str in rel_props:

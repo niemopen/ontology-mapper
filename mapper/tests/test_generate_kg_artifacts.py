@@ -1162,10 +1162,10 @@ _:y a src:Addr ; src:next _:x .
         small = "\n".join(f'src:c{i} a src:Case ; src:addr [ a src:Addr ; src:city "City{i % 50}" ;'
                           f' src:next [ a src:Addr ; src:city "{i % 7}" ] ] .' for i in range(3000))
         chain = "src:k a src:Case ; src:addr _:n0 .\n" + "\n".join(
-            f'_:n{i} a src:Addr ; src:city "{i % 3}" ; src:next _:n{i + 1} .' for i in range(1499)) + \
-            '\n_:n1499 a src:Addr ; src:city "0" .'
+            f'_:n{i} a src:Addr ; src:city "{i % 3}" ; src:next _:n{i + 1} .' for i in range(2999)) + \
+            '\n_:n2999 a src:Addr ; src:city "0" .'
         hub = "[] a src:Addr ; src:next " + " , ".join('[ a src:Addr ; src:city "X" ]' for _ in range(200)) + " ."
-        for body, addrs in ((small, 6000), (chain, 1500), (hub, 201)):
+        for body, addrs in ((small, 6000), (chain, 3000), (hub, 201)):
             start = time.perf_counter()
             cypher = self._cypher(tmp_path, body + "\n", dt=[("src:city", ["src:Addr"])], op=op)
             assert time.perf_counter() - start < 30
@@ -1182,4 +1182,50 @@ _:y a src:Addr ; src:next _:x .
                                         "src:a1 a src:Addr ; src:part src:c1 .\n", shapes=shapes)
         assert cypher.count("CREATE (a)-[:") == 1
         assert '(a:Case {identifier: "https://sample.test/src/c1"})' in cypher
+        # Not an edge on Addr, and not lost either: a node key, as Addr's
+        # transform lists it.
+        assert 'CREATE (:Addr {identifier: "https://sample.test/src/a1", part: "https://sample.test/src/c1"});' in cypher
+
+    def test_a_property_a_class_holds_both_ways_keeps_its_edge(self, tmp_path):
+        """Declared both an object and a datatype property, it sits in the
+        class's objectProps and datatypeProps; the value skip dropped the
+        edge its objectProps and schema.cypher document."""
+        cypher = self._cypher(tmp_path, "src:c1 a src:Case ; src:addr src:a1 .\nsrc:a1 a src:Addr .\n",
+                              dt=[("src:addr", ["src:Case"])], op=[("src:addr", ["src:Case"], ["src:Addr"])])
+        assert cypher.count("CREATE (a)-[:") == 1
+
+    def test_an_instance_of_two_active_classes_is_seeded_the_same_under_every_hash_seed(self, tmp_path):
+        """Its class came from whichever rdf:type the graph listed first,
+        which followed the hash seed, and with it its label and edges."""
+        import os
+        import subprocess
+        import sys
+        script = tmp_path / "two_types.py"
+        script.write_text(f"import sys\nsys.path[:0] = {sys.path!r}\n" + r'''
+import pathlib, tempfile
+from tests.test_generate_kg_artifacts import TestSeedRound15
+shapes = [{"targetClasses": ["src:Case"], "properties": [{"path": "src:part", "class": "src:Addr"}]},
+          {"targetClasses": ["src:Addr"], "properties": [
+              {"path": "src:part", "datatype": "http://www.w3.org/2001/XMLSchema#string"}]}]
+body = """src:b0 a src:Addr .
+src:x1 a src:Addr , src:Case ; src:part src:b0 .
+src:x2 a src:Case , src:Addr ; src:part src:b0 .
+[ a src:Addr , src:Case ; src:part src:b0 ] .
+[ a src:Case , src:Addr ; src:part src:b0 ] .
+"""
+out = TestSeedRound15()._cypher(pathlib.Path(tempfile.mkdtemp()), body, shapes=shapes)
+print("\n".join(l for l in out.splitlines() if not l.startswith("//")))
+''', encoding="utf-8")
+        outputs = set()
+        for seed in ("0", "1", "4", "5", "7"):
+            env = {**os.environ, "PYTHONHASHSEED": seed}
+            run = subprocess.run([sys.executable, str(script)], capture_output=True, text=True,
+                                 env=env, cwd=str(Path(__file__).parent.parent), timeout=120)
+            assert run.returncode == 0, run.stderr
+            outputs.add(run.stdout)
+        assert len(outputs) == 1
+        # Whichever type the file writes first: every instance is an Addr
+        # (first by IRI), so none has Case's edge.
+        out = outputs.pop()
+        assert out.count("CREATE (:Addr ") == 5 and "CREATE (a)-[:" not in out
 

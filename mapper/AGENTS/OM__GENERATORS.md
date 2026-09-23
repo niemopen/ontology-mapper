@@ -218,9 +218,16 @@ digest of its own statements, numbered in seed-file order where digests
 meet, distinct per node and the same on every parse: `_name_blank_nodes`), a
 node with
 only relationships included; a seed literal's key is its predicate's graph
-name (`graph_property_keys().values`) whichever class owns the property, and a
+name (`graph_property_keys().values`) whichever class owns the property. A
 node value is an edge only for an object property
-(`graph_property_keys().relationships`). A shape-only property sits on each
+(`graph_property_keys().relationships`), and not on an instance whose class
+holds the property as a value (and not also as a relationship): there it is
+a node key holding the object's IRI or blank-node label, as the class's
+transform lists it. An instance of two active classes takes the first by
+IRI. A class that holds an object property neither way still gets its edge
+(a subclass instance using its parent's property is the ordinary case), so
+schema.cypher can omit a (class, relationship) pair the seed carries. A
+shape-only property sits on each
 class as that class's shape says (an edge where it gives an `sh:class`, a
 value elsewhere) under the one name the property has.
 
