@@ -282,22 +282,24 @@ def apply_property_decision(entry, source_property, decision, catalog):
 def apply_all_property_accepts(entry, confidence="confident"):
     """Accept all pending property mappings for a class entry.
 
-    Skips human-must-decide properties — those cannot be bulk-accepted
-    and must be resolved individually. Also cascades confidence to
+    Skips undecided properties (`property_undecided`) - those cannot be
+    bulk-accepted and must be resolved individually - whatever their status,
+    so the count is what the exit gate still blocks on. Deciding by action
+    here accepted a pending reuse without a target and reported nothing
+    skipped while review stayed blocked. Also cascades confidence to
     already-accepted properties that weren't explicitly set by the user.
 
-    Returns (accepted_count, skipped_must_decide_count).
+    Returns (accepted_count, undecided_count).
     """
     accepted = 0
     skipped = 0
     for p in (entry.get("propertyMappings") or []):
-        if p.get("reviewStatus") == "pending-review":
-            if p.get("action") == "human-must-decide":
-                skipped += 1
-            else:
-                p["reviewStatus"] = "accepted"
-                p["confidence"] = confidence
-                accepted += 1
+        if property_undecided(p):
+            skipped += 1
+        elif p.get("reviewStatus") == "pending-review":
+            p["reviewStatus"] = "accepted"
+            p["confidence"] = confidence
+            accepted += 1
         elif p.get("reviewStatus") == "accepted" and not p.get("confidenceExplicit"):
             # Cascade type-level confidence to properties the user didn't explicitly set
             p["confidence"] = confidence

@@ -414,7 +414,8 @@ class TestApplyAllPropertyAccepts:
 
     def test_returns_zero_when_none_pending(self):
         entry = {"sourceConcept": "x:Foo", "propertyMappings": [
-            {"sourceProperty": "a", "action": "reuse-property", "reviewStatus": "accepted"},
+            {"sourceProperty": "a", "action": "reuse-property", "targetProperty": "nc:A",
+             "reviewStatus": "accepted"},
         ]}
         accepted, skipped = apply_all_property_accepts(entry)
         assert accepted == 0
@@ -430,9 +431,25 @@ class TestApplyAllPropertyAccepts:
         assert accepted == 0
         assert skipped == 0
 
-    def test_skips_human_must_decide(self):
+    def test_a_reuse_without_a_target_is_skipped_and_counted(self):
+        """Round thirteen: bulk accept decided by action, so a pending reuse
+        with no target was accepted and nothing was reported skipped while
+        the exit gate still blocked on it."""
         entry = {"sourceConcept": "x:Foo", "propertyMappings": [
             {"sourceProperty": "PropA", "action": "reuse-property", "reviewStatus": "pending-review"},
+            {"sourceProperty": "PropB", "action": "reuse-property", "targetProperty": "[undecided]",
+             "reviewStatus": "accepted"},
+            {"sourceProperty": "PropC", "action": "create", "reviewStatus": "pending-review"},
+        ]}
+        accepted, skipped = apply_all_property_accepts(entry)
+        assert (accepted, skipped) == (0, 3)
+        assert entry["propertyMappings"][0]["reviewStatus"] == "pending-review"
+        assert entry["propertyMappings"][2]["reviewStatus"] == "pending-review"
+
+    def test_skips_human_must_decide(self):
+        entry = {"sourceConcept": "x:Foo", "propertyMappings": [
+            {"sourceProperty": "PropA", "action": "reuse-property", "targetProperty": "nc:PropA",
+             "reviewStatus": "pending-review"},
             {"sourceProperty": "PropB", "action": "human-must-decide", "reviewStatus": "pending-review",
              "targetProperty": "[undecided]"},
             {"sourceProperty": "PropC", "action": "create-property", "reviewStatus": "pending-review"},
@@ -1247,7 +1264,8 @@ class TestConfidenceOnBulkAccept:
 
     def test_bulk_accept_skips_human_must_decide(self):
         entry = {"sourceConcept": "x:Foo", "propertyMappings": [
-            {"sourceProperty": "PropA", "action": "reuse-property", "reviewStatus": "pending-review"},
+            {"sourceProperty": "PropA", "action": "reuse-property", "targetProperty": "nc:PropA",
+             "reviewStatus": "pending-review"},
             {"sourceProperty": "PropB", "action": "human-must-decide", "reviewStatus": "pending-review",
              "targetProperty": "[undecided]"},
         ]}
