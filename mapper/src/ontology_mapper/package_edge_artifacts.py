@@ -24,6 +24,7 @@ import sys
 from pathlib import Path
 from ontology_mapper.cmf_reference import CMF_OMITTED_REASON, reference_cmf_installed
 from ontology_mapper.run_dir_utils import utc_stamp
+from ontology_mapper.validate_edge_package import DRAFT_VERSION
 
 from ontology_mapper.pipeline_context import load_context
 from ontology_mapper.build_strategy_reports import build_class_properties
@@ -219,7 +220,7 @@ def build_package_manifest(ctx, matrix):
 
     manifest = {
         "name": ctx.edge_package_name,
-        "version": "0.1.0",
+        "version": DRAFT_VERSION,
         "description": ctx.description,
         "sourcePackage": ctx.agency_package_name,
         "targetOntology": ctx.target_ontology,

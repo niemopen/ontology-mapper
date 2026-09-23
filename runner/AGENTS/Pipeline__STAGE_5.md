@@ -73,7 +73,11 @@ button and the CLI); its refusal gives the count (the web route's 409 also
 lists them as `mustDecide`). The exit gate asks it of every concept, and its
 blocker names each one. `check_stage_5_exit(matrix, cascade)` takes the run's
 `(target_ontology, catalog)`; when that cannot be loaded the targets cannot
-be proven valid and that is itself a blocker.
+be proven valid and that is itself a blocker. A reused property target the
+catalog does not list is refused when chosen (`apply_property_decision`
+raises `generation_utils.PropertyTargetError`; the web route answers 400,
+the CLI prints it) and, when saved earlier or edited in, blocks exit; both
+ask `generation_utils.missing_reuse_target`, the key Stage 7 Check 12 looks up.
 
 Each driver meets that check at a different point. The web asks it through
 `routes/review.stage_5_gate` before it offers to close review; the CLI loop

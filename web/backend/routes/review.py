@@ -311,7 +311,11 @@ async def resolve_property(
         "targetProperty": req.target_property,
         "confidence": req.confidence,
     }
-    apply_property_decision(entry, req.source_property, decision, cascade[1] if cascade else {})
+    from ontology_mapper.generation_utils import PropertyTargetError
+    try:
+        apply_property_decision(entry, req.source_property, decision, cascade[1] if cascade else {})
+    except PropertyTargetError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     _save(run_dir, matrix, dec_log, [entry])
 

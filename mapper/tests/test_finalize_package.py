@@ -451,6 +451,54 @@ class TestFinalizeEndToEnd:
         assert "lacks the matrix" in capsys.readouterr().out
         assert "finalizedAt" not in json.loads((pkg / "package-manifest.json").read_text(encoding="utf-8"))
 
+    def test_a_manifest_edited_after_validation_is_refused(self, tmp_path, monkeypatch, capsys):
+        """The manifest was outside the digest, so a namespace edited after
+        validation was published as finalized."""
+        run_dir, pkg = self._run_dir(tmp_path)
+        (pkg / "package-manifest.json").write_text(json.dumps(
+            {"name": "sample-edge", "edgeNamespace": "https://tampered.example/edge#"}),
+            encoding="utf-8")
+        assert self._finalize(run_dir, monkeypatch) == 1
+        assert "package-manifest.json" in capsys.readouterr().out
+        assert not (pkg / "governance").exists()
+
+    def test_a_package_without_its_manifest_is_not_published(self, tmp_path, monkeypatch, capsys):
+        """Validated without one: finalizing reported a package whose manifest
+        carried no stamp at all."""
+        from ontology_mapper.validate_edge_package import artifact_digests
+
+        run_dir, pkg = self._run_dir(tmp_path)
+        (pkg / "package-manifest.json").unlink()
+        report = json.loads((run_dir / "validation-report.json").read_text(encoding="utf-8"))
+        report["validatedArtifacts"] = artifact_digests(pkg)
+        (run_dir / "validation-report.json").write_text(json.dumps(report), encoding="utf-8")
+        assert self._finalize(run_dir, monkeypatch) == 1
+        assert "no package-manifest.json" in capsys.readouterr().out
+        assert not (pkg / "governance").exists()
+
+    def test_the_change_impact_reports_the_validated_audit(self, tmp_path, monkeypatch):
+        """The run directory's audit is outside the digest; reading it put
+        warnings nobody validated into the published change-impact report."""
+        run_dir, pkg = self._run_dir(tmp_path)
+        (run_dir / "generation-audit.json").write_text(json.dumps({"findings": [
+            {"severity": "warning", "concept": "src:Permit", "message": "Injected"}]}),
+            encoding="utf-8")
+        assert self._finalize(run_dir, monkeypatch) == 0
+        assert "Injected" not in (pkg / "governance" / "change-impact.md").read_text(encoding="utf-8")
+
+    def test_the_published_version_is_withdrawn_with_the_stamp(self, tmp_path, monkeypatch):
+        from ontology_mapper.validate_edge_package import (
+            DRAFT_VERSION, FINAL_VERSION, withdraw_stage_8_outputs)
+
+        run_dir, pkg = self._run_dir(tmp_path)
+        assert self._finalize(run_dir, monkeypatch) == 0
+        manifest = json.loads((pkg / "package-manifest.json").read_text(encoding="utf-8"))
+        assert manifest["version"] == FINAL_VERSION
+        withdraw_stage_8_outputs(pkg)
+        manifest = json.loads((pkg / "package-manifest.json").read_text(encoding="utf-8"))
+        assert "finalizedAt" not in manifest
+        assert manifest["version"] == DRAFT_VERSION
+
     def test_a_package_stage_7_never_validated_is_not_published(self, tmp_path, monkeypatch):
         run_dir, pkg = self._run_dir(tmp_path)
         (run_dir / "validation-report.json").unlink()

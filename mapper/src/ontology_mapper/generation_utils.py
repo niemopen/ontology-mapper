@@ -218,6 +218,28 @@ def catalog_property_definitions(catalog):
     return definitions
 
 
+class PropertyTargetError(ValueError):
+    """A reused target property the run's reference catalog does not list."""
+
+
+def missing_reuse_target(prop, class_target_type, catalog):
+    """The catalog key of the target a ``reuse-property`` decision names when
+    the run's catalog does not list it, else None.
+
+    One home for Stage 5 (at selection and at exit) and Stage 7 Check 12,
+    through the same key and definitions: a class target is refused when it
+    is chosen, but a property target was stored as typed, counted decided,
+    and failed only at Check 12, which review can no longer reopen. A
+    catalog without a property index cannot say, so nothing is refused.
+    """
+    target = (real_target_property(prop.get("targetProperty"))
+              if prop.get("action") == "reuse-property" else None)
+    if target is None or not (catalog or {}).get("propertyIndex"):
+        return None
+    key = catalog_property_key(target, class_target_type, catalog.get("namespaces", {}))
+    return None if key in catalog_property_definitions(catalog) else key
+
+
 def refingerprint_property(prop, class_target_type, catalog):
     """Point a property decision's ``targetDefinition`` and
     ``targetDefinitionHash`` at the target it now names.

@@ -438,7 +438,13 @@ def _dispatch_review_action(
         if cascade_context is None:
             cascade_context = load_cascade_context(run_dir)
         _, catalog = cascade_context
-        found = apply_property_decision(entry, src_prop, decision, catalog)
+        from ontology_mapper.generation_utils import PropertyTargetError
+        try:
+            found = apply_property_decision(entry, src_prop, decision, catalog)
+        except PropertyTargetError as exc:
+            # As for a class target: the message is the answer; the entry
+            # is untouched and the review loop continues.
+            return str(exc), applied, cascade_context
         if not found:
             return f"Property not found: {src_prop} on {entry['sourceConcept']}", applied, cascade_context
 

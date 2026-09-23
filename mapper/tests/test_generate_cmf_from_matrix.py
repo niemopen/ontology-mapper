@@ -1382,3 +1382,21 @@ class TestFullIriTargets:
         [a] = model.classes
         assert a.sub_class_of == "https://other.test/model/X"
         assert [n.ns_id for n in model.namespaces] == ["test-edge"]
+
+
+def test_a_full_iri_target_class_range_names_the_same_class_as_the_owl():
+    """Whole-PR review: the OWL grounded a full-IRI range in a catalog
+    namespace to the target class; the CMF dropped it, so the two models
+    disagreed about what the property points at."""
+    from ontology_mapper.generation_utils import component_iri
+    ns = "http://example.org/niem-core/6.0"
+    inv = _make_inventory(
+        classes=[_make_class("src:A")],
+        obj_props=[_make_obj_prop("src:about", domain=["src:A"],
+                                  range_list=[component_iri(ns, "PersonType")])])
+    matrix = _make_matrix([_make_mapping("src:A", "reuse", "nc:BaseType", property_mappings=[
+        _make_prop_mapping("src:about", "create-property")])])
+    model = _build(matrix, inv, target_ns_map={"nc": ns})
+    [about] = [p for p in model.properties if p.name == "about"]
+    assert about.class_ref == "nc.PersonType"
+    assert "nc" in {n.prefix for n in model.namespaces}

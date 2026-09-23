@@ -416,7 +416,9 @@ def test_withdraw_conclusions_removes_only_what_stage_8_wrote(tmp_path):
         if name != "package-manifest.json":
             assert not (pkg / name).exists(), name
     manifest = json.loads((pkg / "package-manifest.json").read_text(encoding="utf-8"))
-    assert manifest == {"name": "sample", "version": "1.0.0"}
+    # Stage 8's release version is taken back with its stamp; Stage 6 wrote
+    # the draft version, and leaving 1.0.0 published an unfinalized package.
+    assert manifest == {"name": "sample", "version": "0.1.0"}
     assert (pkg / "governance" / "decision-log.json").exists()
     assert state.stage_status("7") == "pending"
     # Idempotent: a second withdrawal over an unstamped package changes nothing.

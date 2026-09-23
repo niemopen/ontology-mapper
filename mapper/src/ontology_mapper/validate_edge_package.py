@@ -37,8 +37,16 @@ STAGE_8_OUTPUTS = (
     "governance/lineage-manifest.json",
     "governance/validation-report.json",
     "governance/change-impact.md",
-    "package-manifest.json",
 )
+# The package manifest is Stage 6's, and Stage 8 writes only these keys into
+# it. It is digested without them: excluding the whole file let an edit to
+# its namespaces or target after validation be published as finalized.
+MANIFEST_NAME = "package-manifest.json"
+STAGE_8_MANIFEST_KEYS = ("finalizedAt", "version", "stats")
+# The version Stage 6 writes and the one Stage 8 publishes; withdrawing a
+# finalization restores the first.
+DRAFT_VERSION = "0.1.0"
+FINAL_VERSION = "1.0.0"
 
 
 def withdraw_stage_8_outputs(pkg_dir):
@@ -48,7 +56,9 @@ def withdraw_stage_8_outputs(pkg_dir):
     only writer of these files, so when a new Stage 6 or 7 fails and Stage 8
     never runs, nothing else would replace a PASS report and a finalization
     stamp that speak for the package's previous content. The package manifest
-    itself is Stage 6's; only the stamp Stage 8 added is taken back.
+    itself is Stage 6's; the stamp Stage 8 added is taken back and its
+    version restored to Stage 6's (its stats are recounted from the same
+    matrix).
     Returns the paths withdrawn, relative to the package.
     """
     import json
@@ -58,19 +68,17 @@ def withdraw_stage_8_outputs(pkg_dir):
     withdrawn = []
     for name in STAGE_8_OUTPUTS:
         path = pkg_dir / name
-        if name == "package-manifest.json":
-            if not path.exists():
-                continue
-            manifest = json.loads(path.read_text(encoding="utf-8"))
-            if manifest.pop("finalizedAt", None) is None:
-                continue
+        if path.exists():
+            path.unlink()
+            withdrawn.append(name)
+    path = pkg_dir / MANIFEST_NAME
+    if path.exists():
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+        if manifest.pop("finalizedAt", None) is not None:
+            manifest["version"] = DRAFT_VERSION
             path.write_text(json.dumps(manifest, indent=2) + "\n",
                             encoding="utf-8")
-        elif path.exists():
-            path.unlink()
-        else:
-            continue
-        withdrawn.append(name)
+            withdrawn.append(MANIFEST_NAME)
     return withdrawn
 
 
@@ -86,14 +94,29 @@ def validated_artifacts(pkg_dir):
     )
 
 
+def _digest(pkg_dir, path):
+    """sha256 of a validated file; the package manifest without the keys
+    Stage 8 writes, so finalizing does not stale its own report."""
+    import hashlib
+    import json
+
+    if path.relative_to(pkg_dir).as_posix() == MANIFEST_NAME:
+        try:
+            manifest = json.loads(path.read_text(encoding="utf-8"))
+        except ValueError:
+            return hashlib.sha256(path.read_bytes()).hexdigest()
+        if isinstance(manifest, dict):
+            stage_6 = {k: v for k, v in manifest.items() if k not in STAGE_8_MANIFEST_KEYS}
+            return hashlib.sha256(json.dumps(stage_6, sort_keys=True).encode("utf-8")).hexdigest()
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
 def artifact_digests(pkg_dir):
     """`{path relative to the package: sha256}` over the validated files."""
-    import hashlib
     from pathlib import Path
 
     pkg_dir = Path(pkg_dir)
-    return {p.relative_to(pkg_dir).as_posix():
-            hashlib.sha256(p.read_bytes()).hexdigest()
+    return {p.relative_to(pkg_dir).as_posix(): _digest(pkg_dir, p)
             for p in validated_artifacts(pkg_dir)}
 
 
@@ -600,14 +623,16 @@ def main():
 
     # ── Check 5: Decision log vs mapped concept count ──────────────────────
     print("\n  Check 5: Decision log count")
+    # The package's own log: the run directory's copy is not what ships.
     dec_log_path = PKG / "governance" / "decision-log.json"
     if not dec_log_path.exists():
-        dec_log_path = RUN_DIR / "decision-log.json"
-
-    dec_log = json.loads(dec_log_path.read_text(encoding="utf-8"))
-    dec_count = len(dec_log.get("decisions", []))
-    add_check(checks, "decision-log-count", dec_count >= len(mapped_concepts),
-          f"{dec_count} decisions for {len(mapped_concepts)} mapped concepts")
+        add_check(checks, "decision-log-count", False,
+                  "the package has no governance/decision-log.json; re-run from Stage 6")
+    else:
+        dec_log = json.loads(dec_log_path.read_text(encoding="utf-8"))
+        dec_count = len(dec_log.get("decisions", []))
+        add_check(checks, "decision-log-count", dec_count >= len(mapped_concepts),
+              f"{dec_count} decisions for {len(mapped_concepts)} mapped concepts")
 
     # ── Check 6: Cypher script validity ──────────────────────────────────
     print("\n  Check 6: Cypher script validity")

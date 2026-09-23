@@ -3,12 +3,19 @@
 ## What the report speaks for
 
 The report records `validatedArtifacts`: a SHA-256 per package file Stage 7
-validated — every file except the five Stage 8 writes itself
+validated — every file except the four Stage 8 writes itself
 (`governance/version-manifest.json`, `governance/lineage-manifest.json`,
-`governance/validation-report.json`, `governance/change-impact.md` and the
-root `package-manifest.json`). `governance/` is not Stage 8's alone: Stage 6b
-writes the decision log, generation audit, quality-gate report and coherence
-manifest there, and Check 5 reads the first of them.
+`governance/validation-report.json`, `governance/change-impact.md`).
+`governance/` is not Stage 8's alone: Stage 6b writes the decision log,
+generation audit, quality-gate report and coherence manifest there; Check 5
+reads the package's decision log and fails when the package has none, and
+Stage 8's change-impact report reads the package's generation audit, never
+the run directory's copies, which no digest covers. The root
+`package-manifest.json` is Stage 6b's and is digested without the keys
+Stage 8 writes into it (`finalizedAt`, `version`, `stats`;
+`validate_edge_package.STAGE_8_MANIFEST_KEYS`), so an edit to its
+namespaces or target after validation is refused while finalizing does not
+stale its own report.
 
 Stage 8 compares those digests before publishing
 (`validate_edge_package.stale_against_package`) and refuses a report that
@@ -51,7 +58,7 @@ Before validating, both orchestrators call `pipeline.reopen_run(run_dir, "7")`
 Stages 7 and 8 stop reading as completed, this run's `validation-report.json`
 is deleted, and the certificate a previous Stage 8 left in the package — the
 governance copies in the list above and `package-manifest.json`'s
-`finalizedAt` — is withdrawn (`validate_edge_package.withdraw_stage_8_outputs`).
+`finalizedAt`, with its `version` restored to Stage 6b's draft version — is withdrawn (`validate_edge_package.withdraw_stage_8_outputs`).
 Without that, a re-run on a finalized package whose new validation fails
 stops before Stage 8, the only writer of those files, and the package kept a
 PASS report and a finalization stamp for content that failed. Each

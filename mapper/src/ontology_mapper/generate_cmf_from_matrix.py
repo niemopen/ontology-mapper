@@ -242,6 +242,12 @@ class MatrixToCmfBuilder:
 
         # Source namespace for cross-namespace properties
         properties = self.inventory["objectProperties"] + self.inventory["datatypeProperties"]
+        # A full-IRI range `_resolve_range` grounds to a target class names
+        # that class's namespace.
+        for prop in properties:
+            for r in prop.get("range", []):
+                if is_full_iri(r):
+                    self._add_target_ns(model, r, seen_prefixes)
         source_refs = {prop["qname"] for prop in properties}
         source_refs.update(r for prop in properties for r in prop.get("range", [])
                            if _qname_prefix(r) in self._source_bindings)
@@ -450,6 +456,12 @@ class MatrixToCmfBuilder:
                 if mapped:
                     return mapped
             else:
+                # A full IRI in a namespace the target catalog binds is
+                # grounded as the OWL emitter's `map_range_ref` grounds it,
+                # so both models name the same range.
+                grounded = target_qname(r, self.target_ns_map)
+                if grounded != r:
+                    return self._qname_to_cmf_id(grounded)
                 # External range — use as-is
                 prefix = _qname_prefix(r)
                 if prefix:

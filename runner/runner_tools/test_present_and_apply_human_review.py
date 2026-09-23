@@ -1544,6 +1544,44 @@ class TestStageFiveExitValidatesSavedTargets:
         assert undecided_properties(matrix["mappings"]) == [
             {"concept": "src:A", "property": "src:count"}]
 
+    def test_a_saved_property_target_the_catalog_lacks_blocks_exit(self):
+        """Whole-PR review: a reused property the catalog does not list closed
+        review, and Stage 7 Check 12 failed the run after review could no
+        longer be reopened."""
+        from runner_tools._present_and_apply_human_review import check_stage_5_exit
+        matrix = self._matrix("nc:PersonType")
+        matrix["mappings"][0]["propertyMappings"] = [
+            {"sourceProperty": "src:name", "action": "reuse-property",
+             "targetProperty": "nc:NoSuchPropertyName", "reviewStatus": "accepted"}]
+        can_exit, blockers = check_stage_5_exit(matrix, self._cascade())
+        assert not can_exit
+        assert blockers == ["src:A src:name: target property nc:NoSuchPropertyName "
+                            "is not in the reference catalog"]
+
+
+def test_a_property_target_the_catalog_lacks_is_refused_when_chosen():
+    """The class target was checked when chosen; the property target was not,
+    so a typo was accepted and failed only at Stage 7."""
+    import copy
+    import json
+    from ontology_mapper.generation_utils import PropertyTargetError
+    from ontology_mapper.run_dir_utils import resolve_specs_dir
+    from runner_tools._present_and_apply_human_review import apply_property_decision
+
+    catalog = json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json").read_text(encoding="utf-8"))
+    entry = {"sourceConcept": "src:Person", "action": "reuse", "targetType": "nc:PersonType",
+             "reviewStatus": "accepted", "propertyMappings": [
+                 {"sourceProperty": "src:name", "action": "human-must-decide",
+                  "reviewStatus": "pending-review"}]}
+    before = copy.deepcopy(entry)
+    with pytest.raises(PropertyTargetError, match="nc:NoSuchPropertyName"):
+        apply_property_decision(entry, "src:name", {"action": "reuse-property",
+                                                    "targetProperty": "nc:NoSuchPropertyName"}, catalog)
+    assert entry == before
+    assert apply_property_decision(entry, "src:name", {"action": "reuse-property",
+                                                       "targetProperty": "nc:PersonName"}, catalog)
+    assert apply_property_decision(entry, "src:name", {"action": "create-property"}, catalog)
+
 
 class TestStageFiveCompletionEnforcesExit:
     """Marking the stage complete is the boundary the web and the CLI share.

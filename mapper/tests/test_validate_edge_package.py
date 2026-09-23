@@ -8,7 +8,8 @@ import sys
 
 
 @pytest.mark.parametrize("defect", [None, "syntax", "shacl", "valid-cmf", "cmf-unbound",
-                                    "niem-without-cmf", "no-package-matrix"])
+                                    "niem-without-cmf", "no-package-matrix",
+                                    "no-package-decision-log"])
 def test_cli_reports_failure_and_exit_status(tmp_path, defect):
     """Real CLI, real parsing/validation, and synthetic files only."""
     pkg = tmp_path / "edge-package"
@@ -26,6 +27,11 @@ def test_cli_reports_failure_and_exit_status(tmp_path, defect):
     (tmp_path / "concept-inventory.json").write_text('{"classes": []}')
     (tmp_path / "mapping-matrix.json").write_text('{"mappings": []}')
     (tmp_path / "decision-log.json").write_text('{"decisions": []}')
+    # Stage 6b's copy; without it Check 5 counted the run's log, which the
+    # package does not ship, and passed.
+    if defect != "no-package-decision-log":
+        (pkg / "governance").mkdir()
+        (pkg / "governance/decision-log.json").write_text('{"decisions": []}')
     (pkg / "kg/schema.cypher").write_text("RETURN 1;")
     (pkg / "kg/import/internal-to-edge.json").write_text('{"transforms": []}')
     (pkg / "kg/import/loader-config.json").write_text('{}')

@@ -255,11 +255,22 @@ def apply_property_decision(entry, source_property, decision, catalog):
                   Check 12 compares against the target the reviewer chose.
 
     Returns True if the property was found and updated, False otherwise.
+    Raises `PropertyTargetError`, leaving the entry untouched, when the
+    decision reuses a target the catalog does not list: as for a class
+    target, the choice is refused when made, not at Stage 7.
     """
-    from ontology_mapper.generation_utils import refingerprint_property
+    from ontology_mapper.generation_utils import (
+        PropertyTargetError, missing_reuse_target, refingerprint_property)
 
     for p in (entry.get("propertyMappings") or []):
         if p["sourceProperty"] == source_property:
+            proposed = {"action": decision["action"],
+                        "targetProperty": decision.get("targetProperty", p.get("targetProperty"))}
+            missing = missing_reuse_target(proposed, entry.get("targetType"), catalog)
+            if missing:
+                raise PropertyTargetError(
+                    f"{missing} is not a property in this run's reference catalog; "
+                    f"reuse a property it lists, or create-property")
             p["action"] = decision["action"]
             p["reviewStatus"] = "accepted"
             p["confidence"] = decision.get("confidence", "confident")
@@ -726,6 +737,17 @@ def check_stage_5_exit(matrix, cascade):
     target_ontology, catalog = cascade
     for concept, target, message in invalid_class_targets(matrix, target_ontology, catalog):
         blockers.append(f"{concept}: {message}")
+
+    # A reused property target the catalog lacks, saved before selection
+    # checked it (or edited in): Stage 7 Check 12 would fail it, after
+    # review can no longer be reopened.
+    from ontology_mapper.generation_utils import missing_reuse_target
+    for m in matrix.get("mappings", []):
+        for p in m.get("propertyMappings") or []:
+            missing = missing_reuse_target(p, m.get("targetType"), catalog)
+            if missing:
+                blockers.append(f"{m['sourceConcept']} {p.get('sourceProperty')}: "
+                                f"target property {missing} is not in the reference catalog")
 
     return len(blockers) == 0, blockers
 

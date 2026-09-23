@@ -24,7 +24,7 @@ from pathlib import Path
 
 from ontology_mapper.pipeline_context import load_context
 from ontology_mapper.run_dir_utils import parse_stamp, utc_stamp
-from ontology_mapper.validate_edge_package import stale_against_package
+from ontology_mapper.validate_edge_package import FINAL_VERSION, stale_against_package
 
 
 def _count_actions(mappings):
@@ -86,14 +86,14 @@ def build_version_manifest(ctx, matrix, state=None):
     now = utc_stamp()
 
     manifest = {
-        "currentVersion": "1.0.0",
+        "currentVersion": FINAL_VERSION,
         "targetOntology": ctx.target_ontology,
         "targetVersion": ctx.target_version,
         "mapperVersion": "ontology-mapper-1.0",
         "sourcePackageVersion": f"{source_name}@1.0",
         "generationHistory": [
             {
-                "version": "1.0.0",
+                "version": FINAL_VERSION,
                 "generatedAt": now,
                 "targetOntology": ctx.target_ontology,
                 "targetVersion": ctx.target_version,
@@ -297,7 +297,7 @@ def reconcile_manifest(pkg, matrix):
         "totalConcepts": len(mappings),
         "actionCounts": action_counts,
     }
-    manifest["version"] = "1.0.0"
+    manifest["version"] = FINAL_VERSION
     manifest["finalizedAt"] = utc_stamp()
 
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
@@ -357,8 +357,15 @@ def main():
               f"Stage 7 validates; re-run from Stage 6.")
         sys.exit(1)
     matrix = json.loads(matrix_path.read_text(encoding="utf-8"))
+    if not (ctx.pkg_dir / "package-manifest.json").exists():
+        # Stage 6b always writes it; publishing without it reported a
+        # finalized package whose manifest carried no stamp at all.
+        print("  ERROR: the package has no package-manifest.json; re-run from Stage 6.")
+        sys.exit(1)
 
-    audit_path = ctx.run_dir / "generation-audit.json"
+    # The package copy Stage 7 digested, not the run directory's, which an
+    # edit after validation could change unrefused.
+    audit_path = ctx.pkg_dir / "governance" / "generation-audit.json"
     generation_audit = json.loads(audit_path.read_text(encoding="utf-8")) if audit_path.exists() else None
 
     # Load pipeline state for timing data
