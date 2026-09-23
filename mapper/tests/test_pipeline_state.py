@@ -360,3 +360,96 @@ def test_new_state_uses_configured_runs_root(tmp_path, monkeypatch):
     monkeypatch.setattr(pipeline, "RUNS_ROOT", tmp_path)
     state = pipeline.PipelineState.new()
     assert pipeline._get_run_dir(state) == tmp_path / state.run_id
+
+
+def _finalized_state():
+    state = pipeline.PipelineState.new()
+    for stage in STAGE_ORDER:
+        state.record_stage(StageResult(stage=stage, status="completed",
+                                       started_at="t0", completed_at="t1"))
+    return state
+
+
+def _finalized_package(pkg):
+    gov = pkg / "governance"
+    gov.mkdir(parents=True)
+    for name in ("validation-report.json", "version-manifest.json",
+                 "lineage-manifest.json"):
+        (gov / name).write_text('{"allPassed": true}', encoding="utf-8")
+    (gov / "change-impact.md").write_text("All validation checks passed.\n", encoding="utf-8")
+    (gov / "decision-log.json").write_text("{}", encoding="utf-8")  # Stage 6b's
+    (pkg / "package-manifest.json").write_text(
+        json.dumps({"name": "sample", "version": "1.0.0", "finalizedAt": "t2"}),
+        encoding="utf-8")
+
+
+def test_reopen_takes_back_completion_from_that_stage_on():
+    state = _finalized_state()
+    state.reopen("7")
+    assert [state.stage_status(s) for s in STAGE_ORDER] == ["completed"] * 6 + ["pending"] * 2
+    assert state.stages["8"]["completed_at"] is None
+    assert state.highest_completed == "6"
+    assert state.next_stage() == "7"
+    state.reopen("1")
+    assert state.highest_completed is None
+
+
+def test_reopen_leaves_a_run_that_never_reached_the_stage_alone():
+    state = pipeline.PipelineState.new()
+    for stage in ("1", "2", "3"):
+        state.record_stage(StageResult(stage=stage, status="completed", started_at="t0"))
+    state.reopen("7")
+    assert state.highest_completed == "3"
+    assert "7" not in state.stages
+
+
+def test_withdraw_conclusions_removes_only_what_stage_8_wrote(tmp_path):
+    from ontology_mapper.validate_edge_package import STAGE_8_OUTPUTS
+
+    pkg = tmp_path / "edge-package"
+    _finalized_package(pkg)
+    (tmp_path / "validation-report.json").write_text('{"allPassed": true}', encoding="utf-8")
+    state = _finalized_state()
+    pipeline.withdraw_conclusions(state, tmp_path, pkg, "7")
+    assert not (tmp_path / "validation-report.json").exists()
+    for name in STAGE_8_OUTPUTS:
+        if name != "package-manifest.json":
+            assert not (pkg / name).exists(), name
+    manifest = json.loads((pkg / "package-manifest.json").read_text(encoding="utf-8"))
+    assert manifest == {"name": "sample", "version": "1.0.0"}
+    assert (pkg / "governance" / "decision-log.json").exists()
+    assert state.stage_status("7") == "pending"
+    # Idempotent: a second withdrawal over an unstamped package changes nothing.
+    pipeline.withdraw_conclusions(state, tmp_path, pkg, "7")
+    assert json.loads((pkg / "package-manifest.json").read_text(encoding="utf-8")) == manifest
+
+
+def test_regenerating_a_finalized_package_withdraws_its_certificate(tmp_path, monkeypatch):
+    """Stage 6 through `om-pipeline rerun --stage 6`, the path both drivers take."""
+    monkeypatch.setattr(pipeline, "execute_stage", lambda state, number: StageResult(
+        stage=number, status="failed", started_at="t0", error="generation refused"))
+    state = _finalized_state()
+    state.inputs = {"organization": "example", "source": "sample",
+                    "input_package_path": str(tmp_path),
+                    "target_ontology": "niem", "target_version": "6.0"}
+    state_path = tmp_path / ".mapper-state.json"
+    state.save(state_path)
+    _finalized_package(tmp_path / "edge-package")
+
+    assert pipeline.cmd_rerun(argparse.Namespace(run_dir=str(tmp_path), stage="6")) == 1
+    saved = json.loads(state_path.read_text(encoding="utf-8"))
+    assert {s: saved["stages"][s]["status"] for s in ("6", "7", "8")} == {
+        "6": "failed", "7": "pending", "8": "pending"}
+    assert not (tmp_path / "edge-package" / "governance" / "validation-report.json").exists()
+    assert "finalizedAt" not in json.loads(
+        (tmp_path / "edge-package" / "package-manifest.json").read_text(encoding="utf-8"))
+
+
+def test_record_stage_failure_keeps_the_start(tmp_path):
+    state = _finalized_state()
+    state.save(tmp_path / ".mapper-state.json")
+    pipeline.record_stage_failure(tmp_path, "7", "SOME CHECKS FAILED")
+    saved = json.loads((tmp_path / ".mapper-state.json").read_text(encoding="utf-8"))
+    assert saved["stages"]["7"]["status"] == "failed"
+    assert saved["stages"]["7"]["started_at"] == "t0"
+    assert saved["stages"]["7"]["error"] == "SOME CHECKS FAILED"

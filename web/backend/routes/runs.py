@@ -17,6 +17,7 @@ from auth import require_auth, get_org_slug
 from config import settings
 from models import CreateRunRequest, RunSummary
 from ontology_mapper.build_mapping_matrix import refuse_to_discard_review
+from ontology_mapper.pipeline import record_stage_failure, reopen_run
 
 router = APIRouter(tags=["runs"])
 
@@ -401,10 +402,14 @@ def _run_pipeline_stages_6_8(run_id: str, run_dir: Path, cwd: str, env: dict) ->
     # writing the report; the feedback report maps those failures back to
     # source decisions, so it is produced before the failed stage stops.
     _pipeline_status[run_id]["stage"] = "7"
+    # Only this run's report counts, and a previous Stage 8's certificate is
+    # withdrawn with it (ontology_mapper.pipeline.withdraw_conclusions).
+    reopen_run(run_dir, "7")
     _record_stage_start(run_dir, "7")
-    for stale in ("validation-report.json", "feedback-report.json"):
-        (run_dir / stale).unlink(missing_ok=True)  # only this run's report counts
+    (run_dir / "feedback-report.json").unlink(missing_ok=True)
     validated = _run_cmd(run_id, "7", ["om-validate", "--run-dir", rd], cwd, env)
+    if not validated:
+        record_stage_failure(run_dir, "7", _pipeline_status[run_id].get("error") or "om-validate failed")
     if not validated and not (run_dir / "validation-report.json").exists():
         return False  # the validator crashed; there is nothing to report on
     validation_failure = None if validated else dict(_pipeline_status[run_id])

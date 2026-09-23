@@ -243,6 +243,23 @@ class PipelineState:
             ):
                 self.highest_completed = result.stage
 
+    def reopen(self, number: str) -> None:
+        """Take back "completed" from stage *number* and every later stage.
+
+        Used when an earlier stage is about to replace the input those stages
+        concluded about: their conclusions no longer hold, and a later failure
+        would otherwise leave them reading as complete.
+        """
+        idx = stage_index(number)
+        for stage, entry in self.stages.items():
+            if (stage in STAGE_MAP and stage_index(stage) >= idx
+                    and entry.get("status") == "completed"):
+                entry["status"] = "pending"
+                entry["completed_at"] = None
+        if (self.highest_completed is not None
+                and stage_index(self.highest_completed) >= idx):
+            self.highest_completed = STAGE_ORDER[idx - 1] if idx > 0 else None
+
     def stage_status(self, number: str) -> Optional[str]:
         entry = self.stages.get(number)
         return entry["status"] if entry else None
@@ -664,13 +681,64 @@ def _handle_human_review_gate(
     )
 
 
+def withdraw_conclusions(state: PipelineState, run_dir: Path, pkg_dir: Path,
+                         from_stage: str) -> None:
+    """Void what stage *from_stage* and later stages concluded about the package.
+
+    The one home for this, called when Stage 6 is about to regenerate the
+    package and when Stage 7 is about to re-validate it, by every driver. A
+    failure after this point then leaves nothing that reads as validated or
+    finalized: the stages are no longer "completed", this run's validation
+    report is gone, and the package holds no certificate from a previous
+    Stage 8. The caller saves *state*.
+    """
+    from ontology_mapper.validate_edge_package import withdraw_stage_8_outputs
+
+    state.reopen(from_stage)
+    (Path(run_dir) / "validation-report.json").unlink(missing_ok=True)
+    withdraw_stage_8_outputs(pkg_dir)
+
+
+def _load_run(run_dir) -> tuple[PipelineState, Path, Path]:
+    state_path = state_path_for(Path(run_dir))
+    state = PipelineState.load(state_path)
+    return state, state_path, PipelineContext.from_inputs(
+        state.inputs, run_dir=Path(run_dir)).pkg_dir
+
+
+def reopen_run(run_dir, from_stage: str) -> None:
+    """`withdraw_conclusions` for a driver that holds only the run directory."""
+    state, state_path, pkg_dir = _load_run(run_dir)
+    withdraw_conclusions(state, Path(run_dir), pkg_dir, from_stage)
+    state.save(state_path)
+
+
+def record_stage_failure(run_dir, stage: str, error: str) -> None:
+    """Record in the run's state that *stage* failed, keeping when it started."""
+    state, state_path, _ = _load_run(run_dir)
+    entry = state.stages.get(stage) or {}
+    state.record_stage(StageResult(
+        stage=stage,
+        status="failed",
+        started_at=entry.get("started_at") or utc_stamp(),
+        completed_at=utc_stamp(),
+        error=error,
+        notes=entry.get("notes"),
+    ))
+    state.save(state_path)
+
+
 def _handle_bootstrap_output(
     state: PipelineState, spec: StageSpec, started: str
 ) -> StageResult:
-    """Stage 6 pre-step: bootstrap the edge package directory structure."""
+    """Stage 6 pre-step: bootstrap the edge package directory structure.
+
+    Regenerating the package voids what Stages 7 and 8 concluded about it.
+    """
     run_dir = _get_run_dir(state)
     ctx = PipelineContext.from_inputs(state.inputs, run_dir=run_dir)
     output_path = ctx.pkg_dir
+    withdraw_conclusions(state, run_dir, output_path, "7")
 
     dirs_to_create = [
         "cmf",

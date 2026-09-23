@@ -25,6 +25,7 @@ from pathlib import Path
 from runner_tools.verify_stage_outputs import verify
 from ontology_mapper.build_mapping_matrix import refuse_to_discard_review
 from ontology_mapper.ontology_specific import ClassTargetError
+from ontology_mapper.pipeline import record_stage_failure, reopen_run
 from runner_tools._present_and_apply_human_review import (
     load_inputs as review_load_inputs,
     get_pending_items,
@@ -752,13 +753,16 @@ def run_stage_7(run_dir: Path, timers: list[StageTimer]):
     with StageTimer("7") as t:
         # Only this run's report counts: a previous run's report would make a
         # validator crash look like a failed validation and feed stale
-        # conclusions to the feedback report and to verification.
-        for stale in ("validation-report.json", "feedback-report.json"):
-            (run_dir / stale).unlink(missing_ok=True)
+        # conclusions to the feedback report and to verification. A previous
+        # Stage 8's certificate is withdrawn with it, so a failure here does
+        # not leave the package reading as validated and finalized.
+        reopen_run(run_dir, "7")
+        (run_dir / "feedback-report.json").unlink(missing_ok=True)
         validation_failure = None
         try:
             run_cmd("7", ["om-validate", "--run-dir", str(run_dir)])
         except StageError as exc:
+            record_stage_failure(run_dir, "7", str(exc))
             if not (run_dir / "validation-report.json").exists():
                 raise  # the validator crashed; there is nothing to report on
             validation_failure = exc

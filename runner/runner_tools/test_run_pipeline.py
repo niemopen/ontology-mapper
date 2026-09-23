@@ -518,10 +518,30 @@ class TestStage5Metric:
 # Stage 7: failed validation still produces the feedback report
 # ---------------------------------------------------------------------------
 
+def _finalized_run(run_dir):
+    """A run whose previous Stages 7 and 8 passed and stamped the package."""
+    stamp = "2026-09-01T00:00:00Z"
+    stages = {s: {"stage": s, "status": "completed", "started_at": stamp,
+                  "completed_at": stamp, "error": None, "artifacts": [], "notes": None}
+              for s in "12345678"}
+    (run_dir / ".mapper-state.json").write_text(json.dumps({
+        "run_id": "sample", "created_at": stamp, "updated_at": stamp,
+        "inputs": {"target_ontology": "niem", "target_version": "6.0"},
+        "stages": stages, "highest_completed": "8", "current_stage": "8"}), encoding="utf-8")
+    gov = run_dir / "edge-package" / "governance"
+    gov.mkdir(parents=True)
+    (gov / "validation-report.json").write_text('{"allPassed": true}', encoding="utf-8")
+    (gov / "decision-log.json").write_text("{}", encoding="utf-8")  # Stage 6b's
+    (run_dir / "edge-package" / "package-manifest.json").write_text(
+        json.dumps({"name": "sample", "finalizedAt": stamp}), encoding="utf-8")
+    return run_dir / "edge-package"
+
+
 @pytest.mark.parametrize("valid", [False, True])
 def test_stage_7_writes_feedback_report_before_stopping_on_failed_validation(tmp_path, monkeypatch, valid):
     import runner_tools.run_pipeline as runner
 
+    pkg = _finalized_run(tmp_path)
     commands = []
 
     def run_cmd(stage, cmd, cwd=None):
@@ -548,6 +568,14 @@ def test_stage_7_writes_feedback_report_before_stopping_on_failed_validation(tmp
             runner.run_stage_7(tmp_path, [])
         # feedback_report.py ran after the failed validation; mark-complete did not
         assert commands == ["om-validate", "python"]
+        # Nothing from the previous Stage 8 still reads as validated or final.
+        assert not (pkg / "governance" / "validation-report.json").exists()
+        assert (pkg / "governance" / "decision-log.json").exists()
+        assert "finalizedAt" not in json.loads((pkg / "package-manifest.json").read_text(encoding="utf-8"))
+        state = json.loads((tmp_path / ".mapper-state.json").read_text(encoding="utf-8"))
+        assert state["stages"]["7"]["status"] == "failed"
+        assert state["stages"]["8"]["status"] == "pending"
+        assert state["highest_completed"] == "6"
 
 
 
@@ -556,6 +584,7 @@ def test_stage_7_discards_a_previous_runs_report_before_validating(tmp_path, mon
     with stale feedback and stale verification."""
     import runner_tools.run_pipeline as runner
 
+    _finalized_run(tmp_path)
     (tmp_path / "validation-report.json").write_text('{"checks": [], "stale": true}', encoding="utf-8")
     (tmp_path / "feedback-report.json").write_text('{"stale": true}', encoding="utf-8")
     commands = []
@@ -580,6 +609,7 @@ def test_stage_7_validator_crash_without_a_report_is_raised_as_is(tmp_path, monk
     failed: the error (stderr in its message) is raised; no feedback report runs."""
     import runner_tools.run_pipeline as runner
 
+    _finalized_run(tmp_path)
     commands = []
 
     def run_cmd(stage, cmd, cwd=None):

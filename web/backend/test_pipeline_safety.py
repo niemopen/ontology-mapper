@@ -11,6 +11,26 @@ from config import settings
 from routes import review, runs
 
 
+def _finalized_run(run_dir):
+    """A run whose previous Stages 7 and 8 passed and stamped the package."""
+    stamp = "2026-09-01T00:00:00Z"
+    stages = {s: {"stage": s, "status": "completed", "started_at": stamp,
+                  "completed_at": stamp, "error": None, "artifacts": [], "notes": None}
+              for s in "12345678"}
+    (run_dir / ".mapper-state.json").write_text(json.dumps({
+        "run_id": "sample", "created_at": stamp, "updated_at": stamp,
+        "inputs": {"target_ontology": "niem", "target_version": "6.0"},
+        "stages": stages, "highest_completed": "8", "current_stage": "8"}), encoding="utf-8")
+    gov = run_dir / "edge-package" / "governance"
+    gov.mkdir(parents=True)
+    (gov / "validation-report.json").write_text('{"allPassed": true}', encoding="utf-8")
+    (gov / "change-impact.md").write_text("All validation checks passed.\n", encoding="utf-8")
+    (gov / "decision-log.json").write_text("{}", encoding="utf-8")  # Stage 6b's
+    (run_dir / "edge-package" / "package-manifest.json").write_text(
+        json.dumps({"name": "sample", "finalizedAt": stamp}), encoding="utf-8")
+    return run_dir / "edge-package"
+
+
 @pytest.fixture
 def run_context(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "runs_dir", tmp_path)
@@ -70,6 +90,7 @@ def test_continue_uses_current_matrix(run_context, decision):
 @pytest.mark.parametrize("valid", [False, True])
 def test_validation_stops_before_finalization(tmp_path, monkeypatch, valid):
     monkeypatch.setattr(runs, "_pipeline_status", {"sample": {}})
+    pkg = _finalized_run(tmp_path)
     commands = []
     completed = []
     monkeypatch.setattr(runs, "_record_stage_start", lambda *args: None)
@@ -93,10 +114,21 @@ def test_validation_stops_before_finalization(tmp_path, monkeypatch, valid):
     assert commands.index("python") > commands.index("om-validate")
     if not valid:
         assert runs._pipeline_status["sample"]["error"] == "SOME CHECKS FAILED"
+        # Nothing from the previous Stage 8 still reads as validated or final,
+        # in the package or in the state a restarted backend reports from.
+        assert not (pkg / "governance" / "validation-report.json").exists()
+        assert not (pkg / "governance" / "change-impact.md").exists()
+        assert (pkg / "governance" / "decision-log.json").exists()
+        assert "finalizedAt" not in json.loads((pkg / "package-manifest.json").read_text(encoding="utf-8"))
+        state = json.loads((tmp_path / ".mapper-state.json").read_text(encoding="utf-8"))
+        assert state["stages"]["7"]["status"] == "failed"
+        assert state["stages"]["8"]["status"] == "pending"
+        assert state["highest_completed"] == "6"
 
 
 def test_validator_crash_without_a_report_stops_before_the_feedback_report(tmp_path, monkeypatch):
     monkeypatch.setattr(runs, "_pipeline_status", {"sample": {}})
+    _finalized_run(tmp_path)
     commands = []
     monkeypatch.setattr(runs, "_record_stage_start", lambda *args: None)
     monkeypatch.setattr(runs, "_mark_complete", lambda run_id, stage, *args: True)
@@ -116,6 +148,7 @@ def test_validator_crash_without_a_report_stops_before_the_feedback_report(tmp_p
 
 def test_stage_7_discards_a_previous_runs_report_before_validating(tmp_path, monkeypatch):
     monkeypatch.setattr(runs, "_pipeline_status", {"sample": {}})
+    _finalized_run(tmp_path)
     (tmp_path / "validation-report.json").write_text('{"checks": [], "stale": true}', encoding="utf-8")
     (tmp_path / "feedback-report.json").write_text('{"stale": true}', encoding="utf-8")
     commands = []

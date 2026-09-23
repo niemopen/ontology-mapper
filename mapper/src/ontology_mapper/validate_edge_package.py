@@ -41,6 +41,39 @@ STAGE_8_OUTPUTS = (
 )
 
 
+def withdraw_stage_8_outputs(pkg_dir):
+    """Remove the certificate a previous Stage 8 left in the package.
+
+    Called before a package is regenerated or re-validated. Stage 8 is the
+    only writer of these files, so when a new Stage 6 or 7 fails and Stage 8
+    never runs, nothing else would replace a PASS report and a finalization
+    stamp that speak for the package's previous content. The package manifest
+    itself is Stage 6's; only the stamp Stage 8 added is taken back.
+    Returns the paths withdrawn, relative to the package.
+    """
+    import json
+    from pathlib import Path
+
+    pkg_dir = Path(pkg_dir)
+    withdrawn = []
+    for name in STAGE_8_OUTPUTS:
+        path = pkg_dir / name
+        if name == "package-manifest.json":
+            if not path.exists():
+                continue
+            manifest = json.loads(path.read_text(encoding="utf-8"))
+            if manifest.pop("finalizedAt", None) is None:
+                continue
+            path.write_text(json.dumps(manifest, indent=2) + "\n",
+                            encoding="utf-8")
+        elif path.exists():
+            path.unlink()
+        else:
+            continue
+        withdrawn.append(name)
+    return withdrawn
+
+
 def validated_artifacts(pkg_dir):
     """The package files a validation report speaks for, sorted."""
     from pathlib import Path

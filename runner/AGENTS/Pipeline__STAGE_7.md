@@ -43,10 +43,21 @@ Action:  om-pipeline mark-complete --stage 7 --run-dir {run_dir}
 the web backend's stage runner) still run `feedback_report.py` so the failures
 are mapped back to source decisions, then stop the stage: verification's
 `validation_all_pass` check fails, Stage 7 is not marked complete, and Stage 8
-is never reached. Both orchestrators delete a previous run's
-`validation-report.json` and `feedback-report.json` before validating, so a
-nonzero exit with no report is a validator crash, not a failed validation: the
-error is raised as it was and no feedback report is produced.
+is never reached. A nonzero exit records Stage 7 as `failed` in the run state
+(`pipeline.record_stage_failure`).
+
+Before validating, both orchestrators call `pipeline.reopen_run(run_dir, "7")`
+(Stage 6's bootstrap does the same through `pipeline.withdraw_conclusions`):
+Stages 7 and 8 stop reading as completed, this run's `validation-report.json`
+is deleted, and the certificate a previous Stage 8 left in the package — the
+governance copies in the list above and `package-manifest.json`'s
+`finalizedAt` — is withdrawn (`validate_edge_package.withdraw_stage_8_outputs`).
+Without that, a re-run on a finalized package whose new validation fails
+stops before Stage 8, the only writer of those files, and the package kept a
+PASS report and a finalization stamp for content that failed. Each
+orchestrator also deletes its `feedback-report.json`. So a nonzero exit with
+no report is a validator crash, not a failed validation: the error is raised
+as it was and no feedback report is produced.
 
 ## Validation Checks
 
