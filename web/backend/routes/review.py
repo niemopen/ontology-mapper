@@ -131,6 +131,11 @@ async def get_review_state(run_id: str, user: dict = Depends(require_auth), org:
             if prop.get("action") == "human-must-decide" and prop.get("reviewStatus") == "pending-review":
                 must_decide_count += 1
 
+    # Whether Submit is offered is the question submit itself asks, answered
+    # by the same gate: counting pending items here offered Submit on a
+    # policy-blocked run and the click came back 409 with no blocker shown.
+    can_submit, blockers = stage_5_gate(run_id, run_dir, matrix)
+
     return {
         "targetOntology": matrix.get("targetOntology", ""),
         "targetVersion": matrix.get("targetVersion", ""),
@@ -143,7 +148,8 @@ async def get_review_state(run_id: str, user: dict = Depends(require_auth), org:
             "pending": len(pending),
             "humanMustDecide": must_decide_count,
             "bestGuess": best_guess_count,
-            "canSubmit": len(pending) == 0 and must_decide_count == 0,
+            "canSubmit": can_submit,
+            "blockers": blockers,
         },
     }
 
@@ -394,10 +400,11 @@ async def reset_review(run_id: str, user: dict = Depends(require_auth), org: str
     total = len(matrix.get("mappings", []))
     # A snapshot taken before this rule, or a run reviewed elsewhere,
     # can itself carry decisions. Say so: "reset" alone would tell the
-    # operator the execute gate is now clear when it is not.
-    restored_decisions = sum(
-        1 for m in matrix.get("mappings", [])
-        if m.get("reviewStatus") == "accepted" or m.get("humanReviewApplied"))
+    # operator the execute gate is now clear when it is not. Counted by the
+    # predicate that gate asks, so the note appears exactly when it refuses.
+    from ontology_mapper.build_mapping_matrix import review_decisions_present
+    classes, properties, reviewed_at = review_decisions_present(matrix)
+    restored_decisions = classes + properties + (1 if reviewed_at else 0)
 
     return {
         "status": "reset",

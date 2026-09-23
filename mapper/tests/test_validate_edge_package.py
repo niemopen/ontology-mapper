@@ -641,6 +641,24 @@ class TestStaleValidationReport:
         assert stale_against_package(report, missing) == str(missing)
 
 
+class TestDriftOnALegacyFullIriTarget:
+    """A matrix saved before selections were canonicalized holds a target's
+    full IRI; it names the catalog class, so it is not missing from it."""
+
+    def test_a_full_iri_target_is_looked_up_by_its_catalog_qname(self):
+        from ontology_mapper.validate_edge_package import check_codebook_drift
+        catalog = {"namespaces": {"nc": "https://example.org/nc/"},
+                   "types": [{"qname": "nc:PersonType", "definition": "A person."}]}
+        entry = {"sourceConcept": "src:Person", "targetType": "https://example.org/nc/PersonType"}
+        assert check_codebook_drift([entry], catalog) == []
+
+    def test_an_iri_outside_the_catalog_is_still_reported(self):
+        from ontology_mapper.validate_edge_package import check_codebook_drift
+        catalog = {"namespaces": {"nc": "https://example.org/nc/"}, "types": []}
+        entry = {"sourceConcept": "src:Person", "targetType": "https://elsewhere.test/Thing"}
+        assert "not found in catalog" in check_codebook_drift([entry], catalog)[0]
+
+
 class TestDriftOnAMissingTarget:
     """A target that left the catalog is drift whether or not the matrix
     recorded a fingerprint for it."""

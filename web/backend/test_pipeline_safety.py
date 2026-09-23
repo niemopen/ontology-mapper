@@ -170,6 +170,37 @@ def test_stage_7_discards_a_previous_runs_report_before_validating(tmp_path, mon
     assert runs._pipeline_status["sample"]["error"].startswith("Traceback")
 
 
+def test_review_state_offers_submit_only_when_the_gate_would_accept(run_context, monkeypatch):
+    """Submit asks `stage_5_gate`; the state the UI renders asks it too. It
+    counted pending items instead, so a policy-blocked run showed Submit
+    enabled and the click came back 409 with no blocker shown."""
+    from ontology_mapper.run_dir_utils import resolve_specs_dir
+
+    run_dir, client, _ = run_context
+    catalog = json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json").read_text(encoding="utf-8"))
+    monkeypatch.setattr(review, "_get_cascade", lambda *args: ("niem", catalog))
+    entry = {"sourceConcept": "src:A", "action": "extend", "targetType": "nc:PersonType",
+             "baseType": "niem-xs:token", "reviewStatus": "accepted", "propertyMappings": []}
+    (run_dir / "mapping-matrix.json").write_text(json.dumps({"mappings": [entry]}), encoding="utf-8")
+    validation = client.get("/runs/sample/review").json()["validation"]
+    assert validation["canSubmit"] is False
+    assert any("src:A" in blocker for blocker in validation["blockers"])
+    assert client.post("/runs/sample/review/submit").status_code == 409
+
+
+def test_reset_counts_restored_decisions_as_the_execute_gate_does(run_context):
+    """A snapshot carrying only a property decision still makes the execute
+    gate refuse; the reset note must say so, counted by the same predicate."""
+    run_dir, client, _ = run_context
+    entry = {"sourceConcept": "src:A", "action": "reuse", "reviewStatus": "pending-review",
+             "propertyMappings": [{"sourceProperty": "src:p", "reviewStatus": "accepted"}]}
+    (run_dir / review.STAGE4_SNAPSHOT).write_text(json.dumps({"mappings": [entry]}), encoding="utf-8")
+    result = client.post("/runs/sample/review/reset").json()
+    assert result["restoredDecisions"] == 1
+    assert result["note"]
+    assert client.post("/runs/sample/execute").status_code == 409
+
+
 @pytest.mark.parametrize("target", ["scr:PersonRoleCategoryCodeType", "hs:PersonRoleCodeSimpleType", "nc:TextType"])
 @pytest.mark.parametrize("same_target", [False, True])
 def test_change_target_checks_native_class_before_saving(run_context, monkeypatch, target, same_target):

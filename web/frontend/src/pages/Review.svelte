@@ -111,9 +111,11 @@
 
   async function handleReset() {
     try {
-      await resetReview(runId);
+      const result = await resetReview(runId);
       confirmReset = false;
       await loadReview();
+      // The snapshot can itself carry decisions; the note says what to do.
+      if (result && result.note) showError(result.note);
     } catch (e) {
       showError(`Reset failed: ${e.message}`);
     }
@@ -281,7 +283,7 @@
               class:bg-slate-400={!canSubmit}
               disabled={!canSubmit}
               on:click={handleSubmit}
-              title={canSubmit ? "Submit review and complete Stage 5" : `${pending} pending, ${mustDecide} must-decide`}
+              title={canSubmit ? "Submit review and complete Stage 5" : (validation.blockers || []).join("; ")}
             >
               {#if submitting}
                 Submitting...
@@ -295,23 +297,16 @@
 
       <!-- Validation blockers -->
       {#if !readOnly && !validation.canSubmit}
+        <!-- The backend's stage_5_gate answers; each blocker is shown as it states it. -->
         <div class="mt-3 flex flex-wrap gap-2">
-          {#if pending > 0}
+          {#each validation.blockers || [] as blocker}
             <span class="inline-flex items-center gap-1 px-2 py-1 bg-amber-50 text-amber-700 rounded text-xs">
-              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
-              </svg>
-              {pending} concepts pending
-            </span>
-          {/if}
-          {#if mustDecide > 0}
-            <span class="inline-flex items-center gap-1 px-2 py-1 bg-red-50 text-red-700 rounded text-xs">
               <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
               </svg>
-              {mustDecide} properties need decision
+              {blocker}
             </span>
-          {/if}
+          {/each}
         </div>
       {/if}
     </div>

@@ -707,8 +707,6 @@ def refuse_invalid_class_targets(run_dir: Path):
     policy existed would otherwise be generated from and fail two stages
     later as an unbound or datatype CMF reference.
     """
-    from ontology_mapper.ontology_specific import invalid_class_targets
-
     matrix_path = run_dir / "mapping-matrix.json"
     if not matrix_path.exists():
         return
@@ -723,13 +721,17 @@ def refuse_invalid_class_targets(run_dir: Path):
         # edited outside review is the premise of this check, so a file
         # that will not parse is a stage failure, not a traceback.
         matrix = json.loads(matrix_path.read_text(encoding="utf-8"))
-        invalid = invalid_class_targets(matrix, target_ontology, catalog)
+        # The whole Stage 5 exit question, not the class policy alone — the
+        # predicate the web continuation asks. A matrix reopened after
+        # Stage 5 completed (`om-build-matrix --force`) otherwise reached
+        # generation, which skips pending classes, and lost them silently.
+        can_exit, blockers = check_stage_5_exit(matrix, (target_ontology, catalog))
     except (AttributeError, TypeError, ValueError, OSError) as exc:
         raise StageError("6", f"mapping matrix is not readable for validation: {exc}") from exc
-    if invalid:
-        details = "\n".join(f"  - {concept}: {message}" for concept, _, message in invalid)
-        raise StageError("6", f"{len(invalid)} saved class target(s) rejected by the "
-                              f"{target_ontology} policy; reopen review:\n{details}")
+    if not can_exit:
+        details = "\n".join(f"  - {blocker}" for blocker in blockers)
+        raise StageError("6", f"review is not closed for the {target_ontology} "
+                              f"catalog; reopen review:\n{details}")
 
 
 def run_stage_6(run_dir: Path, timers: list[StageTimer]):

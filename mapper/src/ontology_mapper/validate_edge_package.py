@@ -402,9 +402,14 @@ def check_codebook_drift(mappings_list, catalog):
         for p in ns_data.get("properties", []):
             prop_defs[p["qualifiedProperty"]] = p.get("definition")
 
+    from ontology_mapper.generation_utils import target_qname
+
     for m in mappings_list:
         concept = m.get("sourceConcept", "")
-        target_type = m.get("targetType")
+        # One identity: a matrix saved before selections were canonicalized
+        # can hold a target's full IRI, which names the same catalog class.
+        # Looking the IRI up by spelling reported it "not found in catalog".
+        target_type = target_qname(m.get("targetType"), catalog.get("namespaces", {}))
         stored_hash = m.get("targetDefinitionHash")
 
         # A target that left the catalog is drift whether or not the matrix

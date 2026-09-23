@@ -703,6 +703,22 @@ def test_stage_6_refuses_a_saved_target_the_policy_rejects(tmp_path, monkeypatch
         assert commands[0] == "om-pipeline"
 
 
+def test_stage_6_refuses_a_matrix_reopened_after_stage_5(tmp_path, monkeypatch):
+    """The web continuation refuses pending review; the runner's Stage 6
+    entry now asks the same question instead of the class policy alone."""
+    import json as _json
+    import runner_tools.run_pipeline as runner
+    from ontology_mapper.run_dir_utils import resolve_specs_dir
+
+    catalog = _json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json").read_text(encoding="utf-8"))
+    monkeypatch.setattr(runner, "load_cascade_context", lambda run_dir: ("niem", catalog))
+    (tmp_path / "mapping-matrix.json").write_text(_json.dumps({"mappings": [
+        {"sourceConcept": "src:A", "action": "reuse", "targetType": "nc:PersonType",
+         "reviewStatus": "pending-review"}]}), encoding="utf-8")
+    with pytest.raises(StageError, match="pending review"):
+        runner.refuse_invalid_class_targets(tmp_path)
+
+
 def test_stage_6_without_a_matrix_does_not_refuse(tmp_path, monkeypatch):
     import runner_tools.run_pipeline as runner
 

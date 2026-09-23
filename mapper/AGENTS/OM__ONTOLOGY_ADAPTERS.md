@@ -55,10 +55,13 @@ canonical identities, so re-accepting a stored IRI as its QName stores the QName
 without a cascade; only a different class triggers reclassification.
 `invalid_class_targets()` asks the same policy of a whole saved matrix: a
 decision accepted before the policy existed makes no selection to check, so
-review exit (`check_stage_5_exit`, all three web routes) reports it as a
-blocker and the generator itself (`generate_edge_ontology.main`, reached by the
-runner's `run_pipeline.refuse_invalid_class_targets`, a Stage 6 resume, the web
-executor and a by-hand `om-generate-ontology`) refuses to generate from it. The
+review exit (`check_stage_5_exit`: all three web routes, the review state's
+`canSubmit`, and the runner's Stage 6 entry `run_pipeline.refuse_invalid_class_targets`)
+reports it as a blocker, and the generator itself (`generate_edge_ontology.main`,
+reached by a Stage 6 resume, the web executor and a by-hand
+`om-generate-ontology`) refuses to generate from it. Codebook drift (Stage 7
+Check 12) looks a legacy full-IRI target up by its catalog QName
+(`generation_utils.target_qname`), so a saved IRI is not reported missing. The
 predicate asks about every field the emitters read as a superclass, not only
 `targetType`: `baseType` for extend and `augmentsType` for augment, which an
 edited matrix can leave naming a different type.
