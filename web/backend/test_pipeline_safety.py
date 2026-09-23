@@ -327,3 +327,22 @@ def test_validation_lists_a_reuse_resolved_without_a_target(run_context, monkeyp
     assert validation["canSubmit"] is False
     assert validation["humanMustDecide"] == 1
     assert "src:Item src:count" in " ".join(validation["blockers"])
+
+
+def test_validation_route_is_not_taken_for_a_concept_name(run_context, monkeypatch):
+    """GET /validation was registered after GET /{concept} and answered as
+    concept detail: 404 "Concept not found: validation"."""
+    run_dir, client, _ = run_context
+    monkeypatch.setattr(review, "_get_cascade", lambda *args: ("niem", {"types": [], "namespaces": {}}))
+    monkeypatch.setattr("ontology_mapper.ontology_specific.invalid_class_targets", lambda *a: [])
+    entry = {"sourceConcept": "src:Item", "action": "extend", "targetType": None,
+             "reviewStatus": "accepted", "propertyMappings": [
+                 {"sourceProperty": "src:count", "action": "human-must-decide",
+                  "targetProperty": "[undecided]", "reviewStatus": "pending-review"}]}
+    (run_dir / "mapping-matrix.json").write_text(json.dumps({"mappings": [entry]}), encoding="utf-8")
+    response = client.get("/runs/sample/review/validation")
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["canSubmit"] is False
+    assert body["mustDecideProperties"] == [{"concept": "src:Item", "property": "src:count"}]
+    assert client.get("/runs/sample/review/src:Item").json()["sourceConcept"] == "src:Item"

@@ -155,19 +155,6 @@ async def get_review_state(run_id: str, user: dict = Depends(require_auth), org:
     }
 
 
-@router.get("/{concept}")
-async def get_concept_detail(
-    run_id: str, concept: str, user: dict = Depends(require_auth), org: str = Depends(get_org_slug),
-) -> dict:
-    """Get detailed view of a single concept mapping."""
-    run_dir = _run_dir(org, run_id)
-    matrix = _load_matrix(run_dir)
-    entry = _find_entry(matrix, concept)
-    if not entry:
-        raise HTTPException(status_code=404, detail=f"Concept not found: {concept}")
-    return entry
-
-
 @router.post("/approve")
 async def approve_concept(
     run_id: str, req: ApproveRequest, user: dict = Depends(require_auth), org: str = Depends(get_org_slug),
@@ -409,3 +396,19 @@ async def reset_review(run_id: str, user: dict = Depends(require_auth), org: str
                  "with `om-build-matrix --force` to start the review over."
                  if restored_decisions else ""),
     }
+
+
+# Registered last: FastAPI matches routes in order, and a path parameter
+# placed before GET /validation answered it as concept detail
+# ("Concept not found: validation").
+@router.get("/{concept}")
+async def get_concept_detail(
+    run_id: str, concept: str, user: dict = Depends(require_auth), org: str = Depends(get_org_slug),
+) -> dict:
+    """Get detailed view of a single concept mapping."""
+    run_dir = _run_dir(org, run_id)
+    matrix = _load_matrix(run_dir)
+    entry = _find_entry(matrix, concept)
+    if not entry:
+        raise HTTPException(status_code=404, detail=f"Concept not found: {concept}")
+    return entry
