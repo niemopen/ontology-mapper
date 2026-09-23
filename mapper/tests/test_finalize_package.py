@@ -389,3 +389,22 @@ class TestFinalizeEndToEnd:
         (pkg / "ontology" / "core.ttl").write_text("# regenerated", encoding="utf-8")
         assert self._finalize(run_dir, monkeypatch) == 1
         assert "core.ttl" in capsys.readouterr().out
+
+    def test_a_package_whose_validation_failed_is_not_published(self, tmp_path, monkeypatch, capsys):
+        """`--from-stage 8` after a failed Stage 7: the report covers the
+        package, and it failed, so nothing is stamped or published."""
+        run_dir, pkg = self._run_dir(tmp_path)
+        report = json.loads((run_dir / "validation-report.json").read_text(encoding="utf-8"))
+        report.update(allPassed=False, failCount=1, checks=[
+            {"check": "turtle-syntax", "status": "FAIL", "details": "parse error"}])
+        (run_dir / "validation-report.json").write_text(json.dumps(report), encoding="utf-8")
+        assert self._finalize(run_dir, monkeypatch) == 1
+        assert "turtle-syntax" in capsys.readouterr().out
+        assert not (pkg / "governance").exists()
+        assert "finalizedAt" not in json.loads((pkg / "package-manifest.json").read_text(encoding="utf-8"))
+
+    def test_a_package_stage_7_never_validated_is_not_published(self, tmp_path, monkeypatch):
+        run_dir, pkg = self._run_dir(tmp_path)
+        (run_dir / "validation-report.json").unlink()
+        assert self._finalize(run_dir, monkeypatch) == 1
+        assert not (pkg / "governance").exists()

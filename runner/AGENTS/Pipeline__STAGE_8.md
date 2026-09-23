@@ -15,6 +15,13 @@ Verify:  python runner_tools/verify_stage_outputs.py --run-dir {run_dir} --stage
 Report final package status to user.
 ```
 
+`om-finalize` publishes only a package its current validation passed. It
+exits 1, writing nothing, when `validation-report.json` is missing, does not
+cover the package's current content
+(see [Stage 7](Pipeline__STAGE_7.md#what-the-report-speaks-for)), or records a
+failed check. `--from-stage 8` is the path this matters for: it never runs
+Stage 7, so the report it finds may be a failed one.
+
 ## Governance Artifacts
 
 | Artifact | Contents |

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Stage 8: Finalize — stamp the edge package with version, lineage, and validation metadata.
 
-Runs after Stage 7 validation. Writes:
+Runs after Stage 7 validation, and refuses (exit 1) unless this run's
+validation report exists, covers the package's current content and passed.
+Writes:
 
   - governance/version-manifest.json  (version history and generation context)
   - governance/lineage-manifest.json  (provenance from sources to artifacts)
@@ -327,16 +329,29 @@ def main():
     matrix = json.loads(matrix_path.read_text(encoding="utf-8"))
 
     # Load optional artifacts
+    # Stage 8 publishes only a package its current validation passed.
+    # `--from-stage 8` reaches here without Stage 7, and a published package
+    # carries a finalization stamp whatever the report inside it says.
     val_path = ctx.run_dir / "validation-report.json"
     validation_report = json.loads(val_path.read_text(encoding="utf-8")) if val_path.exists() else None
-    if validation_report is not None:
-        stale = stale_against_package(val_path, ctx.pkg_dir,
-                                      validation_report)
-        if stale:
-            print(f"  [!] validation-report.json predates {stale}")
-            print("      Stage 7 certified the package as it was before that "
-                  "file changed; re-run validation before finalizing.")
-            sys.exit(1)
+    if validation_report is None:
+        print("  [!] validation-report.json not found: Stage 7 has not "
+              "validated this package; run Stage 7 before finalizing.")
+        sys.exit(1)
+    stale = stale_against_package(val_path, ctx.pkg_dir, validation_report)
+    if stale:
+        print(f"  [!] validation-report.json predates {stale}")
+        print("      Stage 7 certified the package as it was before that "
+              "file changed; re-run validation before finalizing.")
+        sys.exit(1)
+    if not validation_report.get("allPassed"):
+        failed = [c.get("check", "?") for c in validation_report.get("checks", [])
+                  if c.get("status") == "FAIL"]
+        print(f"  [!] Stage 7 failed {validation_report.get('failCount', len(failed))} "
+              f"check(s): {', '.join(failed) or 'see validation-report.json'}")
+        print("      Fix the package and re-run Stage 7 before finalizing; "
+              "feedback-report.json maps the failures to source decisions.")
+        sys.exit(1)
 
     audit_path = ctx.run_dir / "generation-audit.json"
     generation_audit = json.loads(audit_path.read_text(encoding="utf-8")) if audit_path.exists() else None
@@ -366,13 +381,10 @@ def main():
     artifacts_written += 1
 
     # ── 3. Validation report copy ─────────────────────────────────────────
-    if validation_report:
-        vr_path = gov_dir / "validation-report.json"
-        vr_path.write_text(json.dumps(validation_report, indent=2) + "\n", encoding="utf-8")
-        print(f"  [+] validation-report.json (passed: {validation_report.get('allPassed', 'unknown')})")
-        artifacts_written += 1
-    else:
-        print(f"  [-] validation-report.json: not found in run directory")
+    vr_path = gov_dir / "validation-report.json"
+    vr_path.write_text(json.dumps(validation_report, indent=2) + "\n", encoding="utf-8")
+    print(f"  [+] validation-report.json (passed: {validation_report['allPassed']})")
+    artifacts_written += 1
 
     # ── 4. Change impact analysis ─────────────────────────────────────────
     change_impact = build_change_impact(matrix, validation_report, generation_audit)
@@ -389,18 +401,10 @@ def main():
         print(f"  [-] package-manifest.json: not found, skipping reconciliation")
 
     # ── Summary ───────────────────────────────────────────────────────────
-    all_passed = validation_report.get("allPassed", False) if validation_report else False
-    status = "READY" if all_passed else "REVIEW NEEDED"
-
     print(f"\n  Done: {artifacts_written} artifacts written")
-    print(f"  Package status: {status}")
+    print(f"  Package status: READY")
     print(f"  Package location: {pkg}")
-
-    if not all_passed and validation_report:
-        fail_count = validation_report.get("failCount", 0)
-        print(f"  Warning: {fail_count} validation check(s) failed - review change-impact.md")
-
-    return 0  # Always succeed — validation failures are advisory
+    return 0
 
 
 if __name__ == "__main__":
