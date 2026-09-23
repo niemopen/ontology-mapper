@@ -16,10 +16,11 @@ def is_full_iri(term):
     """True when a term carries its own scheme rather than a declared prefix.
 
     Such a term names something in a namespace the source package does not
-    declare, so the generators cannot reference it by prefix. They mint
-    their own term for it instead, in this package's namespace and under
-    its own rules (`created_property_qname`) — never by splitting the
-    scheme off as if it were a prefix.
+    declare, so the generators cannot reference it by prefix — never by
+    splitting the scheme off as if it were one. A term this package
+    CREATES is minted into its own namespace instead
+    (`created_property_qname`); a term it only REFERENCES is written out
+    as the IRI it is (`source_term_ref`, `target_term_ref`).
     """
     return bool(term) and term.lower().startswith(_IRI_SCHEMES)
 

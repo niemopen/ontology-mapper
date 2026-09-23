@@ -345,3 +345,21 @@ class TestStage7FreshnessIsReportedEitherWay:
                 if c["name"] == "validation_report_is_current"]
         assert len(rows) == 1
         assert rows[0]["status"] == "pass"
+
+    def test_an_unreadable_report_does_not_claim_coverage(self, tmp_path):
+        """`stale_against_package` answers None both for a report that
+        covers the package and for one it could not read. Passing on that
+        None stated coverage for a file nobody parsed."""
+        _write_state(tmp_path)
+        pkg = tmp_path / "edge-package"
+        (pkg / "ontology").mkdir(parents=True)
+        (pkg / "ontology" / "core.ttl").write_text("# core", encoding="utf-8")
+        _write_json(tmp_path / "feedback-report.json", {"feedback": []})
+        (tmp_path / "validation-report.json").write_text("{not json",
+                                                         encoding="utf-8")
+
+        result = verify(tmp_path, "7")
+        rows = [c for c in result["checks"]
+                if c["name"] == "validation_report_is_current"]
+        assert len(rows) == 1
+        assert rows[0]["status"] == "fail"

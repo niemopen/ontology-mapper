@@ -466,22 +466,30 @@ def _verify_stage_7(run_dir, state):
     # previous report before validating, but this entry point is
     # documented for direct use, and a crashed validator leaves the old
     # report in place to be read as this run's result.
-    from ontology_mapper.validate_edge_package import stale_against_package
-    try:
-        stale = stale_against_package(vr_path, _build_ctx(run_dir, state).pkg_dir)
-    except Exception as exc:
-        # A check that cannot run is reported, not dropped: a silent
-        # pass here says the report is current when nobody looked.
-        checks.append(_check("validation_report_is_current", False,
-                             f"freshness check failed: {exc}"))
-    else:
-        # Reported either way, like every other check here: a row that
-        # appears only on failure cannot be told from a check that never ran.
-        checks.append(_check("validation_report_is_current", not stale,
-                             f"report does not cover {stale}" if stale
-                             else "report covers the package as validated"))
-
     vr = _load_json(vr_path)
+    from ontology_mapper.validate_edge_package import stale_against_package
+    if vr is None:
+        # `stale_against_package` answers None for a report it could not
+        # read as well as for one that covers the package. Passing on that
+        # None would state coverage for a file nobody parsed.
+        checks.append(_check("validation_report_is_current", False,
+                             "validation-report.json is missing or unreadable"))
+    else:
+        try:
+            stale = stale_against_package(vr_path, _build_ctx(run_dir, state).pkg_dir,
+                                          vr)
+        except Exception as exc:
+            # A check that cannot run is reported, not dropped: a silent
+            # pass here says the report is current when nobody looked.
+            checks.append(_check("validation_report_is_current", False,
+                                 f"freshness check failed: {exc}"))
+        else:
+            # Reported either way, like every other check here: a row that
+            # appears only on failure cannot be told from one that never ran.
+            checks.append(_check("validation_report_is_current", not stale,
+                                 f"report does not cover {stale}" if stale
+                                 else "report covers the package as validated"))
+
     if vr:
         vr_checks = vr.get("checks", [])
         failures = [c for c in vr_checks if c.get("status") == "FAIL"]
