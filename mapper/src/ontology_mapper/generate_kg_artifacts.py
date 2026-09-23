@@ -393,7 +393,11 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source):
                 # (graph_property_names); a local name of its own merged
                 # two namespaces' properties into one key.
                 known = dt_prop_qnames.get(pred_str)
-                prop_local = dt_prop_labels[known] if known in dt_prop_labels else local_name(pred_str)
+                # A predicate the inventory does not declare keeps its local
+                # name, cleaned to a key Neo4j accepts (`Class.prop` from a
+                # CSV-shaped IRI was not one).
+                prop_local = (dt_prop_labels[known] if known in dt_prop_labels
+                              else re.sub(r"[^A-Za-z0-9_]", "_", local_name(pred_str)))
                 val = str(obj)
                 # Detect type for proper Cypher literal formatting
                 if hasattr(obj, "datatype") and obj.datatype:

@@ -681,6 +681,7 @@ class TestSeedDataIdentity:
         ), tmp_path)
 
         assert 'identifier: "https://data.test/thing1"' in out
+        assert 'note: "only a note"' in out
         assert 'MATCH (a:abc_Thing {identifier: "https://data.test/thing1"})' in out
         assert "CREATE (a)-[:ABC_OWNS]->(b);" in out
 
