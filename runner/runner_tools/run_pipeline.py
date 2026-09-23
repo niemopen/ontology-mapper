@@ -432,7 +432,10 @@ def _dispatch_review_action(
         if target_prop:
             decision["targetProperty"] = target_prop
 
-        found = apply_property_decision(entry, src_prop, decision)
+        if cascade_context is None:
+            cascade_context = load_cascade_context(run_dir)
+        _, catalog = cascade_context
+        found = apply_property_decision(entry, src_prop, decision, catalog)
         if not found:
             return f"Property not found: {src_prop} on {entry['sourceConcept']}", applied, cascade_context
 

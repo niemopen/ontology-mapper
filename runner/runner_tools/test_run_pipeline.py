@@ -323,13 +323,13 @@ def test_resolve_property_refuses_a_class_name_two_entries_share(tmp_path):
     before = json.dumps(matrix, sort_keys=True)
     action = {"action": "resolve_property", "concept": "Person",
               "source_property": "src:name", "property_action": "create-property"}
-    msg, applied, _ = _dispatch_review_action(action, tmp_path, matrix, {"decisions": []}, [], None)
+    msg, applied, _ = _dispatch_review_action(action, tmp_path, matrix, {"decisions": []}, [], ("niem", {}))
     assert applied == []
     assert "ambiguous" in msg and "a:Person" in msg and "b:Person" in msg
     assert json.dumps(matrix, sort_keys=True) == before
 
     action["concept"] = "b:Person"
-    msg, applied, _ = _dispatch_review_action(action, tmp_path, matrix, {"decisions": []}, [], None)
+    msg, applied, _ = _dispatch_review_action(action, tmp_path, matrix, {"decisions": []}, [], ("niem", {}))
     assert matrix["mappings"][1]["propertyMappings"][0]["action"] == "create-property"
     assert matrix["mappings"][0]["propertyMappings"][0]["action"] == "reuse-property"
 
@@ -444,7 +444,7 @@ class TestDispatchReviewAction:
             "target_property": "nc:PersonName",
         }
         msg, applied, _ = _dispatch_review_action(
-            action, tmp_path, matrix, dec_log, pending, None)
+            action, tmp_path, matrix, dec_log, pending, ("niem", {}))
         assert len(applied) == 1
         prop = pending[0]["propertyMappings"][0]
         assert prop["action"] == "reuse-property"

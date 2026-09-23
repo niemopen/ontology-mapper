@@ -199,6 +199,44 @@ def catalog_property_key(target_prop, class_target_type, namespaces):
                                      target_qname(class_target_type, namespaces))
 
 
+def catalog_property_definitions(catalog):
+    """``{key: definition}`` for every catalog property, keyed by its
+    ``qualifiedProperty`` and, when the catalog records one, its ``uri``.
+
+    One home for Stage 3's fingerprint, the review's refingerprint and
+    Stage 7 Check 12. The ``uri`` key grounds a full-IRI spelling the
+    namespace map cannot (SALI-FOLIO property URIs), which
+    `catalog_property_key` leaves as spelled.
+    """
+    definitions = {}
+    for ns_data in catalog.get("propertyIndex", {}).values():
+        for p in ns_data.get("properties", []):
+            definitions[p["qualifiedProperty"]] = p.get("definition")
+            if p.get("uri"):
+                definitions.setdefault(p["uri"], p.get("definition"))
+    return definitions
+
+
+def refingerprint_property(prop, class_target_type, catalog):
+    """Point a property decision's ``targetDefinition`` and
+    ``targetDefinitionHash`` at the target it now names.
+
+    The class cascade does this for a class target; a property decision
+    kept Stage 3's fingerprint of the candidate it replaced, and Check 12
+    reported the reviewer's choice as codebook drift. A decision that
+    reuses nothing carries no fingerprint.
+    """
+    target = (real_target_property(prop.get("targetProperty"))
+              if prop.get("action") == "reuse-property" else None)
+    if target is None:
+        prop.pop("targetDefinitionHash", None)
+        return
+    key = catalog_property_key(target, class_target_type, catalog.get("namespaces", {}))
+    definition = catalog_property_definitions(catalog).get(key)
+    prop["targetDefinition"] = definition or ""
+    prop["targetDefinitionHash"] = definition_hash(definition)
+
+
 def source_declared_properties(inventory):
     """The properties a source property list declares, as QNames.
 

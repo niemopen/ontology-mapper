@@ -361,7 +361,7 @@ class TestApplyPropertyDecision:
             "action": "reuse-property",
             "targetProperty": "nc:CaseDispositionText",
             "notes": "Found a match manually",
-        })
+        }, {})
         assert result is True
         prop = next(p for p in entry_with_properties["propertyMappings"] if p["sourceProperty"] == "SpecialConditions")
         assert prop["action"] == "reuse-property"
@@ -370,7 +370,7 @@ class TestApplyPropertyDecision:
         assert prop["notes"] == "Found a match manually"
 
     def test_returns_false_for_missing_property(self, entry_with_properties):
-        result = apply_property_decision(entry_with_properties, "NonExistent", {"action": "reuse-property"})
+        result = apply_property_decision(entry_with_properties, "NonExistent", {"action": "reuse-property"}, {})
         assert result is False
 
     def test_sets_optional_fields(self, entry_with_properties):
@@ -379,14 +379,14 @@ class TestApplyPropertyDecision:
             "targetProperty": "nc:PersonName",
             "targetDefinition": "A name of a person.",
             "targetType": "nc:PersonNameType",
-        })
+        }, {})
         prop = next(p for p in entry_with_properties["propertyMappings"] if p["sourceProperty"] == "JudgeName")
         assert prop["targetDefinition"] == "A name of a person."
         assert prop["targetType"] == "nc:PersonNameType"
 
     def test_no_property_mappings_returns_false(self):
         entry = {"sourceConcept": "x:Foo"}
-        assert apply_property_decision(entry, "bar", {"action": "reuse-property"}) is False
+        assert apply_property_decision(entry, "bar", {"action": "reuse-property"}, {}) is False
 
 
 # ---------------------------------------------------------------------------
@@ -1219,7 +1219,7 @@ class TestConfidenceOnPropertyDecision:
     def test_property_decision_defaults_confident(self, entry_with_properties):
         apply_property_decision(entry_with_properties, "SpecialConditions", {
             "action": "reuse-property", "targetProperty": "nc:Something",
-        })
+        }, {})
         prop = next(p for p in entry_with_properties["propertyMappings"]
                     if p["sourceProperty"] == "SpecialConditions")
         assert prop["confidence"] == "confident"
@@ -1228,7 +1228,7 @@ class TestConfidenceOnPropertyDecision:
         apply_property_decision(entry_with_properties, "SpecialConditions", {
             "action": "reuse-property", "targetProperty": "nc:Something",
             "confidence": "best-guess",
-        })
+        }, {})
         prop = next(p for p in entry_with_properties["propertyMappings"]
                     if p["sourceProperty"] == "SpecialConditions")
         assert prop["confidence"] == "best-guess"
@@ -1656,3 +1656,34 @@ def test_the_exit_check_does_not_need_the_decision_log(tmp_path):
     success, error = complete_stage_5(tmp_path)
     assert not success
     assert "decision-log" not in error and "baseType" in error
+
+
+def test_a_property_retargeted_in_review_does_not_read_as_codebook_drift():
+    """Round twelve: the review kept Stage 3's fingerprint of the replaced
+    candidate, and Check 12 failed Stage 7 on the reviewer's own choice."""
+    import json
+    from ontology_mapper.generation_utils import catalog_property_definitions, definition_hash
+    from ontology_mapper.run_dir_utils import resolve_specs_dir
+    from ontology_mapper.validate_edge_package import check_codebook_drift
+    from runner_tools._present_and_apply_human_review import apply_property_decision
+
+    catalog = json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json").read_text(encoding="utf-8"))
+    defs = catalog_property_definitions(catalog)
+    old, new = "nc:PersonName", "nc:PersonGivenName"
+    assert defs.get(old) and defs.get(new) and defs[old] != defs[new]
+    entry = {"sourceConcept": "src:Person", "action": "reuse", "targetType": "nc:PersonType",
+             "reviewStatus": "accepted", "propertyMappings": [
+                 {"sourceProperty": "src:name", "action": "reuse-property", "targetProperty": old,
+                  "targetDefinitionHash": definition_hash(defs[old]), "reviewStatus": "accepted"},
+                 {"sourceProperty": "src:alias", "action": "human-must-decide",
+                  "targetProperty": "[undecided]", "targetDefinitionHash": "9880ee04660dcc57",
+                  "reviewStatus": "pending-review"}]}
+    for spelling in (new, "PersonGivenName"):
+        assert apply_property_decision(entry, "src:name", {"action": "reuse-property",
+                                                           "targetProperty": spelling}, catalog)
+        assert apply_property_decision(entry, "src:alias", {"action": "reuse-property",
+                                                            "targetProperty": spelling}, catalog)
+        assert check_codebook_drift([entry], catalog) == []
+    assert entry["propertyMappings"][0]["targetDefinitionHash"] == definition_hash(defs[new])
+    apply_property_decision(entry, "src:name", {"action": "create-property"}, catalog)
+    assert "targetDefinitionHash" not in entry["propertyMappings"][0]

@@ -67,6 +67,15 @@ Bridges compile-time rotation and runtime verification.
 Stage 7 Check 12 loads the current reference catalog, hashes each target
 type/property definition, and compares against `targetDefinitionHash` values
 in the mapping matrix. Reports definitions that have changed or been removed.
+The fingerprint follows the reviewer's decision: a class target change
+rewrites it through the review cascade, and a property decision through
+`generation_utils.refingerprint_property` (called by
+`apply_property_decision`, the one writer the CLI and the web share), so a
+target chosen in review is compared against its own definition. Property
+definitions come from `generation_utils.catalog_property_definitions`,
+keyed by `qualifiedProperty` and the catalog's `uri`. As for class targets,
+an accepted reuse whose target the catalog lacks is reported whether or not a
+fingerprint was recorded.
 
 ---
 

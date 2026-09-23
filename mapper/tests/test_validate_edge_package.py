@@ -830,3 +830,36 @@ def test_check_12_finds_a_target_property_in_any_spelling_the_emitters_accept(sp
                  "propertyMappings": [{"sourceProperty": "src:name", "targetProperty": spelling,
                                        "targetDefinitionHash": definition_hash("A name of a person.")}]}]
     assert check_codebook_drift(mappings, catalog) == []
+
+
+class TestCodebookDriftPropertyTargets:
+    """Check 12 treats a reused property as it treats a class target."""
+
+    _catalog = {"namespaces": {"nc": "http://example.org/nc/"},
+                "types": [{"qname": "nc:PersonType", "definition": "A person."}],
+                "propertyIndex": {
+                    "nc": {"properties": [{"qualifiedProperty": "nc:PersonName",
+                                           "definition": "A name."}]},
+                    "_": {"properties": [{"qualifiedProperty": "R1abc", "definition": "An id.",
+                                          "uri": "http://lmss.sali.org/R1abc"}]}}}
+
+    def _entry(self, target, **extra):
+        prop = {"sourceProperty": "src:x", "action": "reuse-property",
+                "targetProperty": target, "reviewStatus": "accepted", **extra}
+        return [{"sourceConcept": "src:A", "targetType": "nc:PersonType",
+                 "propertyMappings": [prop]}]
+
+    def test_an_accepted_reuse_the_catalog_lacks_is_reported_without_a_fingerprint(self):
+        errors = check_codebook_drift(self._entry("nc:NoSuchProperty"), self._catalog)
+        assert errors == ["src:A/src:x: target property nc:NoSuchProperty not found in catalog"]
+
+    def test_a_full_iri_the_namespace_map_cannot_ground_is_found_by_its_uri(self):
+        from ontology_mapper.generation_utils import definition_hash
+        entry = self._entry("http://lmss.sali.org/R1abc", targetDefinitionHash=definition_hash("An id."))
+        assert check_codebook_drift(entry, self._catalog) == []
+
+    def test_an_undecided_or_created_property_is_not_looked_up(self):
+        entry = self._entry("[undecided]")
+        entry[0]["propertyMappings"].append(
+            {"sourceProperty": "src:y", "action": "create-property", "reviewStatus": "accepted"})
+        assert check_codebook_drift(entry, self._catalog) == []

@@ -293,12 +293,18 @@ async def resolve_property(
 
     from runner_tools._present_and_apply_human_review import apply_property_decision
 
+    cascade = _get_cascade(run_id, run_dir)
+    if not cascade:
+        raise HTTPException(
+            status_code=500,
+            detail="Could not load catalog to fingerprint the property's target",
+        )
     decision = {
         "action": req.property_action,
         "targetProperty": req.target_property,
         "confidence": req.confidence,
     }
-    apply_property_decision(entry, req.source_property, decision)
+    apply_property_decision(entry, req.source_property, decision, cascade[1])
 
     _save(run_dir, matrix, dec_log, [entry])
 

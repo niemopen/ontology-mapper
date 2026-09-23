@@ -230,7 +230,7 @@ def find_mapping_entry(entries, concept_ref):
     return None, []
 
 
-def apply_property_decision(entry, source_property, decision):
+def apply_property_decision(entry, source_property, decision, catalog):
     """Apply a human review decision to a single property mapping.
 
     Args:
@@ -239,9 +239,15 @@ def apply_property_decision(entry, source_property, decision):
         decision: Dict with keys: action (reuse-property or create-property),
                   targetProperty (optional), notes (optional),
                   confidence (optional, defaults to "confident").
+        catalog: The run's reference catalog. The decision's target
+                  definition and fingerprint are taken from it
+                  (`generation_utils.refingerprint_property`), so Stage 7
+                  Check 12 compares against the target the reviewer chose.
 
     Returns True if the property was found and updated, False otherwise.
     """
+    from ontology_mapper.generation_utils import refingerprint_property
+
     for p in (entry.get("propertyMappings") or []):
         if p["sourceProperty"] == source_property:
             p["action"] = decision["action"]
@@ -250,6 +256,9 @@ def apply_property_decision(entry, source_property, decision):
             p["confidenceExplicit"] = True
             if "targetProperty" in decision:
                 p["targetProperty"] = decision["targetProperty"]
+            # The fingerprint follows the target now named; a definition the
+            # decision supplies still describes it for display.
+            refingerprint_property(p, entry.get("targetType"), catalog)
             if "targetDefinition" in decision:
                 p["targetDefinition"] = decision["targetDefinition"]
             if "targetType" in decision:

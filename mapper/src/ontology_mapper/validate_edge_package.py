@@ -396,13 +396,11 @@ def check_codebook_drift(mappings_list, catalog):
     for t in catalog.get("types", []):
         type_defs[t["qname"]] = t.get("definition")
 
-    # Build lookup: qualifiedProperty -> definition from catalog propertyIndex
-    prop_defs = {}
-    for ns_data in catalog.get("propertyIndex", {}).values():
-        for p in ns_data.get("properties", []):
-            prop_defs[p["qualifiedProperty"]] = p.get("definition")
+    from ontology_mapper.generation_utils import (
+        accepted_reuse_target, catalog_property_definitions, catalog_property_key,
+        real_target_property, target_qname)
 
-    from ontology_mapper.generation_utils import catalog_property_key, target_qname
+    prop_defs = catalog_property_definitions(catalog)
 
     namespaces = catalog.get("namespaces", {})
     for m in mappings_list:
@@ -431,10 +429,14 @@ def check_codebook_drift(mappings_list, catalog):
 
         for p in m.get("propertyMappings", []):
             src_prop = p.get("sourceProperty", "")
-            target_prop = p.get("targetProperty")
+            target_prop = real_target_property(p.get("targetProperty"))
             prop_hash = p.get("targetDefinitionHash")
 
-            if target_prop and prop_hash and target_prop != "[undecided]":
+            # As for a class target: a reused property that left the catalog
+            # (or never was in it) is an error whether or not a fingerprint
+            # was recorded; a review decision records none for a target the
+            # catalog lacks.
+            if target_prop and (prop_hash or accepted_reuse_target(p)):
                 target_prop = catalog_property_key(target_prop, m.get("targetType"), namespaces)
                 current_prop_def = prop_defs.get(target_prop)
                 current_prop_hash = _hash_definition(current_prop_def)
@@ -444,7 +446,7 @@ def check_codebook_drift(mappings_list, catalog):
                         f"{concept}/{src_prop}: target property {target_prop} "
                         f"not found in catalog"
                     )
-                elif current_prop_hash != prop_hash:
+                elif prop_hash and current_prop_hash != prop_hash:
                     errors.append(
                         f"{concept}/{src_prop}: {target_prop} definition "
                         f"changed (was {prop_hash}, now {current_prop_hash})"

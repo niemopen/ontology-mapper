@@ -152,12 +152,10 @@ _hash_definition = definition_hash
 
 def _build_catalog_def_lookups(catalog):
     """Build lookup dicts from catalog for canonical definition hashing."""
+    from ontology_mapper.generation_utils import catalog_property_definitions
+
     type_defs = {t["qname"]: t.get("definition") for t in catalog.get("types", [])}
-    prop_defs = {}
-    for ns_data in catalog.get("propertyIndex", {}).values():
-        for p in ns_data.get("properties", []):
-            prop_defs[p["qualifiedProperty"]] = p.get("definition")
-    return type_defs, prop_defs, catalog.get("namespaces", {})
+    return type_defs, catalog_property_definitions(catalog), catalog.get("namespaces", {})
 
 
 def _add_definition_hashes(entry, type_defs, prop_defs, namespaces):
