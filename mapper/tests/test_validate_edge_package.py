@@ -511,6 +511,7 @@ class TestCheckCodebookDrift:
             "targetDefinitionHash": _hash_definition("A person."),
             "propertyMappings": [{
                 "sourceProperty": "src:name",
+                "action": "reuse-property",
                 "targetProperty": "nc:PersonName",
                 "targetDefinitionHash": _hash_definition(old_prop_defn),
             }],
@@ -537,6 +538,7 @@ class TestCheckCodebookDrift:
             "targetDefinitionHash": _hash_definition("A person."),
             "propertyMappings": [{
                 "sourceProperty": "src:name",
+                "action": "reuse-property",
                 "targetProperty": "nc:GhostProperty",
                 "targetDefinitionHash": "abc123",
             }],
@@ -878,3 +880,35 @@ class TestCodebookDriftPropertyTargets:
         entry[0]["propertyMappings"].append(
             {"sourceProperty": "src:y", "action": "create-property", "reviewStatus": "accepted"})
         assert check_codebook_drift(entry, self._catalog) == []
+
+
+class TestDriftChecksTheRowsReviewChecks:
+    """Round 19: Check 12 also checked create-property rows carrying a Stage 3
+    target, which the Stage 5 exit gate passes; a review that passed then
+    failed Stage 7 for a row that reuses nothing."""
+
+    CATALOG = {"namespaces": {"nc": "https://example.org/nc/"},
+               "types": [{"qname": "nc:PersonType", "definition": "A person."}],
+               "propertyIndex": {"nc": {"properties": [
+                   {"qualifiedProperty": "nc:PersonName", "definition": "A name."}]}}}
+
+    def _entry(self, action):
+        return {"sourceConcept": "src:Person", "targetType": "nc:PersonType",
+                "propertyMappings": [{"sourceProperty": "src:name", "action": action,
+                                      "targetProperty": "nc:NoSuchName",
+                                      "targetDefinitionHash": "9880ee04660dcc57",
+                                      "reviewStatus": "accepted"}]}
+
+    def test_a_created_property_is_not_checked_against_its_stage_3_target(self):
+        from ontology_mapper.generation_utils import missing_reuse_target
+        from ontology_mapper.validate_edge_package import check_codebook_drift
+        entry = self._entry("create-property")
+        assert check_codebook_drift([entry], self.CATALOG) == []
+        assert missing_reuse_target(entry["propertyMappings"][0], "nc:PersonType", self.CATALOG) is None
+
+    def test_a_reused_property_is_checked_by_both(self):
+        from ontology_mapper.generation_utils import missing_reuse_target
+        from ontology_mapper.validate_edge_package import check_codebook_drift
+        entry = self._entry("reuse-property")
+        assert "nc:NoSuchName not found in catalog" in check_codebook_drift([entry], self.CATALOG)[0]
+        assert missing_reuse_target(entry["propertyMappings"][0], "nc:PersonType", self.CATALOG) == "nc:NoSuchName"

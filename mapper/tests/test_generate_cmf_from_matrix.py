@@ -1400,3 +1400,19 @@ def test_a_full_iri_target_class_range_names_the_same_class_as_the_owl():
     [about] = [p for p in model.properties if p.name == "about"]
     assert about.class_ref == "nc.PersonType"
     assert "nc" in {n.prefix for n in model.namespaces}
+
+
+@pytest.mark.parametrize("first", [None, "http://www.w3.org/2001/XMLSchema#string",
+                                   "https://elsewhere.test/Thing"])
+def test_only_the_first_range_names_the_class_as_in_the_owl(first):
+    """Round 19: the OWL reads range[0]; the CMF took the first range it could
+    resolve, so a bound IRI in second place named a class the OWL left open."""
+    from ontology_mapper.generation_utils import component_iri
+    ns = "http://example.org/niem-core/6.0"
+    ranges = ([first] if first else []) + [component_iri(ns, "PersonType")]
+    inv = _make_inventory(classes=[_make_class("src:A")],
+                          obj_props=[_make_obj_prop("src:about", domain=["src:A"], range_list=ranges)])
+    matrix = _make_matrix([_make_mapping("src:A", "reuse", "nc:BaseType", property_mappings=[
+        _make_prop_mapping("src:about", "create-property")])])
+    [about] = [p for p in _build(matrix, inv, target_ns_map={"nc": ns}).properties if p.name == "about"]
+    assert about.class_ref == ("nc.PersonType" if first is None else "")

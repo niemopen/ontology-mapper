@@ -218,6 +218,16 @@ def catalog_property_definitions(catalog):
     return definitions
 
 
+def reuse_decision_target(prop):
+    """The target a ``reuse-property`` row names, or None. One selection for
+    the rows Stage 5's exit gate, the review refingerprint and Stage 7 Check
+    12 check: a ``create-property`` row reuses nothing, so a Stage 3 target
+    it still carries is not checked."""
+    if prop.get("action") != "reuse-property":
+        return None
+    return real_target_property(prop.get("targetProperty"))
+
+
 class PropertyTargetError(ValueError):
     """A reused target property the run's reference catalog does not list."""
 
@@ -232,8 +242,7 @@ def missing_reuse_target(prop, class_target_type, catalog):
     and failed only at Check 12, which review can no longer reopen. A
     catalog without a property index cannot say, so nothing is refused.
     """
-    target = (real_target_property(prop.get("targetProperty"))
-              if prop.get("action") == "reuse-property" else None)
+    target = reuse_decision_target(prop)
     if target is None or not (catalog or {}).get("propertyIndex"):
         return None
     key = catalog_property_key(target, class_target_type, catalog.get("namespaces", {}))
@@ -249,8 +258,7 @@ def refingerprint_property(prop, class_target_type, catalog):
     reported the reviewer's choice as codebook drift. A decision that
     reuses nothing carries no fingerprint.
     """
-    target = (real_target_property(prop.get("targetProperty"))
-              if prop.get("action") == "reuse-property" else None)
+    target = reuse_decision_target(prop)
     if target is None:
         prop.pop("targetDefinitionHash", None)
         return

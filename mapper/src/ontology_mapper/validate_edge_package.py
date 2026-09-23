@@ -57,8 +57,8 @@ def withdraw_stage_8_outputs(pkg_dir):
     never runs, nothing else would replace a PASS report and a finalization
     stamp that speak for the package's previous content. The package manifest
     itself is Stage 6's; the stamp Stage 8 added is taken back and its
-    version restored to Stage 6's (its stats are recounted from the same
-    matrix).
+    version restored to Stage 6's. Stage 8's stats stay: they count the same
+    matrix, the digest ignores them, and the next Stage 6b or 8 rewrites them.
     Returns the paths withdrawn, relative to the package.
     """
     import json
@@ -157,9 +157,12 @@ def stale_against_package(report_path, pkg_dir, report=None):
     # A report from before digests were recorded. The clock under-reports —
     # that is the defect above — but it never refuses a package it cannot
     # speak to, which is the behaviour such a run dir already had.
+    # Such a report never covered the package manifest, which Stage 8
+    # rewrites; counting it read a report's own finalize as a change.
     stamped = report_path.stat().st_mtime_ns
     newer = [p for p in validated_artifacts(pkg_dir)
-             if p.stat().st_mtime_ns > stamped]
+             if p.relative_to(pkg_dir).as_posix() != MANIFEST_NAME
+             and p.stat().st_mtime_ns > stamped]
     if not newer:
         return None
     return str(sorted(newer, key=lambda p: p.stat().st_mtime_ns)[-1])
@@ -421,7 +424,7 @@ def check_codebook_drift(mappings_list, catalog):
 
     from ontology_mapper.generation_utils import (
         accepted_reuse_target, catalog_property_definitions, catalog_property_key,
-        real_target_property, target_qname)
+        reuse_decision_target, target_qname)
 
     prop_defs = catalog_property_definitions(catalog)
 
@@ -452,7 +455,11 @@ def check_codebook_drift(mappings_list, catalog):
 
         for p in m.get("propertyMappings", []):
             src_prop = p.get("sourceProperty", "")
-            target_prop = real_target_property(p.get("targetProperty"))
+            # Only reuse-property rows, as the Stage 5 exit gate checks: a
+            # create-property row reuses nothing, and failing it on a Stage 3
+            # target it still carried contradicted a review that passed. Past
+            # review every row is accepted, so both check the same rows.
+            target_prop = reuse_decision_target(p)
             prop_hash = p.get("targetDefinitionHash")
 
             # As for a class target: a reused property that left the catalog

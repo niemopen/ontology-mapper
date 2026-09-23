@@ -447,8 +447,12 @@ class MatrixToCmfBuilder:
         ))
 
     def _resolve_range(self, ranges: list) -> str:
-        """Resolve object property range to a CMF class ref."""
-        for r in ranges:
+        """Resolve object property range to a CMF class ref.
+
+        The first range only, as the OWL emitter's `object_range_ref` reads
+        it: resolving a later one named a range the OWL left open.
+        """
+        for r in ranges[:1]:
             if r.startswith(_XSD_PREFIX) or r.startswith(_XSD_SHORT):
                 continue
             if r.startswith(self._source_prefix) or r in self._class_by_qname:

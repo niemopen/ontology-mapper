@@ -436,3 +436,24 @@ def test_approve_all_button_and_route_ask_the_same_question(run_context, monkeyp
     assert validation["approveAllBlocked"] == 0
     assert client.post("/runs/sample/review/approve-all").status_code == 200
 
+
+def test_resolving_a_property_the_concept_does_not_have_is_refused(run_context, monkeypatch):
+    """Round 19: the route ignored the not-found answer and logged a decision
+    for a misspelled property; the CLI refuses the same input."""
+    run_dir, client, _ = run_context
+    monkeypatch.setattr(review, "_get_cascade", lambda *args: ("niem", {"types": [], "namespaces": {}}))
+    entry = {"sourceConcept": "src:Person", "action": "reuse", "targetType": "nc:PersonType",
+             "reviewStatus": "pending-review",
+             "propertyMappings": [{"sourceProperty": "src:name", "action": "human-must-decide",
+                                   "reviewStatus": "pending-review"}]}
+    (run_dir / "mapping-matrix.json").write_text(json.dumps({"mappings": [entry]}), encoding="utf-8")
+    for name in ("decision-log.json", "human-review-decisions.json"):
+        (run_dir / name).write_text(json.dumps({"decisions": []}), encoding="utf-8")
+    before = {name: (run_dir / name).read_text(encoding="utf-8")
+              for name in ("mapping-matrix.json", "decision-log.json", "human-review-decisions.json")}
+    r = client.post("/runs/sample/review/resolve-property",
+                    json={"concept": "src:Person", "source_property": "src:nmae",
+                          "property_action": "create-property"})
+    assert r.status_code == 404
+    assert "src:nmae" in r.json()["detail"]
+    assert {name: (run_dir / name).read_text(encoding="utf-8") for name in before} == before

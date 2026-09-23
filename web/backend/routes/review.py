@@ -313,9 +313,16 @@ async def resolve_property(
     }
     from ontology_mapper.generation_utils import PropertyTargetError
     try:
-        apply_property_decision(entry, req.source_property, decision, cascade[1] if cascade else {})
+        applied = apply_property_decision(entry, req.source_property, decision,
+                                          cascade[1] if cascade else {})
     except PropertyTargetError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if not applied:
+        # As the CLI dispatcher refuses it: saving here logged a decision
+        # for a property the concept does not have.
+        raise HTTPException(
+            status_code=404,
+            detail=f"Property not found: {req.source_property} on {entry['sourceConcept']}")
 
     _save(run_dir, matrix, dec_log, [entry])
 

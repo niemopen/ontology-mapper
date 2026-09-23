@@ -77,7 +77,11 @@ be proven valid and that is itself a blocker. A reused property target the
 catalog does not list is refused when chosen (`apply_property_decision`
 raises `generation_utils.PropertyTargetError`; the web route answers 400,
 the CLI prints it) and, when saved earlier or edited in, blocks exit; both
-ask `generation_utils.missing_reuse_target`, the key Stage 7 Check 12 looks up.
+ask `generation_utils.missing_reuse_target`, which Stage 7 Check 12 shares:
+the same rows (`reuse_decision_target`: `reuse-property` rows only; a
+`create-property` row reuses nothing) and the same catalog key. The web
+route answers 404 for a property the concept does not have, as the CLI
+refuses it.
 
 Each driver meets that check at a different point. The web asks it through
 `routes/review.stage_5_gate` before it offers to close review; the CLI loop

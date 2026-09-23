@@ -499,6 +499,23 @@ class TestFinalizeEndToEnd:
         assert "finalizedAt" not in manifest
         assert manifest["version"] == DRAFT_VERSION
 
+    def test_a_report_without_digests_survives_its_own_finalize(self, tmp_path, monkeypatch):
+        """Round 19: a pre-digest report falls back to the clock, and once the
+        manifest was validated, Stage 8's own rewrite of it read as a change,
+        so every second finalize was refused."""
+        import os
+        from ontology_mapper.validate_edge_package import stale_against_package
+
+        run_dir, pkg = self._run_dir(tmp_path, validated=False)
+        report = run_dir / "validation-report.json"
+        old = report.stat().st_mtime_ns - 10**9
+        for p in pkg.rglob("*"):
+            if p.is_file():
+                os.utime(p, ns=(old, old))
+        assert self._finalize(run_dir, monkeypatch) == 0
+        assert stale_against_package(report, pkg) is None
+        assert self._finalize(run_dir, monkeypatch) == 0
+
     def test_a_package_stage_7_never_validated_is_not_published(self, tmp_path, monkeypatch):
         run_dir, pkg = self._run_dir(tmp_path)
         (run_dir / "validation-report.json").unlink()
