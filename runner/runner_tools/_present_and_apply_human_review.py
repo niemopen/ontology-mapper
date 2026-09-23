@@ -798,13 +798,25 @@ def _prop_counts(entry):
     return len(props), reuse, create, must_decide
 
 
+def _undecided_blocker_lines(matrix):
+    """Lines naming the undecided properties that still block Stage 5 when
+    no concept is pending: "No items pending review" read as review done
+    while the exit check still refused."""
+    undecided = undecided_properties(matrix.get("mappings", []))
+    if not undecided:
+        return []
+    return ([f"No concepts pending review, but {len(undecided)} undecided properties still block Stage 5:"]
+            + [f"  {u['concept']} {u['property']}" for u in undecided]
+            + ["Resolve them in the Stage 5 review loop (run_pipeline) or the web review page."])
+
+
 def _cmd_present(args):
     """Print compact review summary — one line per concept, grouped by action."""
     run_dir, matrix, dec_log = load_inputs(args.run_dir)
     pending = get_pending_items(matrix)
 
     if not pending:
-        print("No items pending review.")
+        print("\n".join(_undecided_blocker_lines(matrix)) or "No items pending review.")
         return
 
     groups = group_by_action(pending)
@@ -899,17 +911,17 @@ def _cmd_detail(args):
 def _cmd_accept_all(args):
     """Accept all pending items as-is and save.
 
-    Refuses to run if any human-must-decide properties exist — those must
-    be resolved individually first.
+    Refuses to run if any undecided properties exist — those must be
+    resolved individually first.
     """
     run_dir, matrix, dec_log = load_inputs(args.run_dir)
     pending = get_pending_items(matrix)
 
     if not pending:
-        print("No items pending review.")
+        print("\n".join(_undecided_blocker_lines(matrix)) or "No items pending review.")
         return
 
-    # Block accept-all if any human-must-decide properties remain
+    # Block accept-all if any undecided properties remain
     must_decide_count = len(undecided_properties(pending))
     if must_decide_count:
         print(f"Cannot approve-all: {must_decide_count} undecided "

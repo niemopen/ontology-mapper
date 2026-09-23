@@ -82,6 +82,19 @@ def _find_entry(matrix: dict, concept: str) -> dict | None:
     return entry
 
 
+def _mark_undecided(entries: list) -> list:
+    """Each property carries ``undecided`` (`property_undecided`), so the
+    page shows the gate's answer instead of deciding by action itself: it
+    showed an accepted reuse with no target as done, and offered to accept
+    a pending one as it stood."""
+    from runner_tools._present_and_apply_human_review import property_undecided
+
+    for entry in entries:
+        for p in entry.get("propertyMappings") or []:
+            p["undecided"] = property_undecided(p)
+    return entries
+
+
 def _get_cascade(run_id: str, run_dir: Path) -> tuple | None:
     """Lazy-load cascade context (target_ontology, catalog) for a run."""
     if run_id not in _cascade_cache:
@@ -141,7 +154,7 @@ async def get_review_state(run_id: str, user: dict = Depends(require_auth), org:
         "targetOntology": matrix.get("targetOntology", ""),
         "targetVersion": matrix.get("targetVersion", ""),
         "summary": matrix.get("summary", {}),
-        "mappings": matrix.get("mappings", []),
+        "mappings": _mark_undecided(matrix.get("mappings", [])),
         "actions": matrix.get("actions", {}),
         "validation": {
             "totalConcepts": total,
@@ -414,4 +427,4 @@ async def get_concept_detail(
     entry = _find_entry(matrix, concept)
     if not entry:
         raise HTTPException(status_code=404, detail=f"Concept not found: {concept}")
-    return entry
+    return _mark_undecided([entry])[0]

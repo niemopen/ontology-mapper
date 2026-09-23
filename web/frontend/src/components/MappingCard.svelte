@@ -39,9 +39,8 @@
   $: isAccepted = mapping.reviewStatus === "accepted";
   $: isPending = mapping.reviewStatus === "pending-review";
   $: properties = mapping.propertyMappings || [];
-  $: mustDecideCount = properties.filter(
-    (p) => p.action === "human-must-decide" && p.reviewStatus === "pending-review"
-  ).length;
+  // The backend's property_undecided answers, as it does for the gate.
+  $: mustDecideCount = properties.filter((p) => p.undecided).length;
   $: pendingPropCount = properties.filter(
     (p) => p.reviewStatus === "pending-review"
   ).length;

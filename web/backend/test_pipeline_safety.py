@@ -394,3 +394,24 @@ def test_approve_reports_the_number_of_properties_left_undecided(run_context):
     response = client.post("/runs/sample/review/approve", json={"concept": "src:Item"})
     assert response.status_code == 200, response.text
     assert response.json()["skippedMustDecide"] == 1
+
+
+def test_review_state_marks_each_property_undecided_by_the_gates_rule(run_context, monkeypatch):
+    """The page decided "needs decision" by action: an accepted reuse with no
+    target showed as done while the gate blocked on it."""
+    run_dir, client, _ = run_context
+    monkeypatch.setattr(review, "_get_cascade", lambda *args: ("niem", {"types": [], "namespaces": {}}))
+    monkeypatch.setattr("ontology_mapper.ontology_specific.invalid_class_targets", lambda *a: [])
+    entry = {"sourceConcept": "src:Item", "action": "extend", "targetType": None,
+             "reviewStatus": "accepted", "propertyMappings": [
+                 {"sourceProperty": "src:count", "action": "reuse-property", "reviewStatus": "accepted"},
+                 {"sourceProperty": "src:name", "action": "create-property", "reviewStatus": "accepted"}]}
+    (run_dir / "mapping-matrix.json").write_text(json.dumps({"mappings": [entry]}), encoding="utf-8")
+    body = client.get("/runs/sample/review").json()
+    flags = {p["sourceProperty"]: p["undecided"] for p in body["mappings"][0]["propertyMappings"]}
+    assert flags == {"src:count": True, "src:name": False}
+    detail = client.get("/runs/sample/review/src:Item").json()
+    assert [p["undecided"] for p in detail["propertyMappings"]] == [True, False]
+    saved = json.loads((run_dir / "mapping-matrix.json").read_text(encoding="utf-8"))
+    assert "undecided" not in saved["mappings"][0]["propertyMappings"][0]
+

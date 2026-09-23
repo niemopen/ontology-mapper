@@ -14,7 +14,7 @@
 
 Available actions during review:
 - `approve` — accept a single concept's recommendation
-- `approve_all` — accept all pending (blocked if human-must-decide properties exist)
+- `approve_all` — accept all pending (blocked while undecided properties exist)
 - `detail` — show full rationale and property mappings for a concept
 - `change_target` — change target type, triggering reclassification cascade
 - `resolve_property` — resolve a single property (especially human-must-decide)
@@ -45,7 +45,7 @@ python runner_tools/_present_and_apply_human_review.py --run-dir {run_dir} detai
 # Approve a single concept
 python runner_tools/_present_and_apply_human_review.py --run-dir {run_dir} approve {concept}
 
-# Approve all (blocked if human-must-decide properties exist)
+# Approve all (blocked while undecided properties exist)
 python runner_tools/_present_and_apply_human_review.py --run-dir {run_dir} approve-all
 
 # Search target catalog
@@ -60,11 +60,14 @@ policy (`ontology_specific.invalid_class_targets`). The third applies to
 decisions saved before the policy existed: they make no selection for the
 interactive check to catch, so the exit check and the Stage 6 entry are the
 seams that see them. "Still needs a human decision" is
-`property_undecided`: a pending `human-must-decide` property, or a
-`reuse-property` with no real target (absent or `[undecided]`), which the
-emitters would not reuse (`generation_utils.accepted_reuse_target`). Every
-count of blocking properties, CLI and web, asks the same function, and the
-blocker names each one. `check_stage_5_exit(matrix, cascade)` takes the run's
+`property_undecided`: a property is decided only by the two decisions review
+can make (`PROPERTY_DECISION_ACTIONS`), `create-property`, or `reuse-property`
+with a real target (not absent or `[undecided]`; the target the emitters
+reuse, `generation_utils.accepted_reuse_target`). Everything else is
+undecided whatever its status: `human-must-decide`, a reuse without a target,
+any other action string. Every count and view of blocking properties, CLI
+and web (the web page reads each property's `undecided` flag), bulk accept
+included, asks the same function, and the blocker names each one. `check_stage_5_exit(matrix, cascade)` takes the run's
 `(target_ontology, catalog)`; when that cannot be loaded the targets cannot
 be proven valid and that is itself a blocker.
 

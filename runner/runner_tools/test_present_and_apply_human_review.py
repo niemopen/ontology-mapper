@@ -1767,3 +1767,28 @@ class TestCmdResolvesConceptNames:
         assert "ambiguous" in capsys.readouterr().out
         saved = json.loads((tmp_path / "mapping-matrix.json").read_text(encoding="utf-8"))
         assert {m["reviewStatus"] for m in saved["mappings"]} == {"pending-review"}
+
+
+class TestCliSaysWhatStillBlocks:
+    """Round fourteen: with no concept pending, `present` and `approve-all`
+    printed "No items pending review." while the exit check refused."""
+
+    def _write(self, tmp_path):
+        entry = {"sourceConcept": "src:Item", "action": "extend", "targetType": None,
+                 "reviewStatus": "accepted", "propertyMappings": [
+                     {"sourceProperty": "src:count", "action": "human-must-decide",
+                      "reviewStatus": "pending-review"}]}
+        (tmp_path / "mapping-matrix.json").write_text(json.dumps({"mappings": [entry]}), encoding="utf-8")
+        (tmp_path / "decision-log.json").write_text(json.dumps({"decisions": []}), encoding="utf-8")
+
+    @pytest.mark.parametrize("command", ["_cmd_present", "_cmd_accept_all"])
+    def test_undecided_properties_are_named(self, tmp_path, capsys, command):
+        from types import SimpleNamespace
+        import runner_tools._present_and_apply_human_review as h
+        self._write(tmp_path)
+        getattr(h, command)(SimpleNamespace(run_dir=str(tmp_path)))
+        out = capsys.readouterr().out
+        assert "No items pending review." not in out
+        assert "1 undecided properties still block Stage 5" in out
+        assert "src:Item src:count" in out
+

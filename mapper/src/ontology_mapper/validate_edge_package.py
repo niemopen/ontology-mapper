@@ -455,9 +455,10 @@ def check_codebook_drift(mappings_list, catalog):
                         f"{concept}/{src_prop}: {target_prop} definition "
                         f"changed (was {prop_hash}, now {current_prop_hash}); "
                         f"if the catalog has not changed since review, the "
-                        f"fingerprint predates the review decision, and "
-                        f"re-resolving the property in Stage 5 review records "
-                        f"the current one"
+                        f"fingerprint predates the review decision: re-resolve "
+                        f"the property on the web review page, which records "
+                        f"the current one, then re-run from Stage 6, which "
+                        f"packages the matrix this check reads"
                     )
 
     return errors
