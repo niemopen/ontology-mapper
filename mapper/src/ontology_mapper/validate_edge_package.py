@@ -565,14 +565,21 @@ def main():
         else:
             mapped_concepts = set()
     else:
-        # Fall back to mapper run matrix
+        # The run's matrix, so the checks below still have one to read; but
+        # a package without its own copy fails here. Validating the run's
+        # copy in its place passed a package whose matrix the digest does
+        # not cover, and Stage 8 would publish from it.
         matrix = json.loads((RUN_DIR / "mapping-matrix.json").read_text(encoding="utf-8"))
         mapped_concepts = {e["sourceConcept"] for e in matrix["mappings"]}
 
     unmapped = internal_classes - mapped_concepts
-    add_check(checks, "mapping-completeness", len(unmapped) == 0,
-          f"{len(mapped_concepts)}/{len(internal_classes)} classes mapped" +
-          (f", unmapped: {unmapped}" if unmapped else ""))
+    if not matrix_path.exists():
+        add_check(checks, "mapping-completeness", False,
+                  "the package has no mappings/mapping-matrix.json; re-run from Stage 6")
+    else:
+        add_check(checks, "mapping-completeness", len(unmapped) == 0,
+              f"{len(mapped_concepts)}/{len(internal_classes)} classes mapped" +
+              (f", unmapped: {unmapped}" if unmapped else ""))
 
     # ── Check 4: Extension catalog vs matrix count ───────────────────────────
     print("\n  Check 4: Extension catalog count")

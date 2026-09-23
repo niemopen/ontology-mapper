@@ -7,12 +7,17 @@ import subprocess
 import sys
 
 
-@pytest.mark.parametrize("defect", [None, "syntax", "shacl", "valid-cmf", "cmf-unbound", "niem-without-cmf"])
+@pytest.mark.parametrize("defect", [None, "syntax", "shacl", "valid-cmf", "cmf-unbound",
+                                    "niem-without-cmf", "no-package-matrix"])
 def test_cli_reports_failure_and_exit_status(tmp_path, defect):
     """Real CLI, real parsing/validation, and synthetic files only."""
     pkg = tmp_path / "edge-package"
-    for directory in ("ontology", "shapes", "kg/import"):
+    for directory in ("ontology", "shapes", "kg/import", "mappings"):
         (pkg / directory).mkdir(parents=True, exist_ok=True)
+    # Stage 6b's copy; without it the run's copy, outside the digest, was
+    # validated in its place and the package passed.
+    if defect != "no-package-matrix":
+        (pkg / "mappings/mapping-matrix.json").write_text('{"mappings": []}')
     (tmp_path / ".mapper-state.json").write_text(json.dumps({"inputs": {
         "organization": "test", "source": "sample",
         # A target with a CMF reference model must carry a CMF; one without need not.

@@ -145,14 +145,18 @@ def build_extension_catalog(matrix, ctx, inventory, target_ns_map):
                 # (a pending reuse, a `human-must-decide`).
                 continue
             recorded = resolve_property(decision["sourceProperty"], concept)
-            if declared_properties and recorded not in declared_properties:
-                # The OWL and CMF emitters walk the inventory, so a
-                # decision on a property it does not carry produces no
-                # term anywhere; inventing one here would make the
-                # catalog claim a term the model never declares.
+            if declared_properties and recorded not in class_properties.get(concept, set()):
+                # The OWL and CMF emitters walk the inventory class by
+                # class, so a decision on a property this concept does not
+                # carry produces no term on its extension; listing one here
+                # would make the catalog claim a term the model never
+                # declares there. Membership anywhere in the inventory was
+                # the wrong question: another class's property passed it.
+                where = ("belongs to another class in this run's concept inventory"
+                         if recorded in declared_properties
+                         else "is not in this run's concept inventory")
                 unresolved.append(
-                    f"  - {concept}: {decision['sourceProperty']} "
-                    f"is not in this run's concept inventory")
+                    f"  - {concept}: {decision['sourceProperty']} {where}")
                 continue
             if recorded in declared_properties and recorded not in minted_properties:
                 # Named only by a shape: the emitters reference it as the

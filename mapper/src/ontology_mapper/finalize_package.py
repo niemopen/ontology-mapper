@@ -318,18 +318,6 @@ def main():
     print(f"  Edge package:  {ctx.pkg_dir}")
     print()
 
-    # Load required artifacts. The package copy first: it is the matrix
-    # Stage 7 validated and digested, the one om-validate reads first too.
-    # The run directory's copy is outside the digest, so an edit to it after
-    # validation would reach the published statistics unrefused.
-    matrix_path = ctx.pkg_dir / "mappings" / "mapping-matrix.json"
-    if not matrix_path.exists():
-        matrix_path = ctx.run_dir / "mapping-matrix.json"
-    if not matrix_path.exists():
-        print(f"  ERROR: mapping-matrix.json not found")
-        sys.exit(1)
-    matrix = json.loads(matrix_path.read_text(encoding="utf-8"))
-
     # Load optional artifacts
     # Stage 8 publishes only a package its current validation passed.
     # `--from-stage 8` reaches here without Stage 7, and a published package
@@ -356,6 +344,19 @@ def main():
         print("      Fix the package and re-run Stage 7 before finalizing; "
               "feedback-report.json maps the failures to source decisions.")
         sys.exit(1)
+
+    # The package copy only, read once the package is known to be the one
+    # Stage 7 validated: it is the matrix that validation digested. The run
+    # directory's copy is outside the digest, so falling back to it let an
+    # edit made after validation reach the published statistics unrefused.
+    # Stage 6b always writes the package copy; its absence means the package
+    # is incomplete.
+    matrix_path = ctx.pkg_dir / "mappings" / "mapping-matrix.json"
+    if not matrix_path.exists():
+        print(f"  ERROR: {matrix_path} not found: the package lacks the matrix "
+              f"Stage 7 validates; re-run from Stage 6.")
+        sys.exit(1)
+    matrix = json.loads(matrix_path.read_text(encoding="utf-8"))
 
     audit_path = ctx.run_dir / "generation-audit.json"
     generation_audit = json.loads(audit_path.read_text(encoding="utf-8")) if audit_path.exists() else None

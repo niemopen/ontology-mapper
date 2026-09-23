@@ -353,6 +353,37 @@ class TestConceptsMissingFromTheInventory:
             build_extension_catalog(matrix, context, inventory, {})
 
 
+class TestAPropertyOfAnotherClass:
+    """A decision naming a property the inventory declares for another class:
+    the emitters, walking class by class, mint it on that class only, so the
+    catalog must not list it under this concept's extension."""
+
+    def _run(self, source_property):
+        from pathlib import Path
+        from ontology_mapper.pipeline_context import PipelineContext
+        context = PipelineContext(Path("run"), Path("run/edge-package"),
+                                  "example", "source", "niem", "6.0")
+        inventory = {"classes": [{"qname": "src:A", "iri": "https://src.test/ns#A"},
+                                 {"qname": "src:B", "iri": "https://src.test/ns#B"}],
+                     "namespaceMap": {"https://src.test/ns#": "src:"},
+                     "objectProperties": [],
+                     "datatypeProperties": [{"qname": "src:own", "domain": ["src:A"]},
+                                            {"qname": "src:other", "domain": ["src:B"]}]}
+        matrix = _matrix([_mapping("src:A", "extend", "nc:PersonType", baseType="nc:PersonType",
+                                   propertyMappings=[{"sourceProperty": source_property,
+                                                      "action": "create-property",
+                                                      "reviewStatus": "accepted"}])])
+        return build_extension_catalog(matrix, context, inventory, {})
+
+    def test_another_classs_property_is_named_not_listed(self):
+        with pytest.raises(ValueError, match="src:A: src:other belongs to another class"):
+            self._run("src:other")
+
+    def test_the_concepts_own_property_is_listed(self):
+        [ext] = self._run("src:own")["extensions"]
+        assert [p.rsplit("#", 1)[-1] for p in ext["properties"]] == ["own"]
+
+
 class TestShapeOnlyProperties:
     """`build_class_properties` harvests shape paths as class properties, so
     Stage 3/4 legitimately writes a decision for a property the source

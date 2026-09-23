@@ -349,6 +349,10 @@ class TestFinalizeEndToEnd:
             {"sourceConcept": "src:Permit", "action": "reuse",
              "reviewStatus": "accepted", "targetType": "nc:PermitType"}]}),
             encoding="utf-8")
+        # Stage 6b's copy, which Stage 7 digests and Stage 8 reads.
+        (pkg / "mappings").mkdir()
+        (pkg / "mappings" / "mapping-matrix.json").write_text(
+            (run_dir / "mapping-matrix.json").read_text(encoding="utf-8"), encoding="utf-8")
         report = {"stage": "7", "allPassed": True, "checks": []}
         if validated:
             report["validatedArtifacts"] = artifact_digests(pkg)
@@ -422,12 +426,6 @@ class TestFinalizeEndToEnd:
         from ontology_mapper.validate_edge_package import artifact_digests
 
         run_dir, pkg = self._run_dir(tmp_path)
-        (pkg / "mappings").mkdir()
-        (pkg / "mappings" / "mapping-matrix.json").write_text(
-            (run_dir / "mapping-matrix.json").read_text(encoding="utf-8"), encoding="utf-8")
-        report = json.loads((run_dir / "validation-report.json").read_text(encoding="utf-8"))
-        report["validatedArtifacts"] = artifact_digests(pkg)
-        (run_dir / "validation-report.json").write_text(json.dumps(report), encoding="utf-8")
         # Edited after validation, in the copy no digest covers.
         (run_dir / "mapping-matrix.json").write_text(json.dumps({"mappings": [
             {"sourceConcept": "src:Permit", "action": "exclude"}]}), encoding="utf-8")
@@ -435,6 +433,23 @@ class TestFinalizeEndToEnd:
         assert self._finalize(run_dir, monkeypatch) == 0
         stats = json.loads((pkg / "package-manifest.json").read_text(encoding="utf-8"))["stats"]
         assert stats["actionCounts"] == {"reuse": 1}
+
+    def test_a_package_without_its_matrix_is_not_published_from_the_run_copy(
+            self, tmp_path, monkeypatch, capsys):
+        """The run directory's copy is outside the digest: falling back to it
+        when the package lacks its own published statistics from data no
+        validation covered."""
+        from ontology_mapper.validate_edge_package import artifact_digests
+
+        run_dir, pkg = self._run_dir(tmp_path)
+        (pkg / "mappings" / "mapping-matrix.json").unlink()
+        (pkg / "mappings").rmdir()
+        report = json.loads((run_dir / "validation-report.json").read_text(encoding="utf-8"))
+        report["validatedArtifacts"] = artifact_digests(pkg)
+        (run_dir / "validation-report.json").write_text(json.dumps(report), encoding="utf-8")
+        assert self._finalize(run_dir, monkeypatch) == 1
+        assert "lacks the matrix" in capsys.readouterr().out
+        assert "finalizedAt" not in json.loads((pkg / "package-manifest.json").read_text(encoding="utf-8"))
 
     def test_a_package_stage_7_never_validated_is_not_published(self, tmp_path, monkeypatch):
         run_dir, pkg = self._run_dir(tmp_path)
