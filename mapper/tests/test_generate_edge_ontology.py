@@ -39,6 +39,53 @@ def test_generation_includes_offline_native_cmf_definitions_in_xml_and_json(tmp_
     assert any(c["structures:id"] == "xs.string" for c in data["Datatype"])
     assert any(n.get("ConformanceTargetURI") for n in data["Namespace"])
 
+@pytest.mark.parametrize("declared", [True, False])
+def test_an_accepted_reuse_reaches_owl_and_cmf_whether_or_not_the_source_declares_it(
+        tmp_path, monkeypatch, declared):
+    """A property only a SHACL shape names is never minted (b311cd9), but an
+    accepted reuse of it is a decision like any other: the OWL restriction
+    and the CMF class carry it, as they do for a declared property. Before,
+    only the SHACL sh:path named the target."""
+    import json
+    import re
+    import sys
+    from ontology_mapper.generate_edge_ontology import main
+
+    monkeypatch.delenv("OM_SPECS_DIR", raising=False)
+    string = "http://www.w3.org/2001/XMLSchema#string"
+    dt_props = [{"qname": "src:note", "iri": "urn:source:note", "label": "Note", "comment": "",
+                 "domain": ["src:Record"], "range": [string]}]
+    if declared:
+        dt_props.append({"qname": "src:ctl", "iri": "urn:source:ctl", "label": "Ctl", "comment": "",
+                         "domain": ["src:Record"], "range": [string]})
+    inventory = {
+        "classes": [{"qname": "src:Record", "iri": "urn:source:Record", "label": "Record", "comment": "", "subClassOf": []}],
+        "datatypeProperties": dt_props, "objectProperties": [], "codelistSchemes": [], "augmentingNamespaces": [],
+        "shaclShapes": [{"iri": "urn:source:RecordShape", "targetClass": "src:Record", "targetClasses": ["src:Record"],
+                         "properties": [{"path": "src:ctl", "minCount": 1}]}],
+    }
+    mappings = [{"sourceConcept": "src:Record", "action": "extend", "targetType": "nc:ActivityType",
+                 "baseType": "nc:ActivityType", "reviewStatus": "accepted",
+                 "propertyMappings": [
+                     {"sourceProperty": "src:note", "action": "create-property", "reviewStatus": "accepted"},
+                     {"sourceProperty": "src:ctl", "action": "reuse-property",
+                      "targetProperty": "nc:DocumentFileControlID", "reviewStatus": "accepted"}]}]
+    for name, content in {
+        "concept-inventory.json": inventory, "mapping-matrix.json": {"mappings": mappings},
+        ".mapper-state.json": {"inputs": {"organization": "sample", "source": "sample",
+                                          "target_ontology": "niem", "target_version": "6.0"}},
+    }.items():
+        (tmp_path / name).write_text(json.dumps(content), encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["om-generate-ontology", "--run-dir", str(tmp_path)])
+    main()
+    pkg = tmp_path / "edge-package"
+    extensions = next((pkg / "ontology").glob("*-extensions.ttl")).read_text(encoding="utf-8")
+    assert re.search(r"RecordType rdfs:subClassOf \[ a owl:Restriction ; owl:onProperty nc:DocumentFileControlID", extensions)
+    cmf = next((pkg / "cmf").glob("*.cmf")).read_text(encoding="utf-8")
+    record = re.search(r'<Class structures:id="[^"]*RecordType".*?</Class>', cmf, re.S).group(0)
+    assert re.search(r'structures:ref="nc\.DocumentFileControlID"', record)
+
+
 def test_a_target_without_a_cmf_reference_model_gets_no_cmf(tmp_path, monkeypatch):
     """NODS ships no CMF reference model, so a CMF could not declare the
     target classes and properties it references and Stage 7 failed every

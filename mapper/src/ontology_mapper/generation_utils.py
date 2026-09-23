@@ -206,6 +206,23 @@ def source_declared_properties(inventory):
             for p in inventory.get(key, [])}
 
 
+def shape_only_class_properties(inventory):
+    """{class QName: sorted property QNames only a SHACL shape names on it}.
+
+    One home for the OWL and CMF emitters. Both take a class's properties
+    from the source property lists, so an accepted reuse of a property only
+    a shape names reached the SHACL (`sh:path`) and neither the OWL
+    restriction nor the CMF class, where a declared property's reuse is
+    carried. `build_class_properties` is the one home for which properties
+    a class has; this is its shape-only remainder.
+    """
+    from ontology_mapper.build_strategy_reports import build_class_properties
+
+    declared = source_declared_properties(inventory)
+    return {cls: sorted(p for p in props if p not in declared)
+            for cls, props in build_class_properties(inventory).items()}
+
+
 def created_property_is_declared(pm):
     """Whether the emitters declare a created term for this decision.
 

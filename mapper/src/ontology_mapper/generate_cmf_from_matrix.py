@@ -37,6 +37,7 @@ from ontology_mapper.generation_utils import (
     target_qname,
     is_full_iri,
     qualified_target_property,
+    shape_only_class_properties,
 )
 from ontology_mapper.ontology_specific import extension_conformance_target
 
@@ -321,6 +322,8 @@ class MatrixToCmfBuilder:
                 if active and prop["qname"] not in dt_assigned:
                     dt_assigned[prop["qname"]] = active
 
+        shape_only = shape_only_class_properties(self.inventory)
+
         # Build class_id lookup for property assignment
         class_id_by_qname = {}
         for qname, _, _, _ in self._reuse:
@@ -359,6 +362,14 @@ class MatrixToCmfBuilder:
             for pq, prop_data in dt_props:
                 self._emit_property(model, cmf_cls, cls_qname, action,
                                     pq, prop_data, is_object=False, emitted=emitted_props)
+
+            # A property only a shape names is never minted, but its accepted
+            # reuse is a reference to the target property like any other;
+            # completion gives the reference the native property's kind.
+            for pq in shape_only.get(cls_qname, []):
+                if accepted_reuse_target(self._prop_mapping.get((cls_qname, pq))):
+                    self._emit_property(model, cmf_cls, cls_qname, action,
+                                        pq, {}, is_object=False, emitted=emitted_props)
 
     def _property_prefix(self, cls_action: str, prop_qname: str) -> str:
         """The CMF namespace a created property is emitted under.

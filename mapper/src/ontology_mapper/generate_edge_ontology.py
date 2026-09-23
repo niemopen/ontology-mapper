@@ -35,6 +35,7 @@ from ontology_mapper.generation_utils import (
     component_iri,
     qualified_target_property,
     range_class_for,
+    shape_only_class_properties,
     source_declared_properties,
     target_qname,
     emitted_class_action,
@@ -260,6 +261,7 @@ def main():
         return [(None, "reuse")]
 
     source_declared = source_declared_properties(inv)
+    shape_only = shape_only_class_properties(inv)
 
     def declared_by_source(prop_qname):
         return prop_qname in source_declared
@@ -483,7 +485,7 @@ def main():
         seen = set()
         out = []
         obj, dt = props_for_class(cls_qname)
-        for pq, _ in obj + dt:
+        for pq in [pq for pq, _ in obj + dt] + shape_only.get(cls_qname, []):
             target = accepted_reuse_target(_prop_mapping_lookup.get((cls_qname, pq)))
             if not target or target in seen:
                 continue
