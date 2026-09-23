@@ -332,6 +332,14 @@ def apply_decision_with_cascade(entry, decision, target_ontology, catalog):
             entry["notes"] = decision["notes"]
     else:
         apply_decision(entry, decision)
+        if "targetType" in decision:
+            # Selecting the class the entry already targets is an approval of
+            # that mapping, so it means what approve means in every driver:
+            # the class and its property decisions are accepted together.
+            # Accepting the class alone left its properties pending, which
+            # the web's exit gate allows and generation reads as "no accepted
+            # reuse" — a reviewed NIEM reuse emitted as a created property.
+            apply_all_property_accepts(entry, confidence=entry["confidence"])
 
 
 def apply_accept(entry):

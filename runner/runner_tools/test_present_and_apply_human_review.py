@@ -1026,6 +1026,26 @@ class TestApplyDecisionWithCascade:
         assert entry["ruleId"] == "human-review"
         assert entry["reviewStatus"] == "accepted"
 
+    @pytest.mark.parametrize("spelling", ["qname", "iri"])
+    def test_reselecting_the_current_target_accepts_its_properties(self, native_catalog, spelling):
+        """Re-selecting the class an entry already targets is an approval:
+        the pending property decisions are accepted with it, as approve does,
+        except a human-must-decide property, which stays for the reviewer."""
+        entry = self._entry()
+        entry.update(targetType="nc:PersonType", reviewStatus="pending-review")
+        entry["propertyMappings"] = [
+            {"sourceProperty": "court:note", "targetProperty": "nc:ActivityDescriptionText",
+             "action": "reuse-property", "reviewStatus": "pending-review"},
+            {"sourceProperty": "court:flag", "action": "human-must-decide",
+             "reviewStatus": "pending-review"},
+        ]
+        selection = ("nc:PersonType" if spelling == "qname"
+                     else native_catalog["namespaces"]["nc"] + "PersonType")
+        apply_decision_with_cascade(entry, {"action": "reuse", "targetType": selection},
+                                    "niem", native_catalog)
+        assert entry["reviewStatus"] == "accepted"
+        assert [p["reviewStatus"] for p in entry["propertyMappings"]] == ["accepted", "pending-review"]
+
     def test_qname_selection_over_stored_iri_of_same_class_does_not_cascade(self, native_catalog):
         entry = self._entry()
         entry["targetType"] = native_catalog["namespaces"]["nc"] + "PersonType"
