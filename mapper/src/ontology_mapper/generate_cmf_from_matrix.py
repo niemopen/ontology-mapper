@@ -243,9 +243,10 @@ class MatrixToCmfBuilder:
         # Source namespace for cross-namespace properties
         properties = self.inventory["objectProperties"] + self.inventory["datatypeProperties"]
         # A full-IRI range `_resolve_range` grounds to a target class names
-        # that class's namespace.
+        # that class's namespace; it reads the first range only, so only
+        # that one can.
         for prop in properties:
-            for r in prop.get("range", []):
+            for r in prop.get("range", [])[:1]:
                 if is_full_iri(r):
                     self._add_target_ns(model, r, seen_prefixes)
         source_refs = {prop["qname"] for prop in properties}

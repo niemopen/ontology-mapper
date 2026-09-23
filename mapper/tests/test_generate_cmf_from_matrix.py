@@ -1416,3 +1416,8 @@ def test_only_the_first_range_names_the_class_as_in_the_owl(first):
         _make_prop_mapping("src:about", "create-property")])])
     [about] = [p for p in _build(matrix, inv, target_ns_map={"nc": ns}).properties if p.name == "about"]
     assert about.class_ref == ("nc.PersonType" if first is None else "")
+    # Nor is the namespace of a range it no longer reads declared.
+    jns = "http://example.org/justice/6.0"
+    inv["objectProperties"][0]["range"] = ([first] if first else []) + [component_iri(jns, "ArrestType")]
+    model = _build(matrix, inv, target_ns_map={"nc": ns, "j": jns})
+    assert ("j" in {n.prefix for n in model.namespaces}) == (first is None)
