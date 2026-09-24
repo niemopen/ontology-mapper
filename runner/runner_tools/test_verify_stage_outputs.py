@@ -28,12 +28,27 @@ def test_stage_7_validation_fail_is_blocking(tmp_path, status):
     from runner_tools.run_pipeline import verify_stage, VerificationError
 
     (tmp_path / "edge-package").mkdir()  # the package the report speaks for
-    _write_json(tmp_path / "validation-report.json", {"checks": [{"status": status}]})
+    _write_json(tmp_path / "validation-report.json",
+                {"allPassed": status == "pass", "checks": [{"status": status}]})
     _write_json(tmp_path / "feedback-report.json", {"stage": "7"})
     if status == "FAIL":
         with pytest.raises(VerificationError):
             verify_stage(tmp_path, "7")
     else:
+        verify_stage(tmp_path, "7")
+
+
+@pytest.mark.parametrize("report", [{}, {"allPassed": True}, {"allPassed": True, "checks": []},
+                                    {"checks": [{"status": "pass"}]}, []])
+def test_stage_7_an_empty_or_incomplete_report_does_not_verify(tmp_path, report):
+    """Copilot 2026-09-24: `{}` is falsy, so the pass check was skipped
+    and a report that recorded nothing verified Stage 7."""
+    from runner_tools.run_pipeline import verify_stage, VerificationError
+
+    (tmp_path / "edge-package").mkdir()
+    _write_json(tmp_path / "validation-report.json", report)
+    _write_json(tmp_path / "feedback-report.json", {"stage": "7"})
+    with pytest.raises(VerificationError, match="validation_all_pass"):
         verify_stage(tmp_path, "7")
 
 

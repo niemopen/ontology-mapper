@@ -154,8 +154,20 @@ def test_completion_cannot_erase_generated_conflicting_class_ids(tmp_path):
     raw.write_text(xml, encoding="utf-8")
     assert validate_cmf_schema(raw)  # Earlier validation could see the duplicate ID.
     reference = model(namespace("t", "urn:target") + component("Class", "t", "First") + component("Class", "t", "Second"))
-    with pytest.raises(ValueError, match="Conflicting.*AType"):
+    # Refused as a duplicate id before any identity is indexed.
+    with pytest.raises(ValueError, match="Duplicate CMF structures:id .*AType"):
         complete_cmf_references(xml, reference)
+
+
+def test_a_duplicate_structures_id_is_refused_not_collapsed():
+    """Copilot 2026-09-24: the id index kept only the last of two
+    declarations sharing an id, and both reached the completed output."""
+    generated = model(namespace("edge", "urn:edge") + namespace("t", "urn:target")
+                      + component("Class", "edge", "AType")
+                      + component("Class", "t", "AType").replace('structures:id="t.AType"',
+                                                                 'structures:id="edge.AType"'))
+    with pytest.raises(ValueError, match="Duplicate CMF structures:id edge.AType"):
+        complete_cmf_references(generated, None)
 
 
 def test_imported_classes_cannot_mask_a_missing_local_class(tmp_path):

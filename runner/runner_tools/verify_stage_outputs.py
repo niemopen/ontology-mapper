@@ -494,8 +494,18 @@ def _verify_stage_7(run_dir, state):
                                  f"report does not cover {stale}" if stale
                                  else "report covers the package as validated"))
 
-    if vr:
-        vr_checks = vr.get("checks", [])
+    # A report that records no checks, or no overall result, passed nothing:
+    # guarding on truthiness skipped this row for `{}` and Stage 7 verified.
+    vr_checks = vr.get("checks") if isinstance(vr, dict) else None
+    if not isinstance(vr_checks, list) or not vr_checks or vr.get("allPassed") is not True:
+        if isinstance(vr_checks, list) and vr_checks:
+            failures = [c for c in vr_checks if c.get("status") == "FAIL"]
+            detail = (f"{len(failures)} checks failed" if failures
+                      else "report does not record allPassed")
+        else:
+            detail = "validation-report.json records no checks"
+        checks.append(_check("validation_all_pass", False, detail))
+    else:
         failures = [c for c in vr_checks if c.get("status") == "FAIL"]
         checks.append(_check("validation_all_pass",
                              len(failures) == 0,

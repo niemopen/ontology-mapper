@@ -105,7 +105,14 @@ class _CmfIndex:
         self.id_attr = f"{{{self.structures}}}id"
         self.ref_attr = f"{{{self.structures}}}ref"
         declarations = [e for e in root if e.get(self.id_attr)]
-        self.by_id = {e.get(self.id_attr): e for e in declarations}
+        self.by_id = {}
+        for e in declarations:
+            # A structures:id names one declaration; indexing a second under
+            # the same id kept only the last and let both reach the output.
+            sid = e.get(self.id_attr)
+            if sid in self.by_id:
+                raise ValueError(f"Duplicate CMF structures:id {sid}")
+            self.by_id[sid] = e
         self.namespaces = {
             sid: e.findtext(f"{{{self.ns}}}NamespaceURI")
             for sid, e in self.by_id.items() if etree.QName(e).localname == "Namespace"
