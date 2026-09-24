@@ -52,6 +52,18 @@ def test_stage_7_an_empty_or_incomplete_report_does_not_verify(tmp_path, report)
         verify_stage(tmp_path, "7")
 
 
+def test_stage_7_a_missing_report_is_reported_once(tmp_path):
+    """Round 21: the pass row repeated the missing report as "records no
+    checks"; the existence and freshness rows already report it."""
+    from runner_tools.verify_stage_outputs import _verify_stage_7
+
+    (tmp_path / "edge-package").mkdir()
+    _write_json(tmp_path / "feedback-report.json", {"stage": "7"})
+    names = [c["name"] for c in _verify_stage_7(tmp_path, {}) if c["status"] == "fail"]
+    assert "validation_all_pass" not in names
+    assert "validation_report_exists" in names
+
+
 # ---------------------------------------------------------------------------
 # _check / _file_check helpers
 # ---------------------------------------------------------------------------

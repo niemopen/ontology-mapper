@@ -496,15 +496,18 @@ def _verify_stage_7(run_dir, state):
 
     # A report that records no checks, or no overall result, passed nothing:
     # guarding on truthiness skipped this row for `{}` and Stage 7 verified.
+    # A missing or unreadable report is already failed above.
     vr_checks = vr.get("checks") if isinstance(vr, dict) else None
-    if not isinstance(vr_checks, list) or not vr_checks or vr.get("allPassed") is not True:
-        if isinstance(vr_checks, list) and vr_checks:
-            failures = [c for c in vr_checks if c.get("status") == "FAIL"]
-            detail = (f"{len(failures)} checks failed" if failures
-                      else "report does not record allPassed")
-        else:
-            detail = "validation-report.json records no checks"
-        checks.append(_check("validation_all_pass", False, detail))
+    if vr is None:
+        pass
+    elif not isinstance(vr_checks, list) or not vr_checks:
+        checks.append(_check("validation_all_pass", False,
+                             "validation-report.json records no checks"))
+    elif vr.get("allPassed") is not True:
+        failures = [c for c in vr_checks if c.get("status") == "FAIL"]
+        checks.append(_check("validation_all_pass", False,
+                             f"{len(failures)} checks failed" if failures
+                             else f"allPassed is {vr.get('allPassed')!r}, not true"))
     else:
         failures = [c for c in vr_checks if c.get("status") == "FAIL"]
         checks.append(_check("validation_all_pass",
