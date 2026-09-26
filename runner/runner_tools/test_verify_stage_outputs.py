@@ -39,7 +39,9 @@ def test_stage_7_validation_fail_is_blocking(tmp_path, status):
 
 
 @pytest.mark.parametrize("report", [{}, {"allPassed": True}, {"allPassed": True, "checks": []},
-                                    {"checks": [{"status": "pass"}]}, []])
+                                    {"checks": [{"status": "pass"}]}, [],
+                                    {"allPassed": True, "checks": [1]},
+                                    {"allPassed": True, "checks": [{"status": "FAIL"}]}])
 def test_stage_7_an_empty_or_incomplete_report_does_not_verify(tmp_path, report):
     """Copilot 2026-09-24: `{}` is falsy, so the pass check was skipped
     and a report that recorded nothing verified Stage 7."""

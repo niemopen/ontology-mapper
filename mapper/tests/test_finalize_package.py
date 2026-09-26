@@ -353,7 +353,8 @@ class TestFinalizeEndToEnd:
         (pkg / "mappings").mkdir()
         (pkg / "mappings" / "mapping-matrix.json").write_text(
             (run_dir / "mapping-matrix.json").read_text(encoding="utf-8"), encoding="utf-8")
-        report = {"stage": "7", "allPassed": True, "checks": []}
+        report = {"stage": "7", "allPassed": True,
+                  "checks": [{"check": "sample", "status": "pass"}]}
         if validated:
             report["validatedArtifacts"] = artifact_digests(pkg)
         (run_dir / "validation-report.json").write_text(
@@ -515,6 +516,19 @@ class TestFinalizeEndToEnd:
         assert self._finalize(run_dir, monkeypatch) == 0
         assert stale_against_package(report, pkg) is None
         assert self._finalize(run_dir, monkeypatch) == 0
+
+    @pytest.mark.parametrize("checks", [[], [{"check": "x", "status": "FAIL"}], [1], None])
+    def test_a_report_that_certifies_no_pass_is_not_published(self, tmp_path, monkeypatch, checks):
+        """Copilot 2026-09-26: Stage 8 read `allPassed` alone, so a report
+        with no checks, a failing check or a malformed entry was published
+        (or raised) when `--from-stage 8` skipped the stage verifier."""
+        run_dir, pkg = self._run_dir(tmp_path)
+        report_path = run_dir / "validation-report.json"
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        report["checks"] = checks
+        report_path.write_text(json.dumps(report), encoding="utf-8")
+        assert self._finalize(run_dir, monkeypatch) == 1
+        assert not (pkg / "governance").exists()
 
     def test_a_package_stage_7_never_validated_is_not_published(self, tmp_path, monkeypatch):
         run_dir, pkg = self._run_dir(tmp_path)

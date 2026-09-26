@@ -120,6 +120,28 @@ def artifact_digests(pkg_dir):
             for p in validated_artifacts(pkg_dir)}
 
 
+def report_not_passed(report):
+    """Why a validation report certifies no pass, or None when it does.
+
+    One home for "did Stage 7 pass?": Stage 8 and the runner's stage
+    verifier both ask it. A pass is `allPassed: true` over a non-empty list
+    of check records that each say "pass". `allPassed` alone let a report
+    with no checks, a failing check or a malformed entry through Stage 8.
+    """
+    checks = report.get("checks") if isinstance(report, dict) else None
+    if not isinstance(checks, list) or not checks:
+        return "records no checks"
+    malformed = sum(1 for c in checks if not isinstance(c, dict))
+    if malformed:
+        return f"{malformed} check entries are not check records"
+    failed = [c.get("check", "?") for c in checks if c.get("status") != "pass"]
+    if failed:
+        return f"{len(failed)} checks did not pass: {', '.join(failed)}"
+    if report.get("allPassed") is not True:
+        return f"allPassed is {report.get('allPassed')!r}, not true"
+    return None
+
+
 def stale_against_package(report_path, pkg_dir, report=None):
     """The artifact a validation report does not speak for, or None.
 

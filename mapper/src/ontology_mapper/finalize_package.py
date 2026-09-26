@@ -24,7 +24,8 @@ from pathlib import Path
 
 from ontology_mapper.pipeline_context import load_context
 from ontology_mapper.run_dir_utils import parse_stamp, utc_stamp
-from ontology_mapper.validate_edge_package import FINAL_VERSION, stale_against_package
+from ontology_mapper.validate_edge_package import (
+    FINAL_VERSION, report_not_passed, stale_against_package)
 
 
 def _count_actions(mappings):
@@ -336,11 +337,9 @@ def main():
         print("      Stage 7 validated a different package than the one here; "
               "re-run validation before finalizing.")
         sys.exit(1)
-    if not validation_report.get("allPassed"):
-        failed = [c.get("check", "?") for c in validation_report.get("checks", [])
-                  if c.get("status") == "FAIL"]
-        print(f"  [!] Stage 7 failed {validation_report.get('failCount', len(failed))} "
-              f"check(s): {', '.join(failed) or 'see validation-report.json'}")
+    not_passed = report_not_passed(validation_report)
+    if not_passed:
+        print(f"  [!] validation-report.json certifies no pass: {not_passed}")
         print("      Fix the package and re-run Stage 7 before finalizing; "
               "feedback-report.json maps the failures to source decisions.")
         sys.exit(1)

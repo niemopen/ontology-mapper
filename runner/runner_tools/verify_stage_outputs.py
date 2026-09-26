@@ -494,26 +494,15 @@ def _verify_stage_7(run_dir, state):
                                  f"report does not cover {stale}" if stale
                                  else "report covers the package as validated"))
 
-    # A report that records no checks, or no overall result, passed nothing:
-    # guarding on truthiness skipped this row for `{}` and Stage 7 verified.
-    # A missing or unreadable report is already failed above.
-    vr_checks = vr.get("checks") if isinstance(vr, dict) else None
-    if vr is None:
-        pass
-    elif not isinstance(vr_checks, list) or not vr_checks:
-        checks.append(_check("validation_all_pass", False,
-                             "validation-report.json records no checks"))
-    elif vr.get("allPassed") is not True:
-        failures = [c for c in vr_checks if c.get("status") == "FAIL"]
-        checks.append(_check("validation_all_pass", False,
-                             f"{len(failures)} checks failed" if failures
-                             else f"allPassed is {vr.get('allPassed')!r}, not true"))
-    else:
-        failures = [c for c in vr_checks if c.get("status") == "FAIL"]
-        checks.append(_check("validation_all_pass",
-                             len(failures) == 0,
-                             f"{len(failures)} checks failed"
-                             if failures else f"No FAIL among {len(vr_checks)} checks"))
+    # The pass rule is Stage 8's too (`report_not_passed`), so the verifier
+    # and finalize cannot disagree about one report. A missing or
+    # unreadable report is already failed above.
+    if vr is not None:
+        from ontology_mapper.validate_edge_package import report_not_passed
+        not_passed = report_not_passed(vr)
+        checks.append(_check("validation_all_pass", not_passed is None,
+                             f"validation-report.json {not_passed}" if not_passed
+                             else f"all {len(vr['checks'])} checks passed"))
     return checks
 
 
