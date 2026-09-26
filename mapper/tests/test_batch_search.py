@@ -653,6 +653,24 @@ class TestDisambiguateIds:
         assert cands[1]["id"] == "A"
 
 
+@pytest.mark.parametrize("body", ["", '{"source": {"parentType": "src:A"', "[]"])
+def test_a_corrupt_property_file_is_rewritten_in_place(tmp_path, body):
+    """An evaluation interrupted mid-write leaves its file truncated. Its
+    name stayed reserved, so resume wrote a second file for the same
+    property and collection crashed on the corrupt one; main overwrote it."""
+    props_dir = tmp_path / "search-results" / "properties"
+    props_dir.mkdir(parents=True, exist_ok=True)
+    (props_dir / "src_flag.json").write_text(body, encoding="utf-8")
+    concepts = [{"qname": "src:A", "definition": "",
+                 "properties": [{"name": "flag", "qname": "src:flag"}]}]
+
+    write_search_results(tmp_path, concepts, {}, {"src:A": {"src:flag": [PROP_CANDIDATE]}})
+
+    assert [p.name for p in props_dir.glob("*.json")] == ["src_flag.json"]
+    rewritten = json.loads((props_dir / "src_flag.json").read_text(encoding="utf-8"))
+    assert rewritten["source"]["qname"] == "src:flag"
+
+
 def test_an_unreadable_property_file_does_not_end_the_stage(tmp_path):
     """A locked or unreadable file is one this pass cannot reuse. Ending the
     stage on it loses every other concept's search results."""

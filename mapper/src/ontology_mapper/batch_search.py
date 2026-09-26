@@ -288,7 +288,7 @@ def _write_file(filepath: Path, doc: dict) -> bool:
             existing = json.loads(filepath.read_text(encoding="utf-8"))
             if existing.get("status") == "evaluated":
                 return False
-        except (json.JSONDecodeError, KeyError):
+        except (json.JSONDecodeError, KeyError, AttributeError):
             pass
     filepath.write_text(
         json.dumps(doc, indent=2, ensure_ascii=False) + "\n",
@@ -338,9 +338,22 @@ def write_search_results(
     legacy_paths = {}
     used_names = set()
     for path in sorted(props_dir.glob("*.json")):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except OSError:
+            # A locked or unreadable file is one this pass cannot reuse,
+            # not a reason to end the search stage; its name stays taken.
+            used_names.add(path.name.casefold())
+            continue
+        except ValueError:
+            # Truncated by an interrupted write: nothing to reuse, so its
+            # name is free and its property's file is rewritten in place.
+            continue
+        if not isinstance(data, dict):
+            continue
         used_names.add(path.name.casefold())
         try:
-            source = json.loads(path.read_text(encoding="utf-8")).get("source", {})
+            source = data.get("source", {})
             parent, recorded = source.get("parentType"), source.get("qname")
             occurrence_paths[(parent, recorded)] = path
             # Only the shape `_property_qname` used to manufacture: the
@@ -354,9 +367,7 @@ def write_search_results(
                 f"{parent_prefix}:{local_name(recorded)}")
             if recorded and misqualified and (parent, recorded) not in identities:
                 legacy_paths.setdefault((parent, local_name(recorded)), []).append(path)
-        except (ValueError, AttributeError, OSError):
-            # OSError too: a locked or unreadable file is one this pass
-            # cannot reuse, not a reason to end the search stage.
+        except AttributeError:
             continue
 
     counts = {
