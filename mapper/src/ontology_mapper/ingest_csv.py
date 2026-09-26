@@ -28,7 +28,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from datetime import datetime, timezone
+from ontology_mapper.run_dir_utils import utc_stamp
 
 # Primitive types that map to datatype properties (everything else is a class reference)
 PRIMITIVE_TYPES = {"string", "date", "bool", "amount", "float", "int",
@@ -297,7 +297,7 @@ def build_concept_inventory(classes, csv_path, namespace_prefix,
     object_properties = _merge_property_domains(object_properties)
 
     inventory = {
-        "extractedAt": datetime.now(timezone.utc).isoformat(),
+        "extractedAt": utc_stamp(),
         "sourcePackage": str(csv_path),
         "primaryNamespace": {
             "prefix": namespace_prefix,

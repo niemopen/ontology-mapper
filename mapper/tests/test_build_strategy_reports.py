@@ -32,6 +32,9 @@ class TestStripPrefix:
 # ═══════════════════════════════════════════════════════════════════════════
 
 class TestBuildClassProperties:
+    """A property's identity is its qname, not its local name: a class
+    in one namespace may own a property in an augmenting namespace."""
+
     def test_from_domains(self):
         inv = {
             "classes": [{"qname": "dbpi:Person"}],
@@ -44,8 +47,7 @@ class TestBuildClassProperties:
             "shaclShapes": [],
         }
         props = build_class_properties(inv)
-        assert "hasAddress" in props["dbpi:Person"]
-        assert "personName" in props["dbpi:Person"]
+        assert props["dbpi:Person"] == {"dbpi:hasAddress", "dbpi:personName"}
 
     def test_from_shacl(self):
         inv = {
@@ -62,8 +64,35 @@ class TestBuildClassProperties:
             }],
         }
         props = build_class_properties(inv)
-        assert "permitNumber" in props["dbpi:Permit"]
-        assert "issuedDate" in props["dbpi:Permit"]
+        assert props["dbpi:Permit"] == {"dbpi:permitNumber", "dbpi:issuedDate"}
+
+    def test_augmenting_namespace_property_keeps_its_own_prefix(self):
+        """The redvale shape: `fin:fiscalYearCode` is a property of
+        `dbpi:Fee`. Reducing it to `fiscalYearCode` here is what let the
+        downstream stages re-qualify it as `dbpi:fiscalYearCode`."""
+        inv = {
+            "classes": [{"qname": "dbpi:Fee"}],
+            "objectProperties": [],
+            "datatypeProperties": [
+                {"qname": "fin:fiscalYearCode", "domain": ["dbpi:Fee"]},
+                {"qname": "dbpi:amount", "domain": ["dbpi:Fee"]},
+            ],
+            "shaclShapes": [],
+        }
+        assert build_class_properties(inv)["dbpi:Fee"] == {
+            "fin:fiscalYearCode", "dbpi:amount"}
+
+    def test_same_local_name_in_two_namespaces_stays_distinct(self):
+        inv = {
+            "classes": [{"qname": "dbpi:Site"}],
+            "objectProperties": [],
+            "datatypeProperties": [
+                {"qname": "gis:code", "domain": ["dbpi:Site"]},
+                {"qname": "fin:code", "domain": ["dbpi:Site"]},
+            ],
+            "shaclShapes": [],
+        }
+        assert build_class_properties(inv)["dbpi:Site"] == {"gis:code", "fin:code"}
 
 
 class TestBuildSourcePropertyDefs:
@@ -75,11 +104,11 @@ class TestBuildSourcePropertyDefs:
             "objectProperties": [],
             "shaclShapes": [],
         }
-        class_props = {"src:Person": {"personName"}}
+        class_props = {"src:Person": {"src:personName"}}
         result = build_source_property_defs(inv, class_props)
         assert "src:Person" in result
-        assert "personName" in result["src:Person"]
-        assert result["src:Person"]["personName"]["definition"] == "Name of person"
+        assert "src:personName" in result["src:Person"]
+        assert result["src:Person"]["src:personName"]["definition"] == "Name of person"
 
     def test_builds_from_object_properties(self):
         inv = {
@@ -89,9 +118,22 @@ class TestBuildSourcePropertyDefs:
             ],
             "shaclShapes": [],
         }
-        class_props = {"src:Person": {"employer"}}
+        class_props = {"src:Person": {"src:employer"}}
         result = build_source_property_defs(inv, class_props)
-        assert result["src:Person"]["employer"]["range"] == ["src:Org"]
+        assert result["src:Person"]["src:employer"]["range"] == ["src:Org"]
+
+    def test_two_namespaces_one_local_name_get_their_own_definitions(self):
+        inv = {
+            "datatypeProperties": [
+                {"qname": "gis:code", "comment": "Zone code", "domain": ["src:Site"], "range": ["xs:string"]},
+                {"qname": "fin:code", "comment": "Ledger code", "domain": ["src:Site"], "range": ["xs:string"]},
+            ],
+            "objectProperties": [],
+            "shaclShapes": [],
+        }
+        result = build_source_property_defs(inv, {"src:Site": {"gis:code", "fin:code"}})
+        assert result["src:Site"]["gis:code"]["definition"] == "Zone code"
+        assert result["src:Site"]["fin:code"]["definition"] == "Ledger code"
 
 
 # ═══════════════════════════════════════════════════════════════════════════

@@ -23,6 +23,49 @@ def _write_state(run_dir, stages=None, inputs=None):
     _write_json(run_dir / ".mapper-state.json", state)
 
 
+@pytest.mark.parametrize("status", ["pass", "FAIL"])
+def test_stage_7_validation_fail_is_blocking(tmp_path, status):
+    from runner_tools.run_pipeline import verify_stage, VerificationError
+
+    (tmp_path / "edge-package").mkdir()  # the package the report speaks for
+    _write_json(tmp_path / "validation-report.json",
+                {"allPassed": status == "pass", "checks": [{"status": status}]})
+    _write_json(tmp_path / "feedback-report.json", {"stage": "7"})
+    if status == "FAIL":
+        with pytest.raises(VerificationError):
+            verify_stage(tmp_path, "7")
+    else:
+        verify_stage(tmp_path, "7")
+
+
+@pytest.mark.parametrize("report", [{}, {"allPassed": True}, {"allPassed": True, "checks": []},
+                                    {"checks": [{"status": "pass"}]}, [],
+                                    {"allPassed": True, "checks": [1]},
+                                    {"allPassed": True, "checks": [{"status": "FAIL"}]}])
+def test_stage_7_an_empty_or_incomplete_report_does_not_verify(tmp_path, report):
+    """Copilot 2026-09-24: `{}` is falsy, so the pass check was skipped
+    and a report that recorded nothing verified Stage 7."""
+    from runner_tools.run_pipeline import verify_stage, VerificationError
+
+    (tmp_path / "edge-package").mkdir()
+    _write_json(tmp_path / "validation-report.json", report)
+    _write_json(tmp_path / "feedback-report.json", {"stage": "7"})
+    with pytest.raises(VerificationError, match="validation_all_pass"):
+        verify_stage(tmp_path, "7")
+
+
+def test_stage_7_a_missing_report_is_reported_once(tmp_path):
+    """Round 21: the pass row repeated the missing report as "records no
+    checks"; the existence and freshness rows already report it."""
+    from runner_tools.verify_stage_outputs import _verify_stage_7
+
+    (tmp_path / "edge-package").mkdir()
+    _write_json(tmp_path / "feedback-report.json", {"stage": "7"})
+    names = [c["name"] for c in _verify_stage_7(tmp_path, {}) if c["status"] == "fail"]
+    assert "validation_all_pass" not in names
+    assert "validation_report_exists" in names
+
+
 # ---------------------------------------------------------------------------
 # _check / _file_check helpers
 # ---------------------------------------------------------------------------
@@ -249,16 +292,33 @@ class TestVerifyStage5:
         _write_state(tmp_path)
         _write_json(tmp_path / "human-review-decisions.json", {})
         _write_json(tmp_path / "mapping-matrix.json", {
-            "mappings": [{"sourceConcept": "src:A", "reviewStatus": "approved"}],
+            "mappings": [{"sourceConcept": "src:A", "action": "reuse",
+                          "reviewStatus": "accepted"}],
         })
         result = verify(tmp_path, "5")
         assert result["summary"]["fail"] == 0
+
+    def test_a_decided_exclusion_is_not_an_unreviewed_concept(self, tmp_path):
+        """`get_pending_items` never presents an exclusion, so its status
+        stays `pending-review` for the life of the run. Reading that raw
+        reports a finished review as incomplete and blocks the pipeline."""
+        _write_state(tmp_path)
+        _write_json(tmp_path / "human-review-decisions.json", {})
+        _write_json(tmp_path / "mapping-matrix.json", {
+            "mappings": [{"sourceConcept": "src:A", "action": "exclude",
+                          "reviewStatus": "pending-review"}],
+        })
+        result = verify(tmp_path, "5")
+        fails = [c for c in result["checks"]
+                 if c["status"] == "fail" and c["name"] == "all_classes_accepted"]
+        assert fails == []
 
     def test_pending_review_fails(self, tmp_path):
         _write_state(tmp_path)
         _write_json(tmp_path / "human-review-decisions.json", {})
         _write_json(tmp_path / "mapping-matrix.json", {
-            "mappings": [{"sourceConcept": "src:A", "reviewStatus": "pending-review"}],
+            "mappings": [{"sourceConcept": "src:A", "action": "reuse",
+                          "reviewStatus": "pending-review"}],
         })
         result = verify(tmp_path, "5")
         fails = [c for c in result["checks"]
@@ -292,3 +352,44 @@ class TestVerifyDispatch:
         assert "1" in VALID_STAGES
         assert "6a" in VALID_STAGES
         assert "8" in VALID_STAGES
+
+
+class TestStage7FreshnessIsReportedEitherWay:
+    """A check that appears only on failure cannot be told from one that
+    never ran."""
+
+    def test_a_current_report_records_the_check_as_passing(self, tmp_path):
+        import json as _json
+        from ontology_mapper.validate_edge_package import artifact_digests
+
+        _write_state(tmp_path)
+        pkg = tmp_path / "edge-package"
+        (pkg / "ontology").mkdir(parents=True)
+        (pkg / "ontology" / "core.ttl").write_text("# core", encoding="utf-8")
+        _write_json(tmp_path / "feedback-report.json", {"feedback": []})
+        _write_json(tmp_path / "validation-report.json",
+                    {"checks": [], "validatedArtifacts": artifact_digests(pkg)})
+
+        result = verify(tmp_path, "7")
+        rows = [c for c in result["checks"]
+                if c["name"] == "validation_report_is_current"]
+        assert len(rows) == 1
+        assert rows[0]["status"] == "pass"
+
+    def test_an_unreadable_report_does_not_claim_coverage(self, tmp_path):
+        """`stale_against_package` answers None both for a report that
+        covers the package and for one it could not read. Passing on that
+        None stated coverage for a file nobody parsed."""
+        _write_state(tmp_path)
+        pkg = tmp_path / "edge-package"
+        (pkg / "ontology").mkdir(parents=True)
+        (pkg / "ontology" / "core.ttl").write_text("# core", encoding="utf-8")
+        _write_json(tmp_path / "feedback-report.json", {"feedback": []})
+        (tmp_path / "validation-report.json").write_text("{not json",
+                                                         encoding="utf-8")
+
+        result = verify(tmp_path, "7")
+        rows = [c for c in result["checks"]
+                if c["name"] == "validation_report_is_current"]
+        assert len(rows) == 1
+        assert rows[0]["status"] == "fail"

@@ -12,7 +12,8 @@ import json
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from datetime import datetime, timezone
+from ontology_mapper.run_dir_utils import utc_stamp
+from ontology_mapper.generation_utils import infer_domains_from_shapes
 
 
 # ─── Edge Vocabulary Model ───────────────────────────────────────────────
@@ -47,11 +48,9 @@ def extract_vocabulary(inventory, source_path):
             vocab.target_types.add(qname)
 
     # Properties per type: from SHACL shapes
-    for shape in inventory.get("shaclShapes", []):
-        target = shape.get("targetClass", "")
-        if target:
-            prop_paths = {p["path"] for p in shape.get("properties", []) if p.get("path")}
-            vocab.target_properties[target] = prop_paths
+    for prop, targets in infer_domains_from_shapes([], inventory.get("shaclShapes", [])).items():
+        for target in targets:
+            vocab.target_properties.setdefault(target, set()).add(prop)
 
     # Namespaces
     for uri, prefix in inventory.get("namespaceMap", {}).items():
@@ -215,7 +214,7 @@ def build_overlap_report(paths, weights=None):
                   f"composite={result['compositeInteroperabilityScore']:.4f}")
 
     report = {
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "generatedAt": utc_stamp(),
         "edgeCount": len(vocabs),
         "edges": [
             {

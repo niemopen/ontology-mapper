@@ -11,7 +11,7 @@ to downstream problems are flagged so the operator can adjust them.
 import json
 import sys
 from pathlib import Path
-from datetime import datetime, timezone
+from ontology_mapper.run_dir_utils import utc_stamp
 
 FEEDBACK_FILENAME = "feedback-report.json"
 
@@ -159,7 +159,7 @@ def main():
     # Save feedback report
     report = {
         "stage": "7-feedback",
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "generatedAt": utc_stamp(),
         "feedbackCount": len(feedback),
         "feedback": feedback,
     }

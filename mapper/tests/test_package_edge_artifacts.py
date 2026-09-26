@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Tests for package_edge_artifacts.py — extension catalog, justifications, manifest, readme."""
 
+import pathlib
 import pytest
 
 from ontology_mapper.package_edge_artifacts import (
@@ -20,11 +21,20 @@ def _matrix(mappings, summary=None):
 
 
 def _mapping(concept, action, target=None, **extra):
-    m = {"sourceConcept": concept, "action": action}
+    m = {"sourceConcept": concept, "action": action, "reviewStatus": "accepted"}
     if target:
         m["targetType"] = target
     m.update(extra)
     return m
+
+
+def _catalog(matrix):
+    from pathlib import Path
+    from ontology_mapper.pipeline_context import PipelineContext
+    context = PipelineContext(Path("run"), Path("run/edge-package"), "example", "source", "niem", "6.0")
+    inventory = {"classes": [{"qname": m["sourceConcept"], "iri": "urn:source#" + m["sourceConcept"].split(":")[-1]}
+                             for m in matrix["mappings"]], "objectProperties": [], "datatypeProperties": []}
+    return build_extension_catalog(matrix, context, inventory, {})
 
 
 @pytest.fixture
@@ -85,12 +95,43 @@ class TestBuildExtensionJustifications:
 # build_extension_catalog
 # ---------------------------------------------------------------------------
 class TestBuildExtensionCatalog:
+    def test_created_properties_are_full_iris_and_belong_to_each_owner(self, tmp_path):
+        from ontology_mapper.pipeline_context import PipelineContext
+        context = PipelineContext(tmp_path, tmp_path / "edge-package", "sample", "source", "niem", "6.0")
+        inventory = {
+            "classes": [{"qname": "src:A", "iri": "urn:source#A"},
+                        {"qname": "src:B", "iri": "urn:source#B"}],
+            "datatypeProperties": [{"qname": "src:value"}, {"qname": "extra:code"},
+                                   {"qname": "src:pending"}],
+            "objectProperties": [],
+            "namespaceMap": {"https://source.example/extra#": "extra:"},
+        }
+        properties = [
+            {"sourceProperty": "src:value", "action": "create-property", "reviewStatus": "accepted"},
+            {"sourceProperty": "extra:code", "action": "create-property", "reviewStatus": "accepted"},
+            {"sourceProperty": "src:reused", "action": "reuse-property", "reviewStatus": "accepted", "targetProperty": "nc:Name"},
+            # The emitters declare a term for this too — it carries no
+            # accepted reuse target — so the catalog lists it rather
+            # than omitting a term the package adds.
+            {"sourceProperty": "src:pending", "action": "create-property", "reviewStatus": "pending-review"},
+        ]
+        matrix = _matrix([_mapping("src:A", "extend", "nc:RecordType", propertyMappings=properties),
+                          _mapping("src:B", "augment", "nc:RecordType", propertyMappings=properties)])
+        catalog = build_extension_catalog(matrix, context, inventory, {"extra": "https://target.example/extra/"})
+        for entry in catalog["extensions"]:
+            assert entry["extensionIRI"].startswith(context.extension_namespace)
+            assert entry["sourceConceptIRI"] in {"urn:source#A", "urn:source#B"}
+            assert entry["properties"] == sorted([
+                context.extension_namespace + "value",
+                context.extension_namespace + "pending",
+                "https://source.example/extra#code"])
+
     def test_extend_uses_baseType(self):
         matrix = _matrix([
             _mapping("src:A", "extend", "nc:ActivityType",
                      baseType="nc:ObjectType"),
         ])
-        catalog = build_extension_catalog(matrix)
+        catalog = _catalog(matrix)
         ext = catalog["extensions"][0]
         assert ext["baseType"] == "nc:ObjectType"
 
@@ -98,7 +139,7 @@ class TestBuildExtensionCatalog:
         matrix = _matrix([
             _mapping("src:A", "extend", "nc:ActivityType"),
         ])
-        catalog = build_extension_catalog(matrix)
+        catalog = _catalog(matrix)
         ext = catalog["extensions"][0]
         assert ext["baseType"] == "nc:ActivityType"
 
@@ -108,7 +149,7 @@ class TestBuildExtensionCatalog:
                      augmentsType="nc:PersonType",
                      augmentationType="PersonAugmentationType"),
         ])
-        catalog = build_extension_catalog(matrix)
+        catalog = _catalog(matrix)
         ext = catalog["extensions"][0]
         assert ext["baseType"] == "nc:PersonType"
         assert ext["name"] == "PersonAugmentationType"
@@ -119,14 +160,14 @@ class TestBuildExtensionCatalog:
             _mapping("src:B", "augment", "nc:PersonType",
                      augmentationType="PersonAugmentationType"),
         ])
-        catalog = build_extension_catalog(matrix)
+        catalog = _catalog(matrix)
         assert len(catalog["extensions"]) == 2
 
     def test_excludes_reuse(self):
         matrix = _matrix([
             _mapping("src:C", "reuse", "nc:ActivityType"),
         ])
-        catalog = build_extension_catalog(matrix)
+        catalog = _catalog(matrix)
         assert len(catalog["extensions"]) == 0
 
 
@@ -174,6 +215,18 @@ class TestBuildPackageManifest:
         assert manifest["stats"]["totalConcepts"] == 3
 
 
+@pytest.mark.parametrize("target, version, has_cmf", [("niem", "6.0", True), ("nods", "1.0", False)])
+def test_the_manifest_and_readme_say_whether_the_package_carries_cmf(ctx, target, version, has_cmf):
+    """A target without a CMF reference model gets no cmf/; the package says why
+    rather than leaving a consumer to read the gap as an error."""
+    ctx.target_ontology, ctx.target_version = target, version
+    matrix = _matrix([_mapping("src:A", "reuse")])
+    manifest, readme = build_package_manifest(ctx, matrix), build_readme(ctx, matrix)
+    assert ("omittedArtifacts" in manifest) is not has_cmf
+    assert ("- `cmf/` - Canonical Model Format" in readme) is has_cmf
+    assert ("No `cmf/`" in readme) is not has_cmf
+
+
 # ---------------------------------------------------------------------------
 # build_readme
 # ---------------------------------------------------------------------------
@@ -198,3 +251,199 @@ class TestBuildReadme:
         readme = build_readme(ctx, matrix)
         assert "| Reuse | 1 |" in readme
         assert "| Extend | 1 |" in readme
+
+def test_component_identities_survive_a_namespace_without_a_separator():
+    """`urn:example:model` + `value` is `urn:example:model:value`, not
+    `urn:example:modelvalue` — and every identity the extension catalog writes
+    reads back to the name it was built from."""
+    from ontology_mapper.generation_utils import component_iri, local_name
+
+    for namespace in ("urn:example:model", "urn:example:model#", "https://example.test/ns",
+                      "https://example.test/ns/", "https://example.test/ns#"):
+        iri = component_iri(namespace, "value")
+        assert iri != namespace + "value" or namespace[-1] in "/#:"
+        assert local_name(iri) == "value"
+
+
+class TestCreatedPropertyNamespaces:
+    """The extension catalog is the one artifact built by walking the
+    decisions rather than the inventory, so it alone meets a recorded
+    property name the resolver could not resolve."""
+
+    def _inventory(self):
+        return {"classes": [{"qname": "src:Thing", "iri": "https://src.test/ns#Thing"}],
+                "namespaceMap": {"https://src.test/ns#": "src:",
+                                 "https://abc.test/ns#": "abc:"},
+                "objectProperties": [],
+                "datatypeProperties": [{"qname": "src:flag"}, {"qname": "abc:flag"}]}
+
+    def _context(self):
+        from pathlib import Path
+        from ontology_mapper.pipeline_context import PipelineContext
+        return PipelineContext(Path("run"), Path("run/edge-package"),
+                               "example", "source", "niem", "6.0")
+
+    def _matrix_with(self, source_property):
+        return _matrix([_mapping("src:Thing", "extend", "nc:PersonType",
+                                 baseType="nc:PersonType",
+                                 propertyMappings=[{"sourceProperty": source_property,
+                                                    "action": "create-property",
+                                                    "reviewStatus": "accepted"}])])
+
+    def test_a_decision_naming_an_unbound_prefix_is_reported_not_indexed(self):
+        """`property_qname_resolver` returns an ambiguous name unchanged, so
+        a prefix bound to no namespace reaches the catalog. It cannot invent
+        an IRI for it, and dying on the dict lookup names no decision.
+        """
+        with pytest.raises(ValueError, match="cannot qualify"):
+            build_extension_catalog(self._matrix_with("legacy:flag"),
+                                    self._context(), self._inventory(), {})
+
+    def test_a_decision_naming_a_declared_property_still_mints_its_iri(self):
+        """The legitimate flow: a bound source prefix keeps its namespace."""
+        catalog = build_extension_catalog(self._matrix_with("abc:flag"),
+                                          self._context(), self._inventory(), {})
+        assert catalog["extensions"][0]["properties"] == ["https://abc.test/ns#flag"]
+
+
+class TestUnqualifiableDecisionsAreCountedPerRun:
+    """The reviewer reopens review once, not once per offending mapping."""
+
+    def test_every_offending_mapping_is_named_in_one_refusal(self):
+        from pathlib import Path
+        from ontology_mapper.pipeline_context import PipelineContext
+        context = PipelineContext(Path("run"), Path("run/edge-package"),
+                                  "example", "source", "niem", "6.0")
+        inventory = {"classes": [{"qname": "src:A", "iri": "https://src.test/ns#A"},
+                                 {"qname": "src:B", "iri": "https://src.test/ns#B"}],
+                     "namespaceMap": {"https://src.test/ns#": "src:"},
+                     "objectProperties": [],
+                     "datatypeProperties": [{"qname": "src:flag"},
+                                            {"qname": "abc:flag"}]}
+        def _entry(concept, source_property):
+            return _mapping(concept, "extend", "nc:PersonType",
+                            baseType="nc:PersonType",
+                            propertyMappings=[{"sourceProperty": source_property,
+                                               "action": "create-property",
+                                               "reviewStatus": "accepted"}])
+        matrix = _matrix([_entry("src:A", "ghost1:flag"),
+                          _entry("src:B", "ghost2:flag")])
+        with pytest.raises(ValueError) as caught:
+            build_extension_catalog(matrix, context, inventory, {})
+        message = str(caught.value)
+        assert message.startswith("2 accepted mapping(s)")
+        assert "src:A" in message and "src:B" in message
+
+
+class TestConceptsMissingFromTheInventory:
+    """A matrix entry whose concept this run's inventory does not carry has
+    no source IRI to write, and a bare KeyError names no mapping."""
+
+    def test_a_concept_absent_from_the_inventory_is_named(self):
+        from pathlib import Path
+        from ontology_mapper.pipeline_context import PipelineContext
+        context = PipelineContext(Path("run"), Path("run/edge-package"),
+                                  "example", "source", "niem", "6.0")
+        inventory = {"classes": [{"qname": "src:Here", "iri": "https://src.test/ns#Here"}],
+                     "namespaceMap": {"https://src.test/ns#": "src:"},
+                     "objectProperties": [], "datatypeProperties": []}
+        matrix = _matrix([_mapping("src:Gone", "extend", "nc:PersonType",
+                                   baseType="nc:PersonType", propertyMappings=[])])
+        with pytest.raises(ValueError, match="src:Gone"):
+            build_extension_catalog(matrix, context, inventory, {})
+
+
+class TestAPropertyOfAnotherClass:
+    """A decision naming a property the inventory declares for another class:
+    the emitters, walking class by class, mint it on that class only, so the
+    catalog must not list it under this concept's extension."""
+
+    def _run(self, source_property):
+        from pathlib import Path
+        from ontology_mapper.pipeline_context import PipelineContext
+        context = PipelineContext(Path("run"), Path("run/edge-package"),
+                                  "example", "source", "niem", "6.0")
+        inventory = {"classes": [{"qname": "src:A", "iri": "https://src.test/ns#A"},
+                                 {"qname": "src:B", "iri": "https://src.test/ns#B"}],
+                     "namespaceMap": {"https://src.test/ns#": "src:"},
+                     "objectProperties": [],
+                     "datatypeProperties": [{"qname": "src:own", "domain": ["src:A"]},
+                                            {"qname": "src:other", "domain": ["src:B"]}]}
+        matrix = _matrix([_mapping("src:A", "extend", "nc:PersonType", baseType="nc:PersonType",
+                                   propertyMappings=[{"sourceProperty": source_property,
+                                                      "action": "create-property",
+                                                      "reviewStatus": "accepted"}])])
+        return build_extension_catalog(matrix, context, inventory, {})
+
+    def test_another_classs_property_is_named_not_listed(self):
+        with pytest.raises(ValueError, match="src:A: src:other belongs to another class"):
+            self._run("src:other")
+
+    def test_the_concepts_own_property_is_listed(self):
+        [ext] = self._run("src:own")["extensions"]
+        assert [p.rsplit("#", 1)[-1] for p in ext["properties"]] == ["own"]
+
+
+class TestShapeOnlyProperties:
+    """`build_class_properties` harvests shape paths as class properties, so
+    Stage 3/4 legitimately writes a decision for a property the source
+    declares only through a shape. Packaging must not call that unknown, and
+    must not list it as a term the package adds: the emitters reference it as
+    the term it is (`generation_utils.source_declared_properties`)."""
+
+    def test_a_property_declared_only_by_a_shape_is_packaged_not_minted(self):
+        from pathlib import Path
+        from ontology_mapper.pipeline_context import PipelineContext
+        context = PipelineContext(Path("run"), Path("run/edge-package"),
+                                  "example", "source", "niem", "6.0")
+        inventory = {"classes": [{"qname": "src:Thing",
+                                  "iri": "https://sample.test/src/Thing"}],
+                     "namespaceMap": {"https://sample.test/src/": "src:"},
+                     "objectProperties": [],
+                     "datatypeProperties": [{"qname": "src:declared",
+                                             "domain": ["src:Thing"]}],
+                     "shaclShapes": [{"targetClasses": ["src:Thing"],
+                                      "properties": [{"path": "src:shapeOnly"}]}]}
+        matrix = _matrix([_mapping("src:Thing", "extend", "nc:PersonType",
+                                   baseType="nc:PersonType",
+                                   propertyMappings=[
+                                       {"sourceProperty": "src:declared",
+                                        "action": "create-property",
+                                        "reviewStatus": "accepted"},
+                                       {"sourceProperty": "src:shapeOnly",
+                                        "action": "create-property",
+                                        "reviewStatus": "accepted"}])])
+        catalog = build_extension_catalog(matrix, context, inventory, {})
+        assert sorted(local.rsplit("#", 1)[-1]
+                      for local in catalog["extensions"][0]["properties"]) == ["declared"]
+
+
+class TestPendingDecisionsAreListed:
+    """The emitters mint a term for any decision with no accepted reuse
+    target; the catalog must list the same terms."""
+
+    def test_a_pending_reuse_decision_is_listed_as_a_created_term(self):
+        from pathlib import Path
+        from ontology_mapper.pipeline_context import PipelineContext
+        context = PipelineContext(Path("run"), Path("run/edge-package"),
+                                  "example", "source", "niem", "6.0")
+        inventory = {"classes": [{"qname": "src:Thing",
+                                  "iri": "https://sample.test/src/Thing"}],
+                     "namespaceMap": {"https://sample.test/src/": "src:"},
+                     "objectProperties": [],
+                     "datatypeProperties": [{"qname": "src:p1", "domain": ["src:Thing"]},
+                                            {"qname": "src:p2", "domain": ["src:Thing"]}],
+                     "shaclShapes": []}
+        matrix = _matrix([_mapping("src:Thing", "extend", "nc:PersonType",
+                                   baseType="nc:PersonType",
+                                   propertyMappings=[
+                                       {"sourceProperty": "src:p1",
+                                        "action": "reuse-property",
+                                        "reviewStatus": "pending-review",
+                                        "targetProperty": "nc:Name"},
+                                       {"sourceProperty": "src:p2",
+                                        "action": "create-property",
+                                        "reviewStatus": "accepted"}])])
+        catalog = build_extension_catalog(matrix, context, inventory, {})
+        assert sorted(iri.rsplit("#", 1)[-1]
+                      for iri in catalog["extensions"][0]["properties"]) == ["p1", "p2"]

@@ -23,6 +23,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from runner_tools.verify_stage_outputs import verify
+from ontology_mapper.build_mapping_matrix import refuse_to_discard_review
+from ontology_mapper.ontology_specific import ClassTargetError
+from ontology_mapper.pipeline import record_stage_failure, reopen_run
 from runner_tools._present_and_apply_human_review import (
     load_inputs as review_load_inputs,
     get_pending_items,
@@ -33,8 +36,13 @@ from runner_tools._present_and_apply_human_review import (
     apply_all_property_accepts,
     apply_decision_with_cascade,
     apply_property_decision,
+    check_stage_5_exit,
+    find_mapping_entry,
+    approve_all_blockers,
+    PROPERTY_DECISION_ACTIONS,
     load_cascade_context,
     save_matrix,
+    undecided_properties,
     validate_class_decision,
     validate_property_decision,
     _cmd_present,
@@ -114,7 +122,7 @@ def verify_stage(run_dir: Path, stage: str) -> dict:
 
     if summary["fail"] > 0:
         failed = [c for c in result["checks"] if c["status"] == "fail" and c["severity"] == "error"]
-        details = "\n".join(f"  - [{c['checkId']}] {c['message']}" for c in failed)
+        details = "\n".join(f"  - [{c['name']}] {c['detail']}" for c in failed)
         raise VerificationError(stage, f"{summary['fail']} error(s):\n{details}")
 
     return result
@@ -250,22 +258,29 @@ def _call_claude_interpret(prompt: str) -> dict:
 
 
 def _resolve_concept(pending: list, concept_ref: str) -> dict | None:
-    """Find a pending entry by exact qname or local name suffix match."""
-    # Exact match
-    for entry in pending:
-        if entry["sourceConcept"] == concept_ref:
-            return entry
-    # Suffix match (user typed local name without prefix)
-    suffix = f":{concept_ref}"
-    matches = [e for e in pending if e["sourceConcept"].endswith(suffix)]
-    if len(matches) == 1:
-        return matches[0]
-    # Also try case-insensitive suffix match
-    suffix_lower = suffix.lower()
-    matches = [e for e in pending if e["sourceConcept"].lower().endswith(suffix_lower)]
-    if len(matches) == 1:
-        return matches[0]
-    return None
+    """The pending entry the reviewer named (`find_mapping_entry`), or None."""
+    return find_mapping_entry(pending, concept_ref)[0]
+
+
+def _resolve_concept_anywhere(pending: list, matrix: dict, concept_ref: str) -> dict | None:
+    """The entry the reviewer named, whether or not it is pending, or None.
+
+    An entry the class policy blocks is accepted, not pending, and changing
+    its target is the repair, so a resolver that sees pending items only
+    makes the blocker unclearable from the CLI. The name is resolved against
+    the whole matrix by `find_mapping_entry`'s rule: a name two entries share
+    resolves to neither, whichever of them is pending.
+    """
+    return find_mapping_entry(matrix.get("mappings", []), concept_ref)[0]
+
+
+def _concept_not_found(concept_ref: str, entries: list) -> str:
+    """Why a name resolved to no entry: nothing matched, or several did."""
+    candidates = find_mapping_entry(entries, concept_ref)[1]
+    if len(candidates) > 1:
+        return (f"Concept name is ambiguous: {concept_ref} could be "
+                f"{', '.join(candidates)}. Use the full name.")
+    return f"Concept not found: {concept_ref}"
 
 
 def _build_pending_summary(pending: list) -> str:
@@ -278,8 +293,7 @@ def _build_pending_summary(pending: list) -> str:
             concept = entry["sourceConcept"]
             target = entry.get("targetType") or "(none)"
             props = entry.get("propertyMappings") or []
-            must_decide = sum(1 for p in props if p.get("action") == "human-must-decide"
-                              and p.get("reviewStatus") == "pending-review")
+            must_decide = len(undecided_properties([entry]))
             prop_note = ""
             if must_decide:
                 prop_note = f"  [{must_decide} UNDECIDED properties]"
@@ -309,7 +323,7 @@ def _dispatch_review_action(
         concept_ref = action.get("concept", "")
         entry = _resolve_concept(pending, concept_ref)
         if not entry:
-            return f"Concept not found: {concept_ref}", applied, cascade_context
+            return _concept_not_found(concept_ref, pending), applied, cascade_context
         apply_accept(entry)
         accepted, skipped = apply_all_property_accepts(entry)
         applied.append({
@@ -321,19 +335,14 @@ def _dispatch_review_action(
         })
         msg = f"Approved: {entry['sourceConcept']} ({entry['action']})"
         if skipped:
-            msg += f"\n  *** {skipped} human-must-decide properties NOT approved — resolve individually ***"
+            msg += f"\n  *** {skipped} undecided properties NOT approved — resolve individually ***"
         return msg, applied, cascade_context
 
     elif action_type == "approve_all":
-        # Check for human-must-decide blockers
-        must_decide = sum(
-            1 for e in pending
-            for p in (e.get("propertyMappings") or [])
-            if p.get("action") == "human-must-decide"
-            and p.get("reviewStatus") == "pending-review"
-        )
+        # Check for undecided blockers (`approve_all_blockers`)
+        must_decide = len(approve_all_blockers(matrix))
         if must_decide:
-            return (f"Cannot approve-all: {must_decide} human-must-decide properties "
+            return (f"Cannot approve-all: {must_decide} undecided properties "
                     f"must be resolved individually first."), applied, cascade_context
         for entry in pending:
             apply_accept(entry)
@@ -349,15 +358,10 @@ def _dispatch_review_action(
 
     elif action_type == "detail":
         concept_ref = action.get("concept", "")
-        entry = _resolve_concept(pending, concept_ref)
+        entry = _resolve_concept_anywhere(pending, matrix, concept_ref)
         if not entry:
-            # Also check all mappings (not just pending)
-            for m in matrix["mappings"]:
-                if m["sourceConcept"] == concept_ref or m["sourceConcept"].endswith(f":{concept_ref}"):
-                    entry = m
-                    break
-        if not entry:
-            return f"Concept not found: {concept_ref}", applied, cascade_context
+            return (_concept_not_found(concept_ref, matrix.get("mappings", [])),
+                    applied, cascade_context)
         detail = format_review_item(entry)
         prop_detail = format_property_review(entry)
         msg = f"\n{entry['sourceConcept']}\n{detail}"
@@ -368,9 +372,10 @@ def _dispatch_review_action(
     elif action_type == "change_target":
         concept_ref = action.get("concept", "")
         new_target = action.get("new_target_type", "")
-        entry = _resolve_concept(pending, concept_ref)
+        entry = _resolve_concept_anywhere(pending, matrix, concept_ref)
         if not entry:
-            return f"Concept not found: {concept_ref}", applied, cascade_context
+            return (_concept_not_found(concept_ref, matrix.get("mappings", [])),
+                    applied, cascade_context)
         if not new_target:
             return "change_target requires new_target_type", applied, cascade_context
 
@@ -381,8 +386,15 @@ def _dispatch_review_action(
 
         old_action = entry["action"]
         old_target = entry.get("targetType")
-        decision = {"targetType": new_target}
-        apply_decision_with_cascade(entry, decision, target_ontology, catalog)
+        # The same class in another spelling is applied, not cascaded, and
+        # apply_decision requires the action: the current one is kept.
+        decision = {"action": old_action, "targetType": new_target}
+        try:
+            apply_decision_with_cascade(entry, decision, target_ontology, catalog)
+        except ClassTargetError as exc:
+            # A datatype or a misspelling: the policy's message is the answer;
+            # the entry is untouched and the review loop continues.
+            return str(exc), applied, cascade_context
 
         # Validate after cascade
         issues = validate_class_decision(entry)
@@ -407,19 +419,32 @@ def _dispatch_review_action(
         prop_action = action.get("property_action", "")
         target_prop = action.get("target_property")
 
-        entry = _resolve_concept(pending, concept_ref)
+        # Approving a class leaves its undecided properties to be resolved
+        # individually, and the class is then accepted, not pending.
+        entry = _resolve_concept_anywhere(pending, matrix, concept_ref)
         if not entry:
-            return f"Concept not found: {concept_ref}", applied, cascade_context
+            return (_concept_not_found(concept_ref, matrix.get("mappings", [])),
+                    applied, cascade_context)
         if not src_prop:
             return "resolve_property requires source_property", applied, cascade_context
-        if not prop_action:
-            return "resolve_property requires property_action", applied, cascade_context
+        if prop_action not in PROPERTY_DECISION_ACTIONS:
+            return (f"resolve_property requires property_action "
+                    f"{' or '.join(PROPERTY_DECISION_ACTIONS)}, not {prop_action!r}"), applied, cascade_context
 
         decision = {"action": prop_action}
         if target_prop:
             decision["targetProperty"] = target_prop
 
-        found = apply_property_decision(entry, src_prop, decision)
+        if cascade_context is None:
+            cascade_context = load_cascade_context(run_dir)
+        _, catalog = cascade_context
+        from ontology_mapper.generation_utils import PropertyTargetError
+        try:
+            found = apply_property_decision(entry, src_prop, decision, catalog)
+        except PropertyTargetError as exc:
+            # As for a class target: the message is the answer; the entry
+            # is untouched and the review loop continues.
+            return str(exc), applied, cascade_context
         if not found:
             return f"Property not found: {src_prop} on {entry['sourceConcept']}", applied, cascade_context
 
@@ -477,7 +502,11 @@ def run_stage_5_loop(run_dir: Path) -> list:
     """Interactive Stage 5 review loop.
 
     Presents pending items, reads user input, interprets via claude -p,
-    executes the action, and repeats until no pending items remain.
+    executes the action, and repeats until Stage 5's exit criteria are met
+    (`check_stage_5_exit`, the predicate `complete_stage_5` and the web ask).
+    A blocker on an entry that is not pending — a saved class target the
+    policy rejects — keeps the prompt open, because `change_target` is how it
+    is repaired and the loop is the only place the runner offers it.
 
     Returns the list of all applied decisions.
     """
@@ -487,11 +516,16 @@ def run_stage_5_loop(run_dir: Path) -> list:
 
     _, matrix, dec_log = review_load_inputs(run_dir)
     all_applied = []
-    cascade_context = None
+    # Without the catalog no class target can be proven, so review cannot
+    # close; say so as complete_stage_5 does, not as a traceback.
+    try:
+        cascade_context = load_cascade_context(run_dir)
+    except Exception as exc:
+        raise StageError("5", f"Stage 5 exit criteria could not be checked: {exc}") from exc
 
     # Initial presentation
-    pending = get_pending_items(matrix)
-    if not pending:
+    can_exit, blockers = check_stage_5_exit(matrix, cascade_context)
+    if can_exit:
         print("  No items pending review — Stage 5 already complete.")
         return all_applied
 
@@ -499,9 +533,12 @@ def run_stage_5_loop(run_dir: Path) -> list:
 
     while True:
         pending = get_pending_items(matrix)
-        if not pending:
+        can_exit, blockers = check_stage_5_exit(matrix, cascade_context)
+        if can_exit:
             print("\n  All items reviewed — Stage 5 complete.")
             break
+        if not pending:
+            print("\n  Review cannot close yet:\n    - " + "\n    - ".join(blockers))
 
         # Read user input
         try:
@@ -519,6 +556,9 @@ def run_stage_5_loop(run_dir: Path) -> list:
 
         # Build prompt and call claude -p for interpretation
         pending_summary = _build_pending_summary(pending)
+        if not pending:
+            pending_summary += "\nBlocking review exit:\n" + "\n".join(
+                f"  {b}" for b in blockers)
         prompt = _build_review_prompt(pending_summary, user_input)
         print("  (interpreting...)")
         action = _call_claude_interpret(prompt)
@@ -666,8 +706,44 @@ def run_stage_5(run_dir: Path, timers: list[StageTimer]):
     timers.append(t)
 
 
+def refuse_invalid_class_targets(run_dir: Path):
+    """Stop before generation when a saved class target fails the policy.
+
+    Stage 5's dispatcher checks a selection as the reviewer makes it, and a
+    resume at Stage 6 makes no selections at all: a matrix saved before the
+    policy existed would otherwise be generated from and fail two stages
+    later as an unbound or datatype CMF reference.
+    """
+    matrix_path = run_dir / "mapping-matrix.json"
+    if not matrix_path.exists():
+        return
+    try:
+        target_ontology, catalog = load_cascade_context(run_dir)
+    except Exception as exc:
+        # Unprovable is not the same as valid: the web gate reports this as a
+        # blocker, and the stage fails here for the same reason.
+        raise StageError("6", f"saved class targets could not be validated: {exc}") from exc
+    try:
+        # The read is inside the guard, like `complete_stage_5`: a matrix
+        # edited outside review is the premise of this check, so a file
+        # that will not parse is a stage failure, not a traceback.
+        matrix = json.loads(matrix_path.read_text(encoding="utf-8"))
+        # The whole Stage 5 exit question, not the class policy alone — the
+        # predicate the web continuation asks. A matrix reopened after
+        # Stage 5 completed (`om-build-matrix --force`) otherwise reached
+        # generation, which skips pending classes, and lost them silently.
+        can_exit, blockers = check_stage_5_exit(matrix, (target_ontology, catalog))
+    except (AttributeError, TypeError, ValueError, OSError) as exc:
+        raise StageError("6", f"mapping matrix is not readable for validation: {exc}") from exc
+    if not can_exit:
+        details = "\n".join(f"  - {blocker}" for blocker in blockers)
+        raise StageError("6", f"review is not closed for the {target_ontology} "
+                              f"catalog; reopen review:\n{details}")
+
+
 def run_stage_6(run_dir: Path, timers: list[StageTimer]):
     """Stage 6: Generate — bootstrap dirs, then 3 sub-stages."""
+    refuse_invalid_class_targets(run_dir)
     with StageTimer("6") as t:
         # Bootstrap edge-package directory structure
         run_cmd("6", ["om-pipeline", "rerun", "--stage", "6", "--run-dir", str(run_dir)])
@@ -685,12 +761,43 @@ def run_stage_6(run_dir: Path, timers: list[StageTimer]):
 
 
 def run_stage_7(run_dir: Path, timers: list[StageTimer]):
-    """Stage 7: Validate — run validation + feedback report."""
+    """Stage 7: Validate — run validation + feedback report.
+
+    ``om-validate`` exits nonzero when a check fails, after writing
+    ``validation-report.json``. The feedback report maps those failures back
+    to source decisions, so it is produced before the stage stops; the stage
+    then fails through verification (``validation_all_pass``) or, failing
+    that, the validation error itself. A nonzero exit with no report is a
+    crash, raised as it was. Stage 8 is never reached.
+    """
     with StageTimer("7") as t:
-        run_cmd("7", ["om-validate", "--run-dir", str(run_dir)])
-        run_cmd("7", ["python", "runner_tools/feedback_report.py",
-                       "--run-dir", str(run_dir)])
+        # Only this run's report counts: a previous run's report would make a
+        # validator crash look like a failed validation and feed stale
+        # conclusions to the feedback report and to verification. A previous
+        # Stage 8's certificate is withdrawn with it, so a failure here does
+        # not leave the package reading as validated and finalized.
+        reopen_run(run_dir, "7")
+        (run_dir / "feedback-report.json").unlink(missing_ok=True)
+        validation_failure = None
+        try:
+            run_cmd("7", ["om-validate", "--run-dir", str(run_dir)])
+        except StageError as exc:
+            record_stage_failure(run_dir, "7", str(exc))
+            if not (run_dir / "validation-report.json").exists():
+                raise  # the validator crashed; there is nothing to report on
+            validation_failure = exc
+        try:
+            run_cmd("7", ["python", "runner_tools/feedback_report.py",
+                           "--run-dir", str(run_dir)])
+        except StageError:
+            # The validation failure is the cause to report, as the web
+            # backend reports it; the feedback crash rides along.
+            if validation_failure is not None:
+                raise validation_failure
+            raise
         verify_stage(run_dir, "7")
+        if validation_failure is not None:
+            raise validation_failure
         run_cmd("7", ["om-pipeline", "mark-complete", "--stage", "7", "--run-dir", str(run_dir)])
     timers.append(t)
 
@@ -861,6 +968,11 @@ def run_pipeline(
         if not rd.exists():
             raise StageError("init", f"Run directory not found: {run_dir}")
         state = load_state(rd)
+        if from_stage <= 4:
+            try:
+                refuse_to_discard_review(rd / "mapping-matrix.json")
+            except SystemExit as exc:
+                raise StageError(str(from_stage), str(exc)) from exc
         input_package_path = state.get("inputs", {}).get("input_package_path", "")
         print(f"\n  Resuming pipeline: {rd.name}")
         print(f"  From stage: {from_stage}")

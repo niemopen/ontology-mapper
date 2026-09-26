@@ -47,6 +47,7 @@ import urllib.request
 import urllib.error
 from pathlib import Path
 from datetime import datetime, timezone
+from ontology_mapper.run_dir_utils import utc_stamp
 from collections import defaultdict
 
 # ─── Configuration ────────────────────────────────────────────────────────
@@ -942,7 +943,7 @@ def main():
             f"Namespace-grouped types with definitions and property lists. "
             f"Generated alongside the reference catalog."
         ),
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "generatedAt": utc_stamp(),
         "stats": {
             "namespaces": len(catalog_summary),
             "totalTypes": summary_type_count,
@@ -985,7 +986,7 @@ def main():
             f"Regenerate with: om-generate-catalog "
             f"--version {version}"
         ),
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "generatedAt": utc_stamp(),
         "sources": sources,
         "actions": {
             "reuse": "The source concept maps directly to an existing NIEM type. Use the target type as-is.",

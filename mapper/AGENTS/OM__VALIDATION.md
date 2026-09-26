@@ -76,16 +76,29 @@ This is a post-run analysis tool, not part of the standard pipeline.
 
 ### validate_edge_package.py output
 
+The existing CMF consistency check combines XSD validation with binding and
+referent-kind checks for every `structures:ref`. XSD validation alone does not
+detect missing declarations or a class reference naming a datatype.
+Matrix class and augmentation counts use only the generated edge/extension
+namespaces; imported definitions cannot satisfy those comparisons. The CLI
+checks CMF whenever its directory is present and requires it when the target has
+an installed CMF reference model (`cmf_reference.reference_cmf_installed`, the
+one home for whether a package carries CMF; today NIEM 6.0 only).
+
 Writes `{run_dir}/validation-report.json`:
+
+`om-validate` exits 0 when all checks pass and 1 when any check fails, after
+writing the report. The runner treats a reported `FAIL` as blocking, and the
+web pipeline stops before finalization when validation exits unsuccessfully.
 
 ```json
 {
   "stage": "7",
   "generatedAt": "ISO-8601",
-  "allPassed": true,
-  "checkCount": 10,
-  "passCount": 10,
-  "failCount": 0,
+  "allPassed": false,
+  "checkCount": 2,
+  "passCount": 1,
+  "failCount": 1,
   "checks": [
     { "check": "Turtle syntax", "status": "pass", "details": "" },
     { "check": "SHACL conformance", "status": "FAIL", "details": "..." }

@@ -25,6 +25,171 @@ from ontology_mapper.batch_search import (
 from ontology_mapper.vector_index import OntologyEntry
 
 
+def test_existing_index_classes_ranked_below_datatypes_still_fill_top_k(
+        native_class_catalog, fake_type_retrieval, tmp_path):
+    """The native filter runs over the full ranking, before top-k and the score floor."""
+    fake_type_retrieval(["alias:Restricted", "alias:Values",
+                         "alias:Record", "alias:InheritedLiteral", "alias:Literal"])
+    concepts = [{"qname": "source:Record", "properties": []}]
+    results = search_all_types(concepts, "example-1.0", top_k=2)
+    assert [c["id"] for c in results["source:Record"]] == ["alias:Record", "alias:InheritedLiteral"]
+    write_search_results(tmp_path, concepts, results, {}, min_score_ratio=0.75)
+    doc = json.loads((tmp_path / "search-results/types/source_Record.json").read_text(encoding="utf-8"))
+    assert [c["id"] for c in doc["candidates"]] == ["alias:Record", "alias:InheritedLiteral"]
+
+
+def test_property_search_keeps_datatype_valued_candidates(native_class_catalog):
+    candidate = {"id": "alias:value", "metadata": {"qualifiedType": "alias:Restricted"}}
+    concepts = [{"qname": "source:Record", "properties": [{"name": "value", "qname": "source:value"}]}]
+    with patch("ontology_mapper.batch_search.query_index", return_value=[{"matches": [candidate]}]):
+        results = search_all_properties(concepts, "example-1.0")
+    assert results["source:Record"]["source:value"] == [candidate]
+
+
+@pytest.mark.parametrize("legacy", [False, True])
+def test_shared_cross_namespace_property_keeps_both_parents_and_resumes(tmp_path, legacy):
+    from ontology_mapper.collect_alignments import load_search_results, reassemble_evaluations
+
+    concepts = [{"qname": parent, "definition": "", "properties": [
+        {"name": "flag", "qname": "other:flag"}]} for parent in ("src:A", "src:B")]
+    results = {c["qname"]: {"other:flag": [PROP_CANDIDATE]} for c in concepts}
+    if legacy:
+        directory = tmp_path / "search-results" / "properties"
+        directory.mkdir(parents=True)
+        doc = build_property_file("src:A", "", "flag", "other:flag", "", [], [])
+        doc.update(status="evaluated", evaluation={"sourceProperty": "other:flag", "targetProperty": "nc:Saved"})
+        (directory / "other_flag.json").write_text(json.dumps(doc), encoding="utf-8")
+
+    write_search_results(tmp_path, concepts, {}, results)
+    types, props = load_search_results(tmp_path)
+    assert {(p["source"]["parentType"], p["source"]["qname"]) for _, p in props} == {
+        ("src:A", "other:flag"), ("src:B", "other:flag")}
+    for filename, doc in types:
+        doc.update(status="evaluated", evaluation={"sourceConcept": doc["source"]["qname"]})
+        (tmp_path / "search-results" / "types" / filename).write_text(json.dumps(doc), encoding="utf-8")
+    for filename, doc in props:
+        if doc["status"] != "evaluated":
+            assert doc["candidates"][0]["id"] == "nc:StreetFullText"
+            doc.update(status="evaluated", evaluation={"sourceProperty": "other:flag", "targetProperty": "nc:Chosen"})
+        (tmp_path / "search-results" / "properties" / filename).write_text(json.dumps(doc), encoding="utf-8")
+    before = {p.name: p.read_bytes() for p in (tmp_path / "search-results" / "properties").glob("*.json")}
+    counts = write_search_results(tmp_path, list(reversed(concepts)), {}, results)
+    assert counts["props_skipped"] == 2
+    assert before == {p.name: p.read_bytes() for p in (tmp_path / "search-results" / "properties").glob("*.json")}
+    combined = reassemble_evaluations(*load_search_results(tmp_path))
+    assert all(len(e["properties"]) == 1 for e in combined)
+    if legacy:
+        assert next(e for e in combined if e["sourceConcept"] == "src:A")["properties"][0]["targetProperty"] == "nc:Saved"
+
+
+def _write_evaluated_property_file(tmp_path, filename, parent, qname, target):
+    directory = tmp_path / "search-results" / "properties"
+    directory.mkdir(parents=True, exist_ok=True)
+    doc = build_property_file(parent, "", qname.split(":")[-1], qname, "", [], [])
+    doc.update(status="evaluated", evaluation={"sourceProperty": qname, "targetProperty": target})
+    (directory / filename).write_text(json.dumps(doc), encoding="utf-8")
+
+
+def test_legacy_file_qualified_under_parent_prefix_is_reused_not_duplicated(tmp_path):
+    """A pre-declaration file recorded `src:flag` for the augmenting-namespace
+    property `other:flag`; the declared identity must find that evaluated file
+    instead of leaving it as a phantom beside a new pending one."""
+    _write_evaluated_property_file(tmp_path, "src_flag.json", "src:A", "src:flag", "nc:Saved")
+    concepts = [{"qname": "src:A", "definition": "", "properties": [{"name": "flag", "qname": "other:flag"}]}]
+
+    counts = write_search_results(tmp_path, concepts, {}, {"src:A": {"other:flag": [PROP_CANDIDATE]}})
+
+    props_dir = tmp_path / "search-results" / "properties"
+    assert counts["props_skipped"] == 1 and counts["props_written"] == 0
+    assert sorted(p.name for p in props_dir.glob("*.json")) == ["src_flag.json"]
+    from ontology_mapper.collect_alignments import load_search_results, reassemble_evaluations
+    types, props = load_search_results(tmp_path)
+    assert [(p["status"], p["evaluation"]["targetProperty"]) for _, p in props] == [("evaluated", "nc:Saved")]
+    # The reused file now carries the declared identity, so the decision
+    # reaches collection as `other:flag` — the identity the inventory and the
+    # emitters key by — with no inventory-wide local-name resolution needed.
+    assert [p["source"]["qname"] for _, p in props] == ["other:flag"]
+    assert [p["evaluation"]["sourceProperty"] for _, p in props] == ["other:flag"]
+    for filename, doc in types:
+        doc.update(status="evaluated", evaluation={"sourceConcept": doc["source"]["qname"]})
+        (tmp_path / "search-results" / "types" / filename).write_text(json.dumps(doc), encoding="utf-8")
+    [combined] = reassemble_evaluations(*load_search_results(tmp_path))
+    assert [(p["sourceProperty"], p["targetProperty"]) for p in combined["properties"]] == [("other:flag", "nc:Saved")]
+
+
+def test_requalified_legacy_file_is_matched_exactly_on_the_next_resume(tmp_path):
+    """After the first resume the file is `other:flag`; a later `x:flag` on the
+    same parent gets its own file and the evaluated decision is untouched."""
+    _write_evaluated_property_file(tmp_path, "src_flag.json", "src:A", "src:flag", "nc:Saved")
+    first = [{"qname": "src:A", "definition": "", "properties": [{"name": "flag", "qname": "other:flag"}]}]
+    write_search_results(tmp_path, first, {}, {"src:A": {"other:flag": [PROP_CANDIDATE]}})
+
+    later = [{"qname": "src:A", "definition": "", "properties": [
+        {"name": "flag", "qname": "other:flag"}, {"name": "flag", "qname": "x:flag"}]}]
+    counts = write_search_results(tmp_path, later, {}, {"src:A": {
+        "other:flag": [PROP_CANDIDATE], "x:flag": [PROP_CANDIDATE]}})
+
+    props_dir = tmp_path / "search-results" / "properties"
+    assert counts["props_skipped"] == 1 and counts["props_written"] == 1
+    assert sorted(p.name for p in props_dir.glob("*.json")) == ["src_flag.json", "x_flag.json"]
+    kept = json.loads((props_dir / "src_flag.json").read_text(encoding="utf-8"))
+    assert kept["source"]["qname"] == "other:flag" and kept["evaluation"]["targetProperty"] == "nc:Saved"
+
+
+def test_a_file_recorded_under_another_namespace_is_never_claimed(tmp_path):
+    """Only the mis-qualification the rule exists for is claimed.
+
+    `aux:flag` is not what `_property_qname` would have manufactured for
+    a property on `src:A`; it is a different property that happens to
+    share a local name, and claiming its file would transplant its
+    reviewer's decision — and its stale definition — onto `other:flag`.
+    """
+    _write_evaluated_property_file(tmp_path, "aux_flag.json", "src:A", "aux:flag", "nc:Two")
+    concepts = [{"qname": "src:A", "definition": "", "properties": [{"name": "flag", "qname": "other:flag"}]}]
+
+    counts = write_search_results(tmp_path, concepts, {}, {"src:A": {"other:flag": [PROP_CANDIDATE]}})
+
+    props_dir = tmp_path / "search-results" / "properties"
+    assert counts["props_written"] == 1
+    # The unrelated file is left alone and the current property gets its own.
+    assert sorted(p.name for p in props_dir.glob("*.json")) == ["aux_flag.json", "other_flag.json"]
+    kept = json.loads((props_dir / "aux_flag.json").read_text(encoding="utf-8"))
+    assert kept["source"]["qname"] == "aux:flag"
+    assert kept["evaluation"]["targetProperty"] == "nc:Two"
+
+
+def test_two_current_properties_sharing_a_local_name_do_not_share_one_legacy_file(tmp_path):
+    """`a:flag` and `b:flag` on one parent, one legacy `src:flag`: neither may
+    claim it, or the second occurrence would be silently dropped."""
+    _write_evaluated_property_file(tmp_path, "src_flag.json", "src:A", "src:flag", "nc:Saved")
+    concepts = [{"qname": "src:A", "definition": "", "properties": [
+        {"name": "flag", "qname": "a:flag"}, {"name": "flag", "qname": "b:flag"}]}]
+
+    counts = write_search_results(tmp_path, concepts, {}, {"src:A": {
+        "a:flag": [PROP_CANDIDATE], "b:flag": [PROP_CANDIDATE]}})
+
+    props_dir = tmp_path / "search-results" / "properties"
+    assert counts["props_written"] == 2
+    assert sorted(p.name for p in props_dir.glob("*.json")) == ["a_flag.json", "b_flag.json", "src_flag.json"]
+
+
+def test_file_matching_a_current_identity_is_not_offered_as_legacy(tmp_path):
+    """`other:flag` exists exactly and `x:flag` is new: the exact file belongs
+    to `other:flag`; `x:flag` gets its own file."""
+    _write_evaluated_property_file(tmp_path, "other_flag.json", "src:A", "other:flag", "nc:Saved")
+    concepts = [{"qname": "src:A", "definition": "", "properties": [
+        {"name": "flag", "qname": "other:flag"}, {"name": "flag", "qname": "x:flag"}]}]
+
+    counts = write_search_results(tmp_path, concepts, {}, {"src:A": {
+        "other:flag": [PROP_CANDIDATE], "x:flag": [PROP_CANDIDATE]}})
+
+    props_dir = tmp_path / "search-results" / "properties"
+    assert counts["props_skipped"] == 1 and counts["props_written"] == 1
+    assert sorted(p.name for p in props_dir.glob("*.json")) == ["other_flag.json", "x_flag.json"]
+    saved = json.loads((props_dir / "other_flag.json").read_text(encoding="utf-8"))
+    assert saved["evaluation"]["targetProperty"] == "nc:Saved"
+
+
 # ---------------------------------------------------------------------------
 # Sample data
 # ---------------------------------------------------------------------------
@@ -108,11 +273,21 @@ class TestSanitizeFilename:
 # ---------------------------------------------------------------------------
 
 class TestPropertyQname:
-    def test_normal(self):
-        assert _property_qname("dbpi:AddressType", "streetName") == "dbpi:streetName"
+    """the source ontology's own qname is the property's identity."""
+
+    def test_carried_qname_wins(self):
+        prop = {"name": "fiscalYearCode", "qname": "fin:fiscalYearCode"}
+        assert _property_qname("dbpi:Fee", prop) == "fin:fiscalYearCode"
+
+    def test_carried_qname_used_even_when_it_matches_the_concept_prefix(self):
+        prop = {"name": "streetName", "qname": "dbpi:streetName"}
+        assert _property_qname("dbpi:AddressType", prop) == "dbpi:streetName"
+
+    def test_falls_back_for_files_written_before_the_qname_field(self):
+        assert _property_qname("dbpi:AddressType", {"name": "streetName"}) == "dbpi:streetName"
 
     def test_no_prefix(self):
-        assert _property_qname("AddressType", "streetName") == "streetName"
+        assert _property_qname("AddressType", {"name": "streetName"}) == "streetName"
 
 
 # ---------------------------------------------------------------------------
@@ -185,7 +360,7 @@ class TestSearchAllTypes:
     def test_returns_per_concept(self, mock_qi):
         concepts = [CONCEPT_A, CONCEPT_B]
 
-        def fake_qi(entries, target, kind, top_k=12):
+        def fake_qi(entries, target, kind, top_k=12, eligible=None):
             return _make_query_result(entries, [TYPE_CANDIDATE])
 
         mock_qi.side_effect = fake_qi
@@ -364,7 +539,8 @@ class TestWriteSearchResults:
         props_dir = tmp_path / "search-results" / "properties"
         props_dir.mkdir(parents=True)
 
-        evaluated = {"status": "evaluated", "evaluation": {"some": "data"}}
+        evaluated = {"status": "evaluated", "evaluation": {"some": "data"},
+                     "source": {"qname": "dbpi:streetName", "parentType": "dbpi:AddressType"}}
         (props_dir / "dbpi_streetName.json").write_text(
             json.dumps(evaluated), encoding="utf-8"
         )
@@ -475,3 +651,37 @@ class TestDisambiguateIds:
         disambiguate_ids(cands)
         assert cands[0]["id"] == "A"
         assert cands[1]["id"] == "A"
+
+
+@pytest.mark.parametrize("body", ["", '{"source": {"parentType": "src:A"', "[]"])
+def test_a_corrupt_property_file_is_rewritten_in_place(tmp_path, body):
+    """An evaluation interrupted mid-write leaves its file truncated. Its
+    name stayed reserved, so resume wrote a second file for the same
+    property and collection crashed on the corrupt one; main overwrote it."""
+    props_dir = tmp_path / "search-results" / "properties"
+    props_dir.mkdir(parents=True, exist_ok=True)
+    (props_dir / "src_flag.json").write_text(body, encoding="utf-8")
+    concepts = [{"qname": "src:A", "definition": "",
+                 "properties": [{"name": "flag", "qname": "src:flag"}]}]
+
+    write_search_results(tmp_path, concepts, {}, {"src:A": {"src:flag": [PROP_CANDIDATE]}})
+
+    assert [p.name for p in props_dir.glob("*.json")] == ["src_flag.json"]
+    rewritten = json.loads((props_dir / "src_flag.json").read_text(encoding="utf-8"))
+    assert rewritten["source"]["qname"] == "src:flag"
+
+
+def test_an_unreadable_property_file_does_not_end_the_stage(tmp_path):
+    """A locked or unreadable file is one this pass cannot reuse. Ending the
+    stage on it loses every other concept's search results."""
+    props_dir = tmp_path / "search-results" / "properties"
+    props_dir.mkdir(parents=True, exist_ok=True)
+    # A directory named like a result file: reading it raises OSError.
+    (props_dir / "locked.json").mkdir()
+    concepts = [{"qname": "src:A", "definition": "",
+                 "properties": [{"name": "flag", "qname": "other:flag"}]}]
+
+    counts = write_search_results(tmp_path, concepts, {}, {"src:A": {"other:flag": [PROP_CANDIDATE]}})
+
+    assert counts["props_written"] == 1
+    assert any(p.is_file() for p in props_dir.glob("*.json"))

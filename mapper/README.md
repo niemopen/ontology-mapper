@@ -219,7 +219,7 @@ The runner (`../runner/`) contains domain packages. The `redvale_dbpi_agency_pac
 OntologyMapper produces a self-contained edge package. An edge package includes:
 
 - **OWL/TTL modules** — reused target types and domain-specific extensions (core, extensions, combined, all)
-- **CMF** — Common Model Format XML + JSON for NIEM tooling interoperability (NIEM targets only)
+- **CMF** — Common Model Format XML + JSON for NIEM tooling interoperability (targets with an installed CMF reference model, today NIEM 6.0)
 - **Mapping matrix** — every source concept mapped to reuse, extend, or augment, with per-property decisions
 - **SHACL shapes** — validation constraints with shared-target relaxation for multi-mapped types
 - **Knowledge graph scripts** — Neo4j Cypher (schema, seed, queries), SPARQL templates, TriG named graphs, import config

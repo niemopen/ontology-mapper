@@ -41,6 +41,58 @@ structural rules to choose an action. The orchestrator does NOT set the
 action directly — it provides evaluations, and `resolve_alignment()` applies
 rules.
 
+Before resolving a selected target, `canonical_class_target()` applies the
+shared `class_target_filter()` policy and returns the spelling the pipeline
+carries. When a native CMF reference is installed for the target/version,
+eligibility comes from actual Class identities resolved through the catalog's
+namespace bindings, plus explicit implicit roots. A full IRI is eligible only
+when the catalog binds its namespace, and it is stored as that catalog QName,
+so catalog lookups, scaffolding names, the OWL/CMF emitters and the Stage 7
+drift check all see one identity; a reference class in an unbound namespace is
+rejected at review rather than failing later as an unbound CMF reference.
+The review apply path (`runner_tools.apply_decision_with_cascade`) compares
+canonical identities, so re-accepting a stored IRI as its QName stores the QName
+without a cascade; only a different class triggers reclassification.
+`invalid_class_targets()` asks the same policy of a whole saved matrix: a
+decision accepted before the policy existed makes no selection to check, so
+review exit (`check_stage_5_exit`: all three web routes, the review state's
+`canSubmit`, and the runner's Stage 6 entry `run_pipeline.refuse_invalid_class_targets`)
+reports it as a blocker, and the generator itself (`generate_edge_ontology.main`,
+reached by a Stage 6 resume, the web executor and a by-hand
+`om-generate-ontology`) refuses to generate from it. An implicit root (NIEM
+6.0's `structures:ObjectType`) is no declared Class, so the matrix check
+accepts it only as an extend base, which the CMF expresses by omitting
+`SubClassOf`; reuse or augment of it would emit a reference Stage 7 reports
+unbound, so it is a blocker at review exit and generation. Codebook drift (Stage 7
+Check 12) looks a legacy full-IRI target up by its catalog QName
+(`generation_utils.target_qname`), so a saved IRI is not reported missing. The
+predicate asks about every field the emitters read as a superclass, not only
+`targetType`: `baseType` for extend and `augmentsType` for augment, which an
+edited matrix can leave naming a different type.
+Datatypes and XSD-only names cannot become superclasses. Literal classes,
+including classes with only inherited properties, remain eligible. Names,
+patterns and property counts do not determine component kind.
+
+An incompatible saved selection raises `ClassTargetError` without replacement
+(`validate_class_target()` is the check-only form used for unchanged Stage 5
+submissions). Null and undecided retain their existing review semantics.
+Without an installed native reference, existing catalog behavior and the
+selection's spelling are preserved; this is not a claim of native class
+validation.
+
+The installed reference is read once per process: `load_reference_cmf`
+validates the specs path on every call and caches the decompressed text by
+resolved path and mtime, because the class policy asks about one target at
+a time — per matrix entry at review exit, per concept during collection —
+and the file is a 2 MB gzip that expands to 24 MB.
+
+The URI + name rule that builds component IRIs lives in
+`generation_utils.component_iri`; its inverse, `generation_utils.target_qname`,
+is what the policy and the CMF builder both ground with. The CMF builder
+applies it again when emitting ids and namespaces, so a matrix saved before
+this policy still emits `prefix.Name` references; an IRI outside the catalog
+namespaces is emitted unchanged and reported by reference validation.
+
 ### NIEM action logic
 
 `resolve_alignment()` delegates to `_determine_niem_action()`:
@@ -91,6 +143,13 @@ result = reclassify_for_target_type_change(entry, new_target_type, target_ontolo
   for NIEM; found/missing count for non-NIEM). Clears old scaffolding, rebuilds
   for the new action, resets `reviewStatus` to `"pending-review"` on entry and
   all properties. Sets `ruleId = "target-type-change-cascade"`.
+  Replaces `targetDefinition` and `targetDefinitionHash` with the new target's
+  catalog definition (`generation_utils.definition_hash`, the same fingerprint
+  alignment collection writes and Stage 7 Check 12 compares), so a legitimate
+  target change does not report codebook drift.
+  `targetTypeLabel` follows the same rule: the new target's catalog label, or
+  removed when the catalog has none, so the review card never shows the
+  previous target's label.
 - **Null target type**: Allowed — produces extend from root
   (`structures:ObjectType` for NIEM, no `baseType` for non-NIEM).
 - **Property actions do NOT change**: `reuse-property` / `create-property` /

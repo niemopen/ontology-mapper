@@ -10,9 +10,8 @@ import json
 import sys
 from pathlib import Path
 from rdflib import Graph, Namespace, RDF, RDFS, OWL, SKOS, SH, URIRef, BNode
-from datetime import datetime, timezone
 
-from ontology_mapper.run_dir_utils import resolve_run_dir, load_state
+from ontology_mapper.run_dir_utils import resolve_run_dir, load_state, utc_stamp
 
 
 # ─── Manifest Loading ────────────────────────────────────────────────────
@@ -237,27 +236,65 @@ def extract_workflow_models(g, primary_ns_uri, to_qname):
     return sorted(wf_models, key=lambda w: w["label"])
 
 
+def _shacl_count(value):
+    """Read a `sh:minCount` / `sh:maxCount`, including zero.
+
+    `int(v) if v else None` discarded a literal 0, and the two zeroes do
+    not mean the same thing as absence. An absent `sh:maxCount` is
+    UNBOUNDED; `sh:maxCount 0` FORBIDS the property. Reading the second as
+    the first inverts the constraint completely.
+    """
+    return int(value) if value is not None else None
+
+
+def _shacl_severity(shapes_g, node):
+    """Keep built-in severity names and the full IRI of custom severities.
+
+    Severity categorizes validation results; it does not disable a bound.
+    """
+    severity = shapes_g.value(node, SH.severity)
+    if severity is None:
+        return "Violation"
+    return str(severity)[len(str(SH)):] if str(severity).startswith(str(SH)) else str(severity)
+
+
 def extract_shacl_shapes(shapes_g, to_qname):
     shapes = []
     for shape in shapes_g.subjects(RDF.type, SH.NodeShape):
-        target_class = to_qname(shapes_g.value(shape, SH.targetClass) or "")
+        # A NodeShape may carry several sh:targetClass values; `value()`
+        # returns one arbitrarily and the rest were dropped silently.
+        target_classes = sorted(
+            to_qname(t) for t in shapes_g.objects(shape, SH.targetClass)
+            if isinstance(t, URIRef))
+        shape_deactivated = bool(shapes_g.value(shape, SH.deactivated))
         props = []
         for prop_shape in shapes_g.objects(shape, SH.property):
-            path = to_qname(shapes_g.value(prop_shape, SH.path) or "")
-            min_count = shapes_g.value(prop_shape, SH.minCount)
-            max_count = shapes_g.value(prop_shape, SH.maxCount)
-            datatype = str(shapes_g.value(prop_shape, SH.datatype) or "")
-            cls_val = to_qname(shapes_g.value(prop_shape, getattr(SH, "class")) or "")
+            path_node = shapes_g.value(prop_shape, SH.path)
+            # A blank-node path is a SHACL path EXPRESSION (sequence,
+            # inverse, alternative, zero-or-more), not a property. Naming
+            # it with to_qname() produced a constraint on a bnode id no
+            # ontology declares, which downstream read as a real property.
+            path_is_expression = isinstance(path_node, BNode)
+            path = to_qname(path_node) if isinstance(path_node, URIRef) else ""
             props.append({
-                "path": path,
-                "minCount": int(min_count) if min_count else None,
-                "maxCount": int(max_count) if max_count else None,
-                "datatype": datatype if datatype else None,
-                "class": cls_val if cls_val else None,
+                "path": path or None,
+                "pathKind": "expression" if path_is_expression else "property",
+                "minCount": _shacl_count(shapes_g.value(prop_shape, SH.minCount)),
+                "maxCount": _shacl_count(shapes_g.value(prop_shape, SH.maxCount)),
+                "datatype": str(shapes_g.value(prop_shape, SH.datatype) or "") or None,
+                "class": to_qname(shapes_g.value(prop_shape, getattr(SH, "class")) or "") or None,
+                "deactivated": shape_deactivated or bool(
+                    shapes_g.value(prop_shape, SH.deactivated)),
+                "severity": _shacl_severity(shapes_g, prop_shape),
             })
         shapes.append({
             "iri": str(shape),
-            "targetClass": target_class,
+            # `targetClasses` is authoritative; `targetClass` is its first
+            # entry, kept because seven modules read that name.
+            "targetClasses": target_classes,
+            "targetClass": target_classes[0] if target_classes else "",
+            "deactivated": shape_deactivated,
+            "severity": _shacl_severity(shapes_g, shape),
             "propertyCount": len(props),
             "properties": props,
         })
@@ -329,7 +366,7 @@ def main():
 
     # Build concept inventory
     inventory = {
-        "extractedAt": datetime.now(timezone.utc).isoformat(),
+        "extractedAt": utc_stamp(),
         "sourcePackage": str(PKG),
         "primaryNamespace": primary_ns,
         "namespaceMap": ns_map,

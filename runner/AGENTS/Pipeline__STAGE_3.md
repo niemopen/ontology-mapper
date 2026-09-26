@@ -31,6 +31,9 @@ Action:  om-orchestrate-eval --run-dir {run_dir}
 Action:  om-collect-alignments --run-dir {run_dir}
          -> Reads type and property files, reassembles per-concept evaluations
          -> Calls resolve_alignment() on each to add actions and scaffolding
+         -> One refusal covers the run: results evaluated before the class
+            policy existed can name a datatype, and every rejected concept
+            is named together rather than the first one ending the stage
          -> Writes completed alignment-report.json (matchingMethod: "semantic")
          -> Fails if any files are still pending (use --allow-pending to skip)
 

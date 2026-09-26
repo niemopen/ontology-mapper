@@ -78,6 +78,7 @@ if not HAS_DOCKER:
 # ---------------------------------------------------------------------------
 # Now safe to import pipeline code
 # ---------------------------------------------------------------------------
+from ontology_mapper.generation_utils import graph_property_keys
 from ontology_mapper.generate_kg_artifacts import (
     build_active_classes,
     build_relationships,
@@ -277,7 +278,7 @@ class Artifacts:
         )
         seed_path = write_seed_ttl(tmp_path)
         self.seed = generate_seed_cypher(
-            self.active_classes, self.relationships, seed_path, "dbpi",
+            self.active_classes, self.relationships, seed_path, "dbpi", graph_property_keys(inv),
         )
         self.queries = generate_query_templates(
             self.active_classes, self.relationships, "dbpi",

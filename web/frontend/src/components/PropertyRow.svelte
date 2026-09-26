@@ -39,11 +39,16 @@
 
   $: statusIcon = property.reviewStatus === "accepted" ? "check" : "pending";
   $: isAccepted = property.reviewStatus === "accepted";
-  $: needsDecision = property.action === "human-must-decide" && !isAccepted;
+  // The backend's property_undecided answers (`undecided`); deciding by
+  // action here showed an accepted reuse with no target as done.
+  $: needsDecision = Boolean(property.undecided);
 
   function startResolve() {
     resolving = true;
-    selectedAction = property.action === "human-must-decide" ? "reuse-property" : property.action;
+    // Only the two decisions review can make; any other stored action
+    // (human-must-decide, a legacy string) starts from reuse.
+    selectedAction = ["reuse-property", "create-property"].includes(property.action)
+      ? property.action : "reuse-property";
     // "[undecided]" is the pipeline's not-yet-chosen sentinel, not a target.
     // Pre-filling it would leave the Apply button enabled and submit the
     // sentinel as though it were a real property.
@@ -77,7 +82,7 @@
 
   <!-- Status indicator -->
   <div class="mt-1 flex-shrink-0">
-    {#if isAccepted}
+    {#if isAccepted && !needsDecision}
       <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
       </svg>

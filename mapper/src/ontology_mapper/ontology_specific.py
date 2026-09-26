@@ -18,6 +18,170 @@ via resolve_alignment().
 """
 import json
 
+from ontology_mapper.cmf_reference import load_reference_cmf, reference_class_identities
+from ontology_mapper.generation_utils import (
+    catalog_type_definition,
+    catalog_type_label,
+    definition_hash,
+    target_qname,
+)
+
+
+def extension_conformance_target(target_ontology: str, target_version: str) -> str:
+    """NDR 6.0 rule 8-13: the conformance target for extension namespaces.
+
+    https://docs.oasis-open.org/niemopen/ndr/v6.0/ndr-v6.0.html
+    Unknown targets/versions assert no conformance policy.
+    """
+    if target_ontology.lower() == "niem" and target_version == "6.0":
+        return ("https://docs.oasis-open.org/niemopen/ns/specification/"
+                "NDR/6.0/#ExtensionSchemaDocument")
+    return ""
+
+
+def cmf_structures_version(target_ontology: str, target_version: str) -> str:
+    """The NIEM release whose structures namespace a generated CMF uses.
+
+    The structures namespace belongs to the CMF format, not to the target
+    ontology: CMF 1.0's schema (specs/cmf-xsd/cmf.xsd) imports
+    structures/6.0, so a CMF for a non-NIEM target uses it too. A NIEM
+    target names its own release.
+    """
+    if target_ontology.lower() == "niem":
+        return target_version
+    return "6.0"
+
+
+def cmf_implicit_roots(target_ontology: str, target_version: str):
+    """NIEM's XSD infrastructure root is implicit, not a declared CMF Class."""
+    if target_ontology.lower() == "niem" and target_version == "6.0":
+        return {("https://docs.oasis-open.org/niemopen/ns/model/structures/6.0/", "ObjectType")}
+    return set()
+
+
+class ClassTargetError(ValueError):
+    """A selected target cannot represent a source class in the native model."""
+
+
+def _any_class_target(target):
+    """Eligibility without an installed reference: retain catalog behavior."""
+    return True
+
+
+def class_target_filter(target_ontology, catalog, target_version=None):
+    """Return the shared native class-eligibility predicate.
+
+    Without an installed reference, retain catalog behavior; this is not a
+    claim of native validation. A supplied reference defines the eligible
+    Class identities. Source names and property counts do not establish kind.
+
+    A full IRI is eligible only when the catalog binds its namespace, so the
+    accepted form is always one the catalog can name (``prefix:Name``); a
+    reference class in an unbound namespace would otherwise survive review
+    and fail two stages later as an unbound CMF reference.
+    """
+    version = target_version or catalog.get("version")
+    reference = load_reference_cmf(target_ontology, version) if version else None
+    if reference is None:
+        return _any_class_target
+
+    classes = reference_class_identities(reference) | cmf_implicit_roots(target_ontology, version)
+    namespaces = catalog.get("namespaces", {})
+
+    def eligible(target):
+        if target is None or target == "[undecided]":
+            return True  # Keep the existing unresolved/review representation.
+        prefix, _, name = target_qname(target, namespaces).partition(":")
+        return prefix in namespaces and (namespaces[prefix], name) in classes
+
+    return eligible
+
+
+def canonical_class_target(target, target_ontology, catalog):
+    """Validate a selection and return the identity the pipeline carries.
+
+    Under a native policy an accepted full IRI becomes its catalog QName, so
+    catalog lookups, scaffolding names, emitters and drift checks all see one
+    spelling. Without an installed reference the selection is kept as given.
+    An incompatible selection is rejected, never replaced.
+    """
+    eligible = class_target_filter(target_ontology, catalog)
+    if not eligible(target):
+        raise ClassTargetError(
+            f"Target '{target}' is not a class in the installed {target_ontology} "
+            f"{catalog.get('version', '')} reference model. Choose a class target "
+            "or review the no-match/default-root option; a datatype cannot be "
+            "used as a superclass."
+        )
+    if eligible is _any_class_target or not target or target == "[undecided]":
+        return target
+    return target_qname(target, catalog.get("namespaces", {}))
+
+
+def invalid_class_targets(matrix, target_ontology, catalog):
+    """Every saved class decision whose target the policy rejects.
+
+    One home for the question "is this matrix fit to generate from?". The
+    interactive path checks a selection as the reviewer makes it, but a
+    matrix saved before the policy existed — or edited outside review —
+    reaches generation with no selection event to check. Both the review
+    exit and the generation entry ask this instead of repeating the rule.
+
+    The emitters read the superclass from `baseType` (extend) and
+    `augmentsType` (augment), falling back to `targetType`; an edited matrix
+    can disagree between them, so each is asked rather than `targetType`
+    alone.
+
+    Returns a list of ``(sourceConcept, target, message)``; empty when every
+    class decision names a class the policy allows.
+    """
+    fields_by_action = {"reuse": ("targetType",),
+                        "extend": ("targetType", "baseType"),
+                        "augment": ("targetType", "augmentsType")}
+    invalid = []
+    for entry in matrix.get("mappings", []):
+        fields = fields_by_action.get(entry.get("action"))
+        if not fields:
+            continue
+        # Grouped by target, not by field: extend and augment normally
+        # repeat the class in their scaffolding, so one rejected value
+        # is one blocker — but it names every field holding it, because
+        # the reviewer selects a class and stored scaffolding is not one.
+        fields_by_target = {}
+        for field in fields:
+            fields_by_target.setdefault(entry.get(field), []).append(field)
+        for target, holders in fields_by_target.items():
+            try:
+                canonical_class_target(target, target_ontology, catalog)
+            except ClassTargetError as exc:
+                invalid.append((entry.get("sourceConcept", ""), target,
+                                f"{'/'.join(holders)} {exc}"))
+                continue
+            if entry.get("action") != "extend" and _is_implicit_root(target, target_ontology, catalog):
+                # The root is no declared CMF Class: extending it omits
+                # SubClassOf, but reuse and augment emit a reference to it
+                # that Stage 7 reports unbound.
+                invalid.append((entry.get("sourceConcept", ""), target,
+                                f"{'/'.join(holders)} Target '{target}' is the implicit "
+                                f"{target_ontology} root, not a declared class; it can "
+                                "only be a base, so choose extend (the default-root "
+                                "option) or a declared class."))
+    return invalid
+
+
+def _is_implicit_root(target, target_ontology, catalog):
+    if not target or target == "[undecided]":
+        return False
+    namespaces = catalog.get("namespaces", {})
+    prefix, _, name = target_qname(target, namespaces).partition(":")
+    return (namespaces.get(prefix), name) in cmf_implicit_roots(
+        target_ontology, catalog.get("version", ""))
+
+
+def validate_class_target(target, target_ontology, catalog):
+    """Reject incompatible saved or review selections without replacing them."""
+    canonical_class_target(target, target_ontology, catalog)
+
 
 # Action determination — NIEM
 # ---------------------------------------------------------------------------
@@ -230,7 +394,8 @@ def resolve_alignment(evaluation, target_ontology, catalog):
     import copy
     result = copy.deepcopy(evaluation)
     properties = result.get("properties", [])
-    target_type = result.get("targetType")
+    target_type = canonical_class_target(result.get("targetType"), target_ontology, catalog)
+    result["targetType"] = target_type
 
     # --- No target type: extend from root (create everything from scratch) ---
     if target_type is None:
@@ -332,8 +497,20 @@ def reclassify_for_target_type_change(entry, new_target_type, target_ontology, c
         The input is never mutated.
     """
     import copy
+    new_target_type = canonical_class_target(new_target_type, target_ontology, catalog)
     result = copy.deepcopy(entry)
     result["targetType"] = new_target_type
+    # The target's definition and its fingerprint describe the new target;
+    # the deep copy would otherwise carry the previous target's, and Stage 7
+    # Check 12 would report codebook drift on a legitimate change.
+    definition = catalog_type_definition(new_target_type, catalog) if new_target_type else None
+    result["targetDefinition"] = definition or ""
+    result["targetDefinitionHash"] = definition_hash(definition)
+    label = catalog_type_label(new_target_type, catalog) if new_target_type else None
+    if label:
+        result["targetTypeLabel"] = label
+    else:
+        result.pop("targetTypeLabel", None)
     property_mappings = result.get("propertyMappings", [])
 
     # --- No target type: extend from root ---

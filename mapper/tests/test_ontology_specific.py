@@ -13,6 +13,90 @@ from ontology_mapper.ontology_specific import (
 )
 
 
+@pytest.mark.parametrize("name", ["Restricted", "Values", "Choice", "Primitive", "Missing"])
+@pytest.mark.parametrize("full_iri", [False, True])
+def test_native_datatype_cannot_be_selected_as_class(native_class_catalog, name, full_iri):
+    import copy
+    target = f"https://example.test/model/{name}" if full_iri else f"alias:{name}"
+    evaluation = {"sourceConcept": "source:Record", "targetType": target, "properties": []}
+    before = copy.deepcopy(evaluation)
+    with pytest.raises(ValueError, match="class"):
+        resolve_alignment(evaluation, "example", native_class_catalog)
+    assert evaluation == before
+    with pytest.raises(ValueError, match="class"):
+        reclassify_for_target_type_change(evaluation, target, "example", native_class_catalog)
+    assert evaluation == before
+
+
+@pytest.mark.parametrize("name", ["Record", "ActualSimpleType", "Literal", "InheritedLiteral"])
+@pytest.mark.parametrize("full_iri", [False, True])
+def test_native_classes_preserved_regardless_of_name_or_direct_properties(native_class_catalog, name, full_iri):
+    target = f"https://example.test/model/{name}" if full_iri else f"alias:{name}"
+    evaluation = {"sourceConcept": "source:Record", "targetType": target, "properties": []}
+    result = resolve_alignment(evaluation, "example", native_class_catalog)
+    assert result["action"] == "reuse"
+    # An accepted IRI is carried as the catalog QName: one spelling for
+    # catalog lookups, scaffolding names, emitters and drift checks.
+    assert result["targetType"] == f"alias:{name}"
+    changed = reclassify_for_target_type_change(evaluation, target, "example", native_class_catalog)
+    assert changed["targetType"] == f"alias:{name}"
+
+
+def test_full_iri_resolves_exactly_like_its_qname(native_class_catalog):
+    evaluation = {"sourceConcept": "source:Record", "properties": [
+        {"sourceProperty": "source:value", "targetProperty": None}]}
+    by_qname = resolve_alignment({**evaluation, "targetType": "alias:Record"},
+                                 "example", native_class_catalog)
+    by_iri = resolve_alignment({**evaluation, "targetType": "https://example.test/model/Record"},
+                               "example", native_class_catalog)
+    assert by_iri == by_qname
+    assert by_qname["action"] == "extend" and by_qname["baseType"] == "alias:Record"
+
+
+@pytest.mark.parametrize("target", ["other:Foreign", "https://example.test/other/Foreign"])
+def test_reference_class_in_unbound_namespace_is_rejected(native_class_catalog, target):
+    evaluation = {"sourceConcept": "source:Record", "targetType": target, "properties": []}
+    with pytest.raises(ValueError, match="class"):
+        resolve_alignment(evaluation, "example", native_class_catalog)
+
+
+def test_niem_iri_target_keeps_the_reuse_action_of_its_qname():
+    """Real NIEM 6.0 reference: the IRI of a reuse target must not become augment."""
+    nc = "https://docs.oasis-open.org/niemopen/ns/model/niem-core/6.0/"
+    catalog = {"version": "6.0", "namespaces": {"nc": nc},
+               "types": [{"qname": "nc:PersonType", "properties": ["nc:PersonName"]}]}
+    properties = [{"sourceProperty": "s:name", "targetProperty": "nc:PersonName"}]
+    by_qname = resolve_alignment(
+        {"sourceConcept": "s:Person", "targetType": "nc:PersonType", "properties": properties},
+        "niem", catalog)
+    by_iri = resolve_alignment(
+        {"sourceConcept": "s:Person", "targetType": nc + "PersonType", "properties": properties},
+        "niem", catalog)
+    assert by_qname["action"] == "reuse"
+    assert by_iri == by_qname
+
+    entry = {"sourceConcept": "s:Person", "targetType": None, "action": "extend",
+             "propertyMappings": [{"sourceProperty": "s:name", "targetProperty": "nc:PersonName",
+                                   "reviewStatus": "accepted"}]}
+    changed = reclassify_for_target_type_change(entry, nc + "PersonType", "niem", catalog)
+    assert changed["action"] == "reuse"
+    assert changed["targetType"] == "nc:PersonType"
+    assert "augmentationType" not in changed
+
+
+@pytest.mark.parametrize("target", [None, "[undecided]"])
+def test_unselected_targets_keep_existing_review_behavior(native_class_catalog, target):
+    evaluation = {"sourceConcept": "source:Record", "targetType": target, "properties": []}
+    result = resolve_alignment(evaluation, "example", native_class_catalog)
+    assert result["targetType"] == target
+    assert result["action"] == ("extend" if target is None else "reuse")
+
+
+def test_catalog_without_native_reference_retains_legacy_behavior(native_class_catalog):
+    evaluation = {"sourceConcept": "source:Record", "targetType": "alias:Restricted", "properties": []}
+    assert resolve_alignment(evaluation, "no-reference", native_class_catalog)["action"] == "reuse"
+
+
 # ─── Fixtures ────────────────────────────────────────────────────────────
 
 @pytest.fixture
@@ -951,6 +1035,195 @@ class TestReclassifyForTargetTypeChange:
         )
         assert result["ruleId"] == "target-type-change-cascade"
 
+    # --- target metadata follows the new target ---
+
+    def _entry_with_target_metadata(self, niem_catalog):
+        from ontology_mapper.generation_utils import catalog_type_definition, definition_hash
+
+        for t in niem_catalog["types"]:
+            t["definition"] = f"A data type for {t['qname']}."
+        entry = self._make_entry("reuse", "nc:CaseType", self._props_on_case_type())
+        entry["targetDefinition"] = catalog_type_definition("nc:CaseType", niem_catalog)
+        entry["targetDefinitionHash"] = definition_hash(entry["targetDefinition"])
+        return entry
+
+    def test_target_definition_and_hash_describe_the_new_target(self, niem_catalog):
+        """Check 12 compares the stored hash with the catalog definition of the
+        stored target; after a change both must describe the new target."""
+        from ontology_mapper.generation_utils import definition_hash
+        from ontology_mapper.validate_edge_package import check_codebook_drift
+
+        entry = self._entry_with_target_metadata(niem_catalog)
+        result = reclassify_for_target_type_change(entry, "nc:PersonType", "niem", niem_catalog)
+
+        assert result["targetDefinition"] == "A data type for nc:PersonType."
+        assert result["targetDefinitionHash"] == definition_hash("A data type for nc:PersonType.")
+        assert check_codebook_drift([result], niem_catalog) == []
+        assert entry["targetDefinition"] == "A data type for nc:CaseType."  # input untouched
+
+    def test_target_label_follows_the_new_target(self, niem_catalog):
+        entry = self._entry_with_target_metadata(niem_catalog)
+        entry["targetTypeLabel"] = "Case Type"
+        for t in niem_catalog["types"]:
+            if t["qname"] == "nc:PersonType":
+                t["label"] = "Person Type"
+        result = reclassify_for_target_type_change(entry, "nc:PersonType", "niem", niem_catalog)
+        assert result["targetTypeLabel"] == "Person Type"
+
+    def test_target_label_is_dropped_when_the_catalog_has_none(self, niem_catalog):
+        entry = self._entry_with_target_metadata(niem_catalog)
+        entry["targetTypeLabel"] = "Case Type"
+        result = reclassify_for_target_type_change(entry, "nc:PersonType", "niem", niem_catalog)
+        assert "targetTypeLabel" not in result
+        assert reclassify_for_target_type_change(entry, None, "niem", niem_catalog).get("targetTypeLabel") is None
+
+    def test_no_target_clears_target_metadata(self, niem_catalog):
+        entry = self._entry_with_target_metadata(niem_catalog)
+        result = reclassify_for_target_type_change(entry, None, "niem", niem_catalog)
+        assert result["targetDefinition"] == ""
+        assert result["targetDefinitionHash"] is None
+
+    def test_target_without_catalog_definition_hashes_none(self, niem_catalog):
+        entry = self._entry_with_target_metadata(niem_catalog)
+        for t in niem_catalog["types"]:
+            if t["qname"] == "nc:PersonType":
+                del t["definition"]
+        result = reclassify_for_target_type_change(entry, "nc:PersonType", "niem", niem_catalog)
+        assert result["targetDefinition"] == ""
+        assert result["targetDefinitionHash"] is None
+
+
+def test_native_cmf_root_policy_is_target_and_version_specific():
+    from ontology_mapper.ontology_specific import cmf_implicit_roots
+
+    assert cmf_implicit_roots("niem", "6.0") == {
+        ("https://docs.oasis-open.org/niemopen/ns/model/structures/6.0/", "ObjectType")}
+    assert cmf_implicit_roots("example", "6.0") == set()
+    assert cmf_implicit_roots("niem", "5.0") == set()
+
+
+class TestInvalidClassTargets:
+    """The saved-matrix policy question, asked by review exit and generation entry."""
+
+    def _catalog(self):
+        import json
+        from ontology_mapper.run_dir_utils import resolve_specs_dir
+        return json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json").read_text(encoding="utf-8"))
+
+    def test_datatype_and_unbound_targets_are_reported_with_their_concepts(self):
+        from ontology_mapper.ontology_specific import invalid_class_targets
+        catalog = self._catalog()
+        matrix = {"mappings": [
+            {"sourceConcept": "src:A", "action": "reuse", "targetType": "hs:PersonRoleCodeSimpleType"},
+            {"sourceConcept": "src:B", "action": "augment", "targetType": "https://unbound.test/Thing"},
+            {"sourceConcept": "src:Ok", "action": "reuse", "targetType": "nc:PersonType"},
+            {"sourceConcept": "src:Ext", "action": "extend", "targetType": None},
+            {"sourceConcept": "src:Skip", "action": "exclude", "targetType": "hs:PersonRoleCodeSimpleType"},
+        ]}
+        reported = invalid_class_targets(matrix, "niem", catalog)
+        assert [c for c, _, _ in reported] == ["src:A", "src:B"]
+        assert all("not a class" in message for _, _, message in reported)
+
+    def test_scaffolding_superclass_fields_are_asked_too(self):
+        """The emitters read the superclass from `baseType`/`augmentsType`,
+        falling back to `targetType`; an edited matrix can disagree."""
+        from ontology_mapper.ontology_specific import invalid_class_targets
+        catalog = self._catalog()
+        matrix = {"mappings": [
+            {"sourceConcept": "src:Ext", "action": "extend", "targetType": "nc:PersonType",
+             "baseType": "hs:PersonRoleCodeSimpleType"},
+            {"sourceConcept": "src:Aug", "action": "augment", "targetType": "nc:PersonType",
+             "augmentsType": "hs:PersonRoleCodeSimpleType"},
+            {"sourceConcept": "src:Ok", "action": "extend", "targetType": "nc:PersonType",
+             "baseType": "nc:PersonType"},
+        ]}
+        reported = invalid_class_targets(matrix, "niem", catalog)
+        assert [c for c, _, _ in reported] == ["src:Ext", "src:Aug"]
+        assert all(t == "hs:PersonRoleCodeSimpleType" for _, t, _ in reported)
+        # The reviewer picks a class, so a message naming only a type they
+        # never picked leaves them nothing to act on: name the field.
+        assert reported[0][2].startswith("baseType ")
+        assert reported[1][2].startswith("augmentsType ")
+    def test_clean_matrix_reports_nothing(self):
+        from ontology_mapper.ontology_specific import invalid_class_targets
+        matrix = {"mappings": [{"sourceConcept": "src:Ok", "action": "reuse", "targetType": "nc:PersonType"}]}
+        assert invalid_class_targets(matrix, "niem", self._catalog()) == []
+
+    def test_the_implicit_root_is_a_base_only(self):
+        """NIEM's root is no declared CMF Class: a class may extend it, which
+        the CMF expresses by omitting SubClassOf, but reusing or augmenting it
+        emits a reference Stage 7 reports unbound."""
+        from ontology_mapper.ontology_specific import invalid_class_targets
+        root_iri = "https://docs.oasis-open.org/niemopen/ns/model/structures/6.0/ObjectType"
+        matrix = {"mappings": [
+            {"sourceConcept": "src:Reuse", "action": "reuse", "targetType": "structures:ObjectType"},
+            {"sourceConcept": "src:Iri", "action": "reuse", "targetType": root_iri},
+            {"sourceConcept": "src:Aug", "action": "augment", "targetType": "nc:PersonType",
+             "augmentsType": "structures:ObjectType"},
+            {"sourceConcept": "src:Ext", "action": "extend", "targetType": "structures:ObjectType",
+             "baseType": "structures:ObjectType"},
+        ]}
+        reported = invalid_class_targets(matrix, "niem", self._catalog())
+        assert [c for c, _, _ in reported] == ["src:Reuse", "src:Iri", "src:Aug"]
+        assert reported[2][2].startswith("augmentsType ")
+        assert all("extend" in message for _, _, message in reported)
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestOneBlockerPerRejectedTarget:
+    """Extend and augment normally repeat the class in their scaffolding,
+    so a rejected class is one blocker — naming every field that holds it,
+    because the reviewer selects a class and scaffolding is not one."""
+
+    def _catalog(self):
+        import json
+        from ontology_mapper.run_dir_utils import resolve_specs_dir
+        return json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json")
+                          .read_text(encoding="utf-8"))
+
+    def test_a_class_repeated_in_scaffolding_reports_once_naming_both_fields(self):
+        from ontology_mapper.ontology_specific import invalid_class_targets
+        matrix = {"mappings": [
+            {"sourceConcept": "src:Ext", "action": "extend",
+             "targetType": "niem-xs:token", "baseType": "niem-xs:token"},
+            {"sourceConcept": "src:Aug", "action": "augment",
+             "targetType": "niem-xs:token", "augmentsType": "niem-xs:token"},
+        ]}
+        reported = invalid_class_targets(matrix, "niem", self._catalog())
+        assert len(reported) == 2
+        assert reported[0][2].startswith("targetType/baseType ")
+        assert reported[1][2].startswith("targetType/augmentsType ")
+
+
+class TestReferenceIsReadOncePerProcess:
+    """The policy asks about one target at a time — per matrix entry at
+    review exit, per concept during collection — and the reference is a 2 MB
+    gzip that expands to 24 MB. Reading it per question put seconds inside a
+    web request."""
+
+    def test_many_targets_read_the_reference_once(self, monkeypatch):
+        import gzip
+        import json
+        from ontology_mapper import cmf_reference
+        from ontology_mapper.ontology_specific import invalid_class_targets
+        from ontology_mapper.run_dir_utils import resolve_specs_dir
+
+        cmf_reference._read_reference_cmf.cache_clear()
+        opened = []
+        real_open = gzip.open
+
+        def counting_open(*args, **kwargs):
+            opened.append(args[0] if args else kwargs.get('filename'))
+            return real_open(*args, **kwargs)
+
+        monkeypatch.setattr(cmf_reference.gzip, "open", counting_open)
+        catalog = json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json")
+                             .read_text(encoding="utf-8"))
+        matrix = {"mappings": [{"sourceConcept": f"src:C{i}", "action": "reuse",
+                                "targetType": "nc:PersonType"} for i in range(25)]}
+
+        assert invalid_class_targets(matrix, "niem", catalog) == []
+        assert len(opened) == 1

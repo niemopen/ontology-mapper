@@ -22,9 +22,18 @@ import json
 import shutil
 import sys
 from pathlib import Path
-from datetime import datetime, timezone
+from ontology_mapper.cmf_reference import CMF_OMITTED_REASON, reference_cmf_installed
+from ontology_mapper.run_dir_utils import utc_stamp
+from ontology_mapper.validate_edge_package import DRAFT_VERSION
 
 from ontology_mapper.pipeline_context import load_context
+from ontology_mapper.build_strategy_reports import build_class_properties
+from ontology_mapper.generation_utils import (
+    created_property_is_declared,
+    component_iri, created_property_qname, edge_class_name,
+    property_qname_resolver, source_declared_properties,
+    source_namespace_bindings, source_prefix,
+)
 
 
 def _load_json_optional(path):
@@ -65,7 +74,7 @@ def build_extension_justifications(matrix, target_ontology, target_version):
     if not extensions:
         return "# Extension Justifications\n\nNo extensions required.\n"
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = utc_stamp()
     lines = [
         "# Extension Justifications",
         f"",
@@ -91,33 +100,107 @@ def build_extension_justifications(matrix, target_ontology, target_version):
     return "\n".join(lines) + "\n"
 
 
-def build_extension_catalog(matrix):
-    """Generate extension-catalog.json from the mapping matrix."""
+def build_extension_catalog(matrix, ctx, inventory, target_ns_map):
+    """Inventory accepted new properties using the generators' term identities."""
+    classes = {c["qname"]: c for c in inventory["classes"]}
+    resolve_property = property_qname_resolver(inventory)
+    bindings = source_namespace_bindings(inventory, target_ns_map, ctx.edge_prefix)
+    namespaces = {**target_ns_map, ctx.edge_prefix.rstrip(":"): ctx.edge_namespace,
+                  "ext": ctx.extension_namespace}
+    namespaces.update({prefix: uri for prefix, uri in bindings.values()})
+    primary = source_prefix(inventory)
+    # The same predicate Stage 3/4 built the decisions from: a property
+    # the source declares only through a SHACL shape is a property of
+    # that class, and the emitters reference it.
+    class_properties = build_class_properties(inventory)
+    declared_properties = {q for props in class_properties.values() for q in props}
+    minted_properties = source_declared_properties(inventory)
+    unresolved = []
     extensions = []
     for m in matrix["mappings"]:
-        if m.get("action") not in ("extend", "augment"):
+        if m.get("action") not in ("extend", "augment") or m.get("reviewStatus") != "accepted":
             continue
 
         concept = m["sourceConcept"]
+        if concept not in classes:
+            # Same answer as an unqualifiable decision below: the catalog
+            # cannot write a source IRI for a concept this run's inventory
+            # does not carry, and a bare KeyError names no mapping.
+            unresolved.append(f"  - {concept}: not in this run's concept inventory")
+            continue
         short_name = concept.split(":")[-1] if ":" in concept else concept
 
         if m["action"] == "augment":
             ext_name = m.get("augmentationType", f"{short_name}AugmentationType")
             base = m.get("augmentsType") or m.get("targetType")
         else:
-            ext_name = f"{short_name}Type"
+            ext_name = edge_class_name(concept)
             base = m.get("baseType") or m.get("targetType")
 
+        properties = set()
+        for decision in m.get("propertyMappings") or []:
+            if not created_property_is_declared(decision):
+                # One question, asked once: the emitters mint a term for any
+                # decision with no accepted reuse target, whatever its action
+                # says. Testing the action as well omitted terms they declare
+                # (a pending reuse, a `human-must-decide`).
+                continue
+            recorded = resolve_property(decision["sourceProperty"], concept)
+            if declared_properties and recorded not in class_properties.get(concept, set()):
+                # The OWL and CMF emitters walk the inventory class by
+                # class, so a decision on a property this concept does not
+                # carry produces no term on its extension; listing one here
+                # would make the catalog claim a term the model never
+                # declares there. Membership anywhere in the inventory was
+                # the wrong question: another class's property passed it.
+                where = ("belongs to another class in this run's concept inventory"
+                         if recorded in declared_properties
+                         else "is not in this run's concept inventory")
+                unresolved.append(
+                    f"  - {concept}: {decision['sourceProperty']} {where}")
+                continue
+            if recorded in declared_properties and recorded not in minted_properties:
+                # Named only by a shape: the emitters reference it as the
+                # term it is and mint nothing, so it adds nothing here.
+                continue
+            qname = created_property_qname(
+                recorded, m["action"], primary, bindings, ctx.edge_prefix)
+            prefix, name = qname.split(":", 1)
+            # This is the only artifact built by walking the decisions
+            # rather than the inventory, so it alone must qualify a
+            # recorded name the resolver could not resolve
+            # (`property_qname_resolver` returns an unknown name
+            # unchanged). Such a prefix binds to no namespace: the
+            # catalog cannot invent an IRI for it, and the OWL and CMF
+            # emitters never wrote one, so name the decision rather than
+            # failing on the lookup.
+            namespace = namespaces.get(prefix)
+            if namespace is None:
+                unresolved.append(
+                    f"  - {concept}: {decision['sourceProperty']} "
+                    f"(prefix '{prefix}' is bound to no namespace)")
+                continue
+            properties.add(component_iri(namespace, name))
+
         extensions.append({
-            "extensionIRI": f"ext:{ext_name}",
+            "extensionIRI": component_iri(ctx.extension_namespace, ext_name),
             "name": ext_name,
             "baseType": base,
             "definition": m.get("notes", ""),
-            "properties": [],
+            "properties": sorted(properties),
             "justification": m.get("notes") or m.get("rationale", ""),
-            "sourceConceptIRI": concept,
+            "sourceConceptIRI": classes[concept]["iri"],
             "mappingEntryRef": concept,
         })
+
+    # After the loop, not inside it: the count is the run's, and a
+    # reviewer who fixes the first offender must not be refused again by
+    # the second.
+    if unresolved:
+        raise ValueError(
+            f"{len(unresolved)} accepted mapping(s) name something this run "
+            f"cannot qualify; reopen review:\n"
+            + "\n".join(unresolved))
 
     return {"extensions": sorted(extensions, key=lambda e: e["extensionIRI"])}
 
@@ -137,7 +220,7 @@ def build_package_manifest(ctx, matrix):
 
     manifest = {
         "name": ctx.edge_package_name,
-        "version": "0.1.0",
+        "version": DRAFT_VERSION,
         "description": ctx.description,
         "sourcePackage": ctx.agency_package_name,
         "targetOntology": ctx.target_ontology,
@@ -145,7 +228,7 @@ def build_package_manifest(ctx, matrix):
         "targetDomains": [],
         "targetGraphPlatforms": ["neo4j", "rdf"],
         "generatedBy": "ontology-mapper",
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "generatedAt": utc_stamp(),
         "extensionNamespace": ctx.extension_namespace,
         "edgeNamespace": ctx.edge_namespace,
         "stats": {
@@ -156,6 +239,8 @@ def build_package_manifest(ctx, matrix):
             "excluded": excluded_count,
         },
     }
+    if not reference_cmf_installed(ctx.target_ontology, ctx.target_version):
+        manifest["omittedArtifacts"] = {"cmf/": CMF_OMITTED_REASON}
 
     return manifest
 
@@ -169,6 +254,9 @@ def build_readme(ctx, matrix):
     reuse = action_counts.get("reuse", sum(1 for m in mappings if m.get("action") == "reuse"))
     extend = action_counts.get("extend", sum(1 for m in mappings if m.get("action") == "extend"))
     augment = action_counts.get("augment", sum(1 for m in mappings if m.get("action") == "augment"))
+    cmf_line = ("- `cmf/` - Canonical Model Format exchange artifacts"
+                if reference_cmf_installed(ctx.target_ontology, ctx.target_version)
+                else f"- No `cmf/`: {CMF_OMITTED_REASON}")
 
     return f"""# {ctx.label_prefix} Edge Package
 
@@ -189,7 +277,7 @@ def build_readme(ctx, matrix):
 ## Directory Structure
 
 - `ontology/` - OWL/TTL edge ontology modules
-- `cmf/` - Canonical Model Format exchange artifacts
+{cmf_line}
 - `mappings/` - Internal-to-target-ontology alignment artifacts
 - `extensions/` - Extension namespace definitions
 - `shapes/` - SHACL validation constraints
@@ -259,7 +347,17 @@ def main():
     artifacts_written += 1
 
     # ── 5. Extension catalog ──────────────────────────────────────────────
-    ext_catalog = build_extension_catalog(matrix)
+    from ontology_mapper.build_strategy_reports import resolve_catalog_path
+    inventory = json.loads((run_dir / "concept-inventory.json").read_text(encoding="utf-8"))
+    # One home for "where is this run's reference catalog": the resolver
+    # the strategy reports, the review cascade and the generators use, so
+    # an install layout it handles is not one this path misses.
+    catalog_path = resolve_catalog_path(ctx.target_ontology, ctx.target_version)
+    if catalog_path is None:
+        raise ValueError(f"No reference catalog for {ctx.target_ontology} "
+                         f"{ctx.target_version}")
+    target_catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    ext_catalog = build_extension_catalog(matrix, ctx, inventory, target_catalog.get("namespaces", {}))
     ext_catalog_path = pkg / "extensions" / "extension-catalog.json"
     ext_catalog_path.parent.mkdir(parents=True, exist_ok=True)
     ext_catalog_path.write_text(json.dumps(ext_catalog, indent=2) + "\n", encoding="utf-8")

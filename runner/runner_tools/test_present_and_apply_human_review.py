@@ -274,9 +274,11 @@ class TestGetPendingPropertyItems:
 
     def test_only_pending_review_included(self):
         entry = {"sourceConcept": "x:Foo", "propertyMappings": [
-            {"sourceProperty": "PropA", "action": "reuse-property", "reviewStatus": "pending-review"},
+            {"sourceProperty": "PropA", "action": "reuse-property", "targetProperty": "nc:PropA",
+             "reviewStatus": "pending-review"},
             {"sourceProperty": "PropB", "action": "create-property", "reviewStatus": "pending-review"},
-            {"sourceProperty": "PropC", "action": "reuse-property", "reviewStatus": "accepted"},
+            {"sourceProperty": "PropC", "action": "reuse-property", "targetProperty": "nc:PropC",
+             "reviewStatus": "accepted"},
         ]}
         reuse, create, must_decide = get_pending_property_items(entry)
         assert len(reuse) == 1
@@ -287,7 +289,8 @@ class TestGetPendingPropertyItems:
 
     def test_human_must_decide_separated(self):
         entry = {"sourceConcept": "x:Foo", "propertyMappings": [
-            {"sourceProperty": "PropA", "action": "reuse-property", "reviewStatus": "pending-review"},
+            {"sourceProperty": "PropA", "action": "reuse-property", "targetProperty": "nc:PropA",
+             "reviewStatus": "pending-review"},
             {"sourceProperty": "PropB", "action": "human-must-decide", "reviewStatus": "pending-review",
              "targetProperty": "[undecided]"},
             {"sourceProperty": "PropC", "action": "create-property", "reviewStatus": "pending-review"},
@@ -361,7 +364,7 @@ class TestApplyPropertyDecision:
             "action": "reuse-property",
             "targetProperty": "nc:CaseDispositionText",
             "notes": "Found a match manually",
-        })
+        }, {})
         assert result is True
         prop = next(p for p in entry_with_properties["propertyMappings"] if p["sourceProperty"] == "SpecialConditions")
         assert prop["action"] == "reuse-property"
@@ -370,7 +373,7 @@ class TestApplyPropertyDecision:
         assert prop["notes"] == "Found a match manually"
 
     def test_returns_false_for_missing_property(self, entry_with_properties):
-        result = apply_property_decision(entry_with_properties, "NonExistent", {"action": "reuse-property"})
+        result = apply_property_decision(entry_with_properties, "NonExistent", {"action": "reuse-property"}, {})
         assert result is False
 
     def test_sets_optional_fields(self, entry_with_properties):
@@ -379,14 +382,14 @@ class TestApplyPropertyDecision:
             "targetProperty": "nc:PersonName",
             "targetDefinition": "A name of a person.",
             "targetType": "nc:PersonNameType",
-        })
+        }, {})
         prop = next(p for p in entry_with_properties["propertyMappings"] if p["sourceProperty"] == "JudgeName")
         assert prop["targetDefinition"] == "A name of a person."
         assert prop["targetType"] == "nc:PersonNameType"
 
     def test_no_property_mappings_returns_false(self):
         entry = {"sourceConcept": "x:Foo"}
-        assert apply_property_decision(entry, "bar", {"action": "reuse-property"}) is False
+        assert apply_property_decision(entry, "bar", {"action": "reuse-property"}, {}) is False
 
 
 # ---------------------------------------------------------------------------
@@ -411,7 +414,8 @@ class TestApplyAllPropertyAccepts:
 
     def test_returns_zero_when_none_pending(self):
         entry = {"sourceConcept": "x:Foo", "propertyMappings": [
-            {"sourceProperty": "a", "action": "reuse-property", "reviewStatus": "accepted"},
+            {"sourceProperty": "a", "action": "reuse-property", "targetProperty": "nc:A",
+             "reviewStatus": "accepted"},
         ]}
         accepted, skipped = apply_all_property_accepts(entry)
         assert accepted == 0
@@ -427,9 +431,25 @@ class TestApplyAllPropertyAccepts:
         assert accepted == 0
         assert skipped == 0
 
-    def test_skips_human_must_decide(self):
+    def test_a_reuse_without_a_target_is_skipped_and_counted(self):
+        """Round thirteen: bulk accept decided by action, so a pending reuse
+        with no target was accepted and nothing was reported skipped while
+        the exit gate still blocked on it."""
         entry = {"sourceConcept": "x:Foo", "propertyMappings": [
             {"sourceProperty": "PropA", "action": "reuse-property", "reviewStatus": "pending-review"},
+            {"sourceProperty": "PropB", "action": "reuse-property", "targetProperty": "[undecided]",
+             "reviewStatus": "accepted"},
+            {"sourceProperty": "PropC", "action": "create", "reviewStatus": "pending-review"},
+        ]}
+        accepted, skipped = apply_all_property_accepts(entry)
+        assert (accepted, skipped) == (0, 3)
+        assert entry["propertyMappings"][0]["reviewStatus"] == "pending-review"
+        assert entry["propertyMappings"][2]["reviewStatus"] == "pending-review"
+
+    def test_skips_human_must_decide(self):
+        entry = {"sourceConcept": "x:Foo", "propertyMappings": [
+            {"sourceProperty": "PropA", "action": "reuse-property", "targetProperty": "nc:PropA",
+             "reviewStatus": "pending-review"},
             {"sourceProperty": "PropB", "action": "human-must-decide", "reviewStatus": "pending-review",
              "targetProperty": "[undecided]"},
             {"sourceProperty": "PropC", "action": "create-property", "reviewStatus": "pending-review"},
@@ -839,8 +859,7 @@ class TestCmdAcceptWithHumanMustDecide:
         _cmd_accept(args)
 
         out = capsys.readouterr().out
-        assert "human-must-decide" in out
-        assert "1" in out  # 1 skipped
+        assert "1 undecided properties were NOT approved" in out
 
         # Verify the human-must-decide property stayed pending
         matrix = json.loads((tmp_path / "mapping-matrix.json").read_text(encoding="utf-8"))
@@ -997,6 +1016,72 @@ class TestApplyDecisionWithCascade:
         assert entry["ruleId"] == "human-review"
         assert entry["reviewStatus"] == "accepted"
 
+    def test_same_incompatible_target_is_rejected_without_mutation(self):
+        import copy
+        from ontology_mapper.run_dir_utils import resolve_specs_dir
+
+        catalog = json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json").read_text(encoding="utf-8"))
+        entry = self._entry()
+        entry["targetType"] = "scr:PersonRoleCategoryCodeType"
+        before = copy.deepcopy(entry)
+        with pytest.raises(ValueError, match="not a class"):
+            apply_decision_with_cascade(entry, {"action": "reuse", "targetType": entry["targetType"]},
+                                        "niem", catalog)
+        assert entry == before
+
+    @pytest.fixture
+    def native_catalog(self):
+        from ontology_mapper.run_dir_utils import resolve_specs_dir
+        return json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json").read_text(encoding="utf-8"))
+
+    def test_same_target_as_full_iri_is_stored_canonically_without_cascade(self, native_catalog):
+        """A legacy matrix stored the raw IRI; accepting it again stores the
+        catalog QName and does not reclassify — same identity, one spelling."""
+        iri = native_catalog["namespaces"]["nc"] + "PersonType"
+        entry = self._entry()
+        entry["targetType"] = iri
+        apply_decision_with_cascade(entry, {"action": "reuse", "targetType": iri}, "niem", native_catalog)
+        assert entry["targetType"] == "nc:PersonType"
+        assert entry["ruleId"] == "human-review"
+        assert entry["reviewStatus"] == "accepted"
+
+    @pytest.mark.parametrize("spelling", ["qname", "iri"])
+    def test_reselecting_the_current_target_accepts_its_properties(self, native_catalog, spelling):
+        """Re-selecting the class an entry already targets is an approval:
+        the pending property decisions are accepted with it, as approve does,
+        except a human-must-decide property, which stays for the reviewer."""
+        entry = self._entry()
+        entry.update(targetType="nc:PersonType", reviewStatus="pending-review")
+        entry["propertyMappings"] = [
+            {"sourceProperty": "court:note", "targetProperty": "nc:ActivityDescriptionText",
+             "action": "reuse-property", "reviewStatus": "pending-review"},
+            {"sourceProperty": "court:flag", "action": "human-must-decide",
+             "reviewStatus": "pending-review"},
+        ]
+        selection = ("nc:PersonType" if spelling == "qname"
+                     else native_catalog["namespaces"]["nc"] + "PersonType")
+        apply_decision_with_cascade(entry, {"action": "reuse", "targetType": selection},
+                                    "niem", native_catalog)
+        assert entry["reviewStatus"] == "accepted"
+        assert [p["reviewStatus"] for p in entry["propertyMappings"]] == ["accepted", "pending-review"]
+
+    def test_qname_selection_over_stored_iri_of_same_class_does_not_cascade(self, native_catalog):
+        entry = self._entry()
+        entry["targetType"] = native_catalog["namespaces"]["nc"] + "PersonType"
+        apply_decision_with_cascade(entry, {"action": "reuse", "targetType": "nc:PersonType"},
+                                    "niem", native_catalog)
+        assert entry["targetType"] == "nc:PersonType"
+        assert entry["ruleId"] == "human-review"
+
+    def test_full_iri_of_a_different_class_cascades_to_its_qname(self, native_catalog):
+        entry = self._entry()
+        entry["targetType"] = "nc:CaseType"
+        apply_decision_with_cascade(
+            entry, {"action": "reuse", "targetType": native_catalog["namespaces"]["nc"] + "PersonType"},
+            "niem", native_catalog)
+        assert entry["targetType"] == "nc:PersonType"
+        assert entry["ruleId"] == "target-type-change-cascade"
+
     def test_no_cascade_no_target_in_decision(self, niem_catalog):
         """No targetType in decision → simple apply_decision."""
         entry = self._entry()
@@ -1040,9 +1125,10 @@ class TestSaveDecisions:
         save_decisions(tmp_path, decisions)
         data = json.loads((tmp_path / DECISIONS_FILENAME).read_text(encoding="utf-8"))
         assert "reviewedAt" in data["decisions"][0]
-        # Should be a valid ISO timestamp
-        from datetime import datetime
-        datetime.fromisoformat(data["decisions"][0]["reviewedAt"])
+        # `utc_stamp` writes a trailing Z, which `datetime.fromisoformat`
+        # rejects before Python 3.11; read it back through its own parser.
+        from ontology_mapper.run_dir_utils import parse_stamp
+        assert parse_stamp(data["decisions"][0]["reviewedAt"]) is not None
 
     def test_preserves_existing_reviewed_at(self, tmp_path):
         """If reviewedAt is already set, don't overwrite it."""
@@ -1152,7 +1238,7 @@ class TestConfidenceOnPropertyDecision:
     def test_property_decision_defaults_confident(self, entry_with_properties):
         apply_property_decision(entry_with_properties, "SpecialConditions", {
             "action": "reuse-property", "targetProperty": "nc:Something",
-        })
+        }, {})
         prop = next(p for p in entry_with_properties["propertyMappings"]
                     if p["sourceProperty"] == "SpecialConditions")
         assert prop["confidence"] == "confident"
@@ -1161,7 +1247,7 @@ class TestConfidenceOnPropertyDecision:
         apply_property_decision(entry_with_properties, "SpecialConditions", {
             "action": "reuse-property", "targetProperty": "nc:Something",
             "confidence": "best-guess",
-        })
+        }, {})
         prop = next(p for p in entry_with_properties["propertyMappings"]
                     if p["sourceProperty"] == "SpecialConditions")
         assert prop["confidence"] == "best-guess"
@@ -1178,7 +1264,8 @@ class TestConfidenceOnBulkAccept:
 
     def test_bulk_accept_skips_human_must_decide(self):
         entry = {"sourceConcept": "x:Foo", "propertyMappings": [
-            {"sourceProperty": "PropA", "action": "reuse-property", "reviewStatus": "pending-review"},
+            {"sourceProperty": "PropA", "action": "reuse-property", "targetProperty": "nc:PropA",
+             "reviewStatus": "pending-review"},
             {"sourceProperty": "PropB", "action": "human-must-decide", "reviewStatus": "pending-review",
              "targetProperty": "[undecided]"},
         ]}
@@ -1407,3 +1494,339 @@ class TestCmdSearch:
         results = search_catalog(catalog, "zzzzz")
         assert results["types"] == []
         assert results["properties"] == []
+
+class TestStageFiveExitValidatesSavedTargets:
+    """A decision saved before the class policy existed makes no selection this
+    session, so only the exit check can catch it."""
+
+    def _cascade(self):
+        import json
+        from ontology_mapper.run_dir_utils import resolve_specs_dir
+        catalog = json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json").read_text(encoding="utf-8"))
+        return ("niem", catalog)
+
+    def _matrix(self, target):
+        return {"mappings": [{"sourceConcept": "src:A", "action": "reuse", "targetType": target,
+                              "reviewStatus": "accepted", "propertyMappings": []}]}
+
+    def test_saved_datatype_target_blocks_exit(self):
+        from runner_tools._present_and_apply_human_review import check_stage_5_exit
+        can_exit, blockers = check_stage_5_exit(self._matrix("hs:PersonRoleCodeSimpleType"), self._cascade())
+        assert not can_exit
+        assert any("src:A" in b and "not a class" in b for b in blockers)
+
+    def test_saved_class_target_allows_exit(self):
+        from runner_tools._present_and_apply_human_review import check_stage_5_exit
+        assert check_stage_5_exit(self._matrix("nc:PersonType"), self._cascade()) == (True, [])
+
+    def test_pending_review_still_blocks_with_a_valid_target(self):
+        from runner_tools._present_and_apply_human_review import check_stage_5_exit
+        matrix = self._matrix("nc:PersonType")
+        matrix["mappings"][0]["reviewStatus"] = "pending-review"
+        can_exit, blockers = check_stage_5_exit(matrix, self._cascade())
+        assert not can_exit and "pending review" in blockers[0]
+
+    @pytest.mark.parametrize("target", ["[undecided]", None, ""])
+    def test_a_reuse_resolved_without_a_target_blocks_exit(self, target):
+        """"Resolve it as a reuse" with no target accepted the property and
+        review closed; the emitters then reused nothing."""
+        from runner_tools._present_and_apply_human_review import (
+            check_stage_5_exit, undecided_properties)
+        matrix = self._matrix("nc:PersonType")
+        matrix["mappings"][0]["propertyMappings"] = [
+            {"sourceProperty": "src:count", "action": "reuse-property",
+             "targetProperty": target, "reviewStatus": "accepted"},
+            {"sourceProperty": "src:name", "action": "reuse-property",
+             "targetProperty": "nc:PersonName", "reviewStatus": "accepted"}]
+        can_exit, blockers = check_stage_5_exit(matrix, self._cascade())
+        assert not can_exit
+        assert blockers == ["1 properties require human decision: src:A src:count"]
+        assert undecided_properties(matrix["mappings"]) == [
+            {"concept": "src:A", "property": "src:count"}]
+
+    def test_a_saved_property_target_the_catalog_lacks_blocks_exit(self):
+        """Whole-PR review: a reused property the catalog does not list closed
+        review, and Stage 7 Check 12 failed the run after review could no
+        longer be reopened."""
+        from runner_tools._present_and_apply_human_review import check_stage_5_exit
+        matrix = self._matrix("nc:PersonType")
+        matrix["mappings"][0]["propertyMappings"] = [
+            {"sourceProperty": "src:name", "action": "reuse-property",
+             "targetProperty": "nc:NoSuchPropertyName", "reviewStatus": "accepted"}]
+        can_exit, blockers = check_stage_5_exit(matrix, self._cascade())
+        assert not can_exit
+        assert blockers == ["src:A src:name: target property nc:NoSuchPropertyName "
+                            "is not in the reference catalog"]
+
+
+def test_a_property_target_the_catalog_lacks_is_refused_when_chosen():
+    """The class target was checked when chosen; the property target was not,
+    so a typo was accepted and failed only at Stage 7."""
+    import copy
+    import json
+    from ontology_mapper.generation_utils import PropertyTargetError
+    from ontology_mapper.run_dir_utils import resolve_specs_dir
+    from runner_tools._present_and_apply_human_review import apply_property_decision
+
+    catalog = json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json").read_text(encoding="utf-8"))
+    entry = {"sourceConcept": "src:Person", "action": "reuse", "targetType": "nc:PersonType",
+             "reviewStatus": "accepted", "propertyMappings": [
+                 {"sourceProperty": "src:name", "action": "human-must-decide",
+                  "reviewStatus": "pending-review"}]}
+    before = copy.deepcopy(entry)
+    with pytest.raises(PropertyTargetError, match="nc:NoSuchPropertyName"):
+        apply_property_decision(entry, "src:name", {"action": "reuse-property",
+                                                    "targetProperty": "nc:NoSuchPropertyName"}, catalog)
+    assert entry == before
+    assert apply_property_decision(entry, "src:name", {"action": "reuse-property",
+                                                       "targetProperty": "nc:PersonName"}, catalog)
+    assert apply_property_decision(entry, "src:name", {"action": "create-property"}, catalog)
+
+
+class TestStageFiveCompletionEnforcesExit:
+    """Marking the stage complete is the boundary the web and the CLI share.
+    The CLI review loop has no gate of its own and its stage verification
+    reads pending status only, so a matrix that cannot leave review would
+    otherwise be marked complete by it."""
+
+    def _run_dir(self, tmp_path, base_type):
+        import json
+        (tmp_path / ".mapper-state.json").write_text(json.dumps(
+            {"inputs": {"target_ontology": "niem", "target_version": "6.0"}}),
+            encoding="utf-8")
+        (tmp_path / "mapping-matrix.json").write_text(json.dumps(
+            {"mappings": [{"sourceConcept": "src:A", "action": "extend",
+                           "targetType": "nc:PersonType", "baseType": base_type,
+                           "reviewStatus": "accepted", "propertyMappings": []}]}),
+            encoding="utf-8")
+        (tmp_path / "decision-log.json").write_text(json.dumps({"decisions": []}),
+                                                    encoding="utf-8")
+        return tmp_path
+
+    def test_rejected_scaffolding_stops_completion(self, tmp_path):
+        from runner_tools._present_and_apply_human_review import complete_stage_5
+        success, error = complete_stage_5(self._run_dir(tmp_path, "niem-xs:token"))
+        assert not success
+        assert "exit criteria not met" in error and "baseType" in error
+
+    def test_a_run_whose_targets_cannot_be_read_is_not_completed(self, tmp_path):
+        from runner_tools._present_and_apply_human_review import complete_stage_5
+        success, error = complete_stage_5(tmp_path)
+        assert not success and "could not be checked" in error
+
+    def test_a_clean_matrix_still_completes(self, tmp_path, monkeypatch):
+        """The legitimate flow: the gate refuses nothing a reviewer resolved."""
+        import subprocess
+        from runner_tools._present_and_apply_human_review import complete_stage_5
+
+        class _Ok:
+            returncode = 0
+            stdout = ""
+            stderr = ""
+
+        ran = []
+        monkeypatch.setattr(subprocess, "run",
+                            lambda cmd, **kw: (ran.append(cmd), _Ok())[1])
+        success, error = complete_stage_5(self._run_dir(tmp_path, "nc:PersonType"))
+        assert (success, error) == (True, None)
+        assert len(ran) == 2
+
+
+class TestScaffoldingRepair:
+    """A blocker the reviewer cannot clear is a dead end: re-accepting the
+    same class is the obvious move, so it has to rebuild the scaffolding."""
+
+    def _catalog(self):
+        import json
+        from ontology_mapper.run_dir_utils import resolve_specs_dir
+        return json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json")
+                          .read_text(encoding="utf-8"))
+
+    def test_re_accepting_the_same_class_rebuilds_rejected_scaffolding(self):
+        from runner_tools._present_and_apply_human_review import apply_decision_with_cascade
+        from ontology_mapper.ontology_specific import invalid_class_targets
+        catalog = self._catalog()
+        entry = {"sourceConcept": "src:A", "action": "extend",
+                 "targetType": "nc:PersonType", "baseType": "niem-xs:token",
+                 "reviewStatus": "accepted", "propertyMappings": []}
+        apply_decision_with_cascade(entry, {"action": "extend",
+                                            "targetType": "nc:PersonType"},
+                                    "niem", catalog)
+        assert entry.get("baseType") != "niem-xs:token"
+        assert invalid_class_targets({"mappings": [entry]}, "niem", catalog) == []
+
+    def test_valid_scaffolding_is_left_alone(self):
+        """The legitimate flow: an unchanged, valid entry keeps its decision
+        and is not reset to pending by a repair it does not need."""
+        from runner_tools._present_and_apply_human_review import apply_decision_with_cascade
+        catalog = self._catalog()
+        entry = {"sourceConcept": "src:A", "action": "extend",
+                 "targetType": "nc:PersonType", "baseType": "nc:PersonType",
+                 "reviewStatus": "pending-review", "propertyMappings": [],
+                 "notes": "keep"}
+        apply_decision_with_cascade(entry, {"action": "extend",
+                                            "targetType": "nc:PersonType"},
+                                    "niem", catalog)
+        assert entry["baseType"] == "nc:PersonType"
+        assert entry["reviewStatus"] == "accepted"
+
+
+@pytest.mark.parametrize("matrix", [
+    {"mappings": [{"sourceConcept": "src:A", "action": "reuse",
+                   "targetType": "nc:PersonType"}]},        # no reviewStatus
+    {"mappings": {"src:A": {}}},                            # not a list
+    {"mappings": [{"sourceConcept": "src:A", "action": "reuse",
+                   "targetType": "nc:PersonType", "reviewStatus": "accepted",
+                   "propertyMappings": None}]},             # null decisions
+    {"mappings": [None]},
+])
+def test_an_unreadable_matrix_blocks_exit_rather_than_raising(tmp_path, matrix):
+    """The premise of this check is a matrix edited outside review, so the
+    shape it reads is exactly the shape that may not hold. Reading it and
+    asking the question belong inside one guard."""
+    import json
+    from runner_tools._present_and_apply_human_review import complete_stage_5
+    (tmp_path / ".mapper-state.json").write_text(json.dumps(
+        {"inputs": {"target_ontology": "niem", "target_version": "6.0"}}),
+        encoding="utf-8")
+    (tmp_path / "mapping-matrix.json").write_text(json.dumps(matrix), encoding="utf-8")
+    # The decision log exists: this run reaches the exit check, which is
+    # the reader whose guard is under test.
+    (tmp_path / "decision-log.json").write_text(json.dumps({"decisions": []}),
+                                                encoding="utf-8")
+    success, error = complete_stage_5(tmp_path)
+    assert not success and "could not be checked" in error
+
+
+def test_the_exit_check_does_not_need_the_decision_log(tmp_path):
+    """The exit criteria never consult it, so a message naming it would
+    point the operator at the wrong file."""
+    import json
+    from runner_tools._present_and_apply_human_review import complete_stage_5
+    (tmp_path / ".mapper-state.json").write_text(json.dumps(
+        {"inputs": {"target_ontology": "niem", "target_version": "6.0"}}),
+        encoding="utf-8")
+    (tmp_path / "mapping-matrix.json").write_text(json.dumps(
+        {"mappings": [{"sourceConcept": "src:A", "action": "extend",
+                       "targetType": "nc:PersonType", "baseType": "niem-xs:token",
+                       "reviewStatus": "accepted", "propertyMappings": []}]}),
+        encoding="utf-8")
+    success, error = complete_stage_5(tmp_path)
+    assert not success
+    assert "decision-log" not in error and "baseType" in error
+
+
+def test_a_property_retargeted_in_review_does_not_read_as_codebook_drift():
+    """Round twelve: the review kept Stage 3's fingerprint of the replaced
+    candidate, and Check 12 failed Stage 7 on the reviewer's own choice."""
+    import json
+    from ontology_mapper.generation_utils import catalog_property_definitions, definition_hash
+    from ontology_mapper.run_dir_utils import resolve_specs_dir
+    from ontology_mapper.validate_edge_package import check_codebook_drift
+    from runner_tools._present_and_apply_human_review import apply_property_decision
+
+    catalog = json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json").read_text(encoding="utf-8"))
+    defs = catalog_property_definitions(catalog)
+    old, new = "nc:PersonName", "nc:PersonGivenName"
+    assert defs.get(old) and defs.get(new) and defs[old] != defs[new]
+    entry = {"sourceConcept": "src:Person", "action": "reuse", "targetType": "nc:PersonType",
+             "reviewStatus": "accepted", "propertyMappings": [
+                 {"sourceProperty": "src:name", "action": "reuse-property", "targetProperty": old,
+                  "targetDefinitionHash": definition_hash(defs[old]), "reviewStatus": "accepted"},
+                 {"sourceProperty": "src:alias", "action": "human-must-decide",
+                  "targetProperty": "[undecided]", "targetDefinitionHash": "9880ee04660dcc57",
+                  "reviewStatus": "pending-review"}]}
+    for spelling in (new, "PersonGivenName"):
+        assert apply_property_decision(entry, "src:name", {"action": "reuse-property",
+                                                           "targetProperty": spelling}, catalog)
+        assert apply_property_decision(entry, "src:alias", {"action": "reuse-property",
+                                                            "targetProperty": spelling}, catalog)
+        assert check_codebook_drift([entry], catalog) == []
+    assert entry["propertyMappings"][0]["targetDefinitionHash"] == definition_hash(defs[new])
+    apply_property_decision(entry, "src:name", {"action": "create-property"}, catalog)
+    assert "targetDefinitionHash" not in entry["propertyMappings"][0]
+
+
+class TestPropertyUndecided:
+    """Round thirteen: the gate listed the undecided actions, so any other
+    string (a hand edit, an LLM's "create") read as decided and closed review."""
+
+    def test_only_the_two_review_decisions_are_decided(self):
+        from runner_tools._present_and_apply_human_review import property_undecided
+        assert property_undecided({"action": "create-property"}) is False
+        assert property_undecided({"action": "reuse-property", "targetProperty": "nc:PersonName"}) is False
+        assert property_undecided({"action": "reuse-property"}) is True
+        assert property_undecided({"action": "reuse-property", "targetProperty": "[undecided]"}) is True
+        for action in ("human-must-decide", "create", "exclude", None):
+            assert property_undecided({"action": action, "reviewStatus": "accepted"}) is True, action
+
+    def test_an_unknown_action_keeps_review_open(self):
+        from runner_tools._present_and_apply_human_review import undecided_properties
+        entries = [{"sourceConcept": "src:A", "propertyMappings": [
+            {"sourceProperty": "src:name", "action": "create", "reviewStatus": "accepted"}]}]
+        assert len(undecided_properties(entries)) == 1
+
+    def test_the_views_list_an_accepted_reuse_without_a_target_as_undecided(self):
+        """The views said "Already decided" for a property the gate blocked on."""
+        entry = {"sourceConcept": "src:A", "propertyMappings": [
+            {"sourceProperty": "src:name", "action": "reuse-property", "reviewStatus": "accepted"}]}
+        reuse, create, must_decide = get_pending_property_items(entry)
+        assert (reuse, create) == ([], [])
+        assert [p["sourceProperty"] for p in must_decide] == ["src:name"]
+        text = format_property_review(entry)
+        assert "Already decided" not in text
+
+
+class TestCmdResolvesConceptNames:
+    """om-review detail and accept matched names their own way; accept knew
+    only the full QName, so the name detail accepted was "not found"."""
+
+    def _write(self, tmp_path, concepts):
+        matrix = {"mappings": [
+            {"sourceConcept": c, "action": "reuse", "targetType": "nc:CaseType",
+             "reviewStatus": "pending-review", "propertyMappings": []} for c in concepts]}
+        (tmp_path / "mapping-matrix.json").write_text(json.dumps(matrix), encoding="utf-8")
+        (tmp_path / "decision-log.json").write_text(json.dumps({"decisions": []}), encoding="utf-8")
+
+    def test_accept_takes_the_local_name_detail_takes(self, tmp_path):
+        from types import SimpleNamespace
+        from runner_tools._present_and_apply_human_review import _cmd_accept
+        self._write(tmp_path, ["court:Case"])
+        _cmd_accept(SimpleNamespace(run_dir=str(tmp_path), concept="Case"))
+        saved = json.loads((tmp_path / "mapping-matrix.json").read_text(encoding="utf-8"))
+        assert saved["mappings"][0]["reviewStatus"] == "accepted"
+
+    def test_accept_refuses_a_name_two_entries_share(self, tmp_path, capsys):
+        from types import SimpleNamespace
+        from runner_tools._present_and_apply_human_review import _cmd_accept
+        self._write(tmp_path, ["a:Case", "b:Case"])
+        with pytest.raises(SystemExit):
+            _cmd_accept(SimpleNamespace(run_dir=str(tmp_path), concept="Case"))
+        assert "ambiguous" in capsys.readouterr().out
+        saved = json.loads((tmp_path / "mapping-matrix.json").read_text(encoding="utf-8"))
+        assert {m["reviewStatus"] for m in saved["mappings"]} == {"pending-review"}
+
+
+class TestCliSaysWhatStillBlocks:
+    """Round fourteen: with no concept pending, `present` and `approve-all`
+    printed "No items pending review." while the exit check refused."""
+
+    def _write(self, tmp_path):
+        entry = {"sourceConcept": "src:Item", "action": "extend", "targetType": None,
+                 "reviewStatus": "accepted", "propertyMappings": [
+                     {"sourceProperty": "src:count", "action": "human-must-decide",
+                      "reviewStatus": "pending-review"}]}
+        (tmp_path / "mapping-matrix.json").write_text(json.dumps({"mappings": [entry]}), encoding="utf-8")
+        (tmp_path / "decision-log.json").write_text(json.dumps({"decisions": []}), encoding="utf-8")
+
+    @pytest.mark.parametrize("command", ["_cmd_present", "_cmd_accept_all"])
+    def test_undecided_properties_are_named(self, tmp_path, capsys, command):
+        from types import SimpleNamespace
+        import runner_tools._present_and_apply_human_review as h
+        self._write(tmp_path)
+        getattr(h, command)(SimpleNamespace(run_dir=str(tmp_path)))
+        out = capsys.readouterr().out
+        assert "No items pending review." not in out
+        assert "1 undecided properties still block Stage 5" in out
+        assert "src:Item src:count" in out
+

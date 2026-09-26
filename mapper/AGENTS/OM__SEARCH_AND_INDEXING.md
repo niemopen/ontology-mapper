@@ -12,13 +12,33 @@
 | `build_vector_index.py` | `om-build-vector-index` | CLI for building/managing indexes |
 | `vector_search.py` | `om-vector-search` | CLI for cross-ontology similarity search |
 | `semantic_search.py` | *(library)* | Per-concept search API (used internally by `batch_search.py`) |
-| `batch_search.py` | `om-batch-search` | Batch vector search: writes one JSON file per source concept |
+| `batch_search.py` | `om-batch-search` | Batch vector search: type and parent/property result files |
 | `collect_alignments.py` | `om-collect-alignments` | Collects evaluated search results, resolves actions, writes alignment report |
 | `build_strategy_reports.py` | `om-build-strategy` | Stage 3 prep: source-concepts.json + alignment workspace |
 
 ---
 
 ## Architecture
+
+Source properties retain their declared `qname` through strategy preparation,
+search and result writing; `name` remains the display local name. Each property
+result belongs to `(source.parentType, source.qname)`. Shared properties receive
+separate files per parent, and resumption retains existing evaluated files,
+including legacy filenames. A file written before the declared `qname`
+existed recorded every property under its parent's prefix; resumption reuses
+such a file when it carries exactly that shape — the parent's own prefix on
+the property's local name — and its local name is unique for that parent on
+both sides (one unclaimed legacy file, one current property). A file
+recorded under any other namespace is a different property that happens to
+share a local name, and claiming it would transplant its reviewer's
+decision, and its stale definition, onto the current one. A claimed file is
+never guessed between two, and
+rewrites the file's `source.qname` and `evaluation.sourceProperty` to the
+declared identity so the mis-qualified name does not leave this stage —
+downstream local-name resolution is inventory-wide, not per parent, and would
+silently drop the decision when another parent shares the local name.
+Collection groups by the document's parent rather than deriving identity
+from its filename.
 
 ### Vector index infrastructure
 
@@ -147,11 +167,21 @@ and property index in two batch calls, then writes separate files:
 - `{run_dir}/search-results/types/{qname}.json` — one per source type
 - `{run_dir}/search-results/properties/{qname}.json` — one per source property
 
-Candidates are filtered: only the top-k (default 25) are queried, then
-any scoring below `--min-score-ratio` (default 75%) of the rank-1 score
-are dropped. This balances breadth of candidates against noise.
+Candidates are filtered: each concept keeps its top-k (default 25)
+candidates, then any scoring below `--min-score-ratio` (default 75%) of the
+rank-1 score are dropped. This balances breadth of candidates against noise.
 
 On re-run, files with `status == "evaluated"` are preserved (resumable).
+
+Type candidates from both batch and per-concept searches pass the
+[native class-eligibility policy](OM__ONTOLOGY_ADAPTERS.md) before the score
+floor and evaluator prompt. This also applies to existing indexes; rebuilding
+an index is not required. `query_index` applies the predicate to the full
+ranking before taking top-k, so each concept still receives up to top-k
+class candidates; the shipped NIEM 6.0 types index is 45% datatypes, and
+filtering after truncation hid classes ranked just below them. Catalog
+indexing uses the same policy. Property retrieval is unchanged, including
+properties whose values are datatypes.
 
 `om-collect-alignments` reads type and property files, reassembles
 per-concept evaluations (type + its properties grouped by `parentType`),

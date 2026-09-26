@@ -5,21 +5,721 @@ and generate_kg_artifacts.py (knowledge graph). All functions are stateless
 and do not perform I/O.
 """
 
+import hashlib
+from typing import NamedTuple
+
 XSD = "http://www.w3.org/2001/XMLSchema#"
+
+_IRI_SCHEMES = ("http://", "https://", "urn:")
+
+
+def is_full_iri(term):
+    """True when a term carries its own scheme rather than a declared prefix.
+
+    Such a term names something in a namespace the source package does not
+    declare, so the generators cannot reference it by prefix — never by
+    splitting the scheme off as if it were one. A term this package
+    CREATES is minted into its own namespace instead
+    (`created_property_qname`); a term it only REFERENCES is written out
+    as the IRI it is (`source_term_ref`, `target_term_ref`).
+    """
+    return bool(term) and term.lower().startswith(_IRI_SCHEMES)
+
+
+def definition_hash(definition):
+    """Fingerprint a target definition for codebook drift detection.
+
+    One home for the writer (alignment collection, the review cascade) and
+    the reader (validation Check 12): a 16-character hex string, the 64-bit
+    SHA-256 prefix, or None when there is no definition.
+    """
+    if definition is None:
+        return None
+    return hashlib.sha256(definition.encode("utf-8")).hexdigest()[:16]
+
+
+def catalog_type_definition(target_type, catalog):
+    """The catalog's own definition of a target type, or None if it has none."""
+    for t in catalog.get("types", []):
+        if t.get("qname") == target_type:
+            return t.get("definition")
+    return None
+
+
+def catalog_type_label(target_type, catalog):
+    """The catalog's display label for a target type (label-bearing catalogs
+    such as SALI-FOLIO), or None when the catalog has none."""
+    for t in catalog.get("types", []):
+        if t.get("qname") == target_type:
+            return t.get("label") or None
+    return None
+
+
+def property_qname_resolver(inventory):
+    """Resolve a recorded property name to its inventory QName.
+
+    Prefer exact identity, then a unique local-name match for old matrices
+    that incorrectly used the parent concept's namespace. Ambiguous names
+    remain unresolved; never guess between properties sharing a local name.
+    """
+    from ontology_mapper.build_strategy_reports import build_class_properties
+
+    known = set()
+    by_local = {}
+    inventory = inventory or {}
+    for prop in ((inventory.get("objectProperties") or [])
+                 + (inventory.get("datatypeProperties") or [])):
+        qname = prop.get("qname")
+        if not qname:
+            continue
+        known.add(qname)
+        by_local.setdefault(local_name(qname), []).append(qname)
+    # "Which properties belong to this class" already has one home, and
+    # it reads domains AND shape paths: a property declared with its
+    # domain on a parent and attached to the child by the child's shape
+    # is an ordinary source shape, and a domain-only test drops exactly
+    # the population this fallback exists for.
+    class_properties = build_class_properties(inventory)
+    def resolve(name, concept=None):
+        if not known or name in known:
+            return name
+        candidates = by_local.get(local_name(name), [])
+        if concept is not None and class_properties:
+            # A unique local name on a class that does not own it is a
+            # different property; renaming a decision onto it invents a
+            # mapping the reviewer never made. Asked only when the inventory
+            # says something about ownership at all — an inventory with
+            # neither domains nor shapes cannot answer it, and guessing
+            # there is the old behaviour these callers relied on.
+            # The concept's OWN properties, the same non-transitive answer
+            # Stage 3/4 built the reviewer's list from: a decision row under
+            # a concept is never legitimately about a property only an
+            # ancestor declares, and unioning ancestors re-admits the
+            # transplant this rule exists to block.
+            candidates = [q for q in candidates
+                          if q in class_properties.get(concept, set())]
+        return candidates[0] if len(candidates) == 1 else name
+
+    return resolve
+
+
+def _same_decision(first, second):
+    """Whether two rows record the same decision.
+
+    Only the fields that ARE the decision: the provenance a row carries
+    (`sourceProperty`, `sourcePath`, `sourceDefinition`, rationale) differs
+    between a legacy spelling and its declared twin, which is exactly how two
+    rows come to resolve to one key.
+    """
+    decided = ("action", "reviewStatus", "targetProperty", "newPropertyName")
+    return all(first.get(field) == second.get(field) for field in decided)
+
+
+def property_mapping_index(matrix, inventory=None):
+    """Index decisions by (class QName, resolved source-property QName).
+
+    Two rows can resolve to one key — a legacy spelling beside the
+    declared one in a matrix saved before the identity rule, or edited by
+    hand. Last-write-wins there would let row order decide whether an
+    accepted reuse decision or a pending created property reaches the
+    emitters, so the run refuses and names both rows. Two rows recording
+    the SAME decision are one decision and pass.
+    """
+    resolve = property_qname_resolver(inventory)
+    index = {}
+    collisions = []
+    for entry in matrix.get("mappings", []):
+        concept = entry.get("sourceConcept")
+        for pm in entry.get("propertyMappings") or []:
+            key = (concept, resolve(pm.get("sourceProperty", ""), concept))
+            previous = index.get(key)
+            if previous is None:
+                index[key] = pm
+                continue
+            if _same_decision(previous, pm):
+                # A duplicated row carries no ambiguity: the same decision
+                # twice is one decision, and refusing it would stop a run
+                # over an editing slip that changes nothing.
+                continue
+            collisions.append((key, previous, pm))
+    if collisions:
+        raise ValueError(
+            f"{len(collisions)} property decision(s) resolve to a decision "
+            f"another row already made; reopen review:\n"
+            + "\n".join(
+                f"  - {concept}: {previous.get('sourceProperty')} and "
+                f"{pm.get('sourceProperty')} both resolve to {resolved}"
+                for (concept, resolved), previous, pm in collisions))
+    return index
+
+
+def real_target_property(target):
+    """*target* when it names a property, else None: absent, empty, and the
+    evaluator's "[undecided]" sentinel are not targets. One home for the
+    emitters (via `accepted_reuse_target`) and Stage 5's exit gate, which
+    must agree that a reuse without a target reuses nothing."""
+    return target if target and target != "[undecided]" else None
+
+
+def accepted_reuse_target(pm):
+    """The target property an accepted ``reuse-property`` decision names, or
+    None. One home for the three conditions the emitters must agree on."""
+    if not pm or pm.get("action") != "reuse-property":
+        return None
+    if pm.get("reviewStatus") != "accepted":
+        return None
+    return real_target_property(pm.get("targetProperty"))
+
+
+def qualified_target_property(target_prop, class_target_type):
+    """A target property named by its local name alone, in its class's
+    target namespace; any other spelling unchanged.
+
+    One home for the OWL and CMF emitters: the OWL side qualified a bare
+    local name by the class's target prefix while the CMF referenced it
+    bare, an unbound reference Check 11 rejected. A bare catalog id with no
+    prefixed class target to borrow from (SALI-FOLIO) stays as it is.
+    """
+    if (target_prop and ":" not in target_prop and class_target_type
+            and ":" in class_target_type and not is_full_iri(class_target_type)):
+        return f"{class_target_type.split(':', 1)[0]}:{target_prop}"
+    return target_prop
+
+
+def catalog_property_key(target_prop, class_target_type, namespaces):
+    """The catalog's `qualifiedProperty` for a recorded target property.
+
+    One home for Stage 3's definition fingerprint and Stage 7 Check 12: both
+    look the property up in the catalog's propertyIndex, which is keyed by
+    QName. A full IRI is grounded first and a bare local name is qualified by
+    its class's target prefix, as the OWL and CMF emitters name it. Looking
+    it up as spelled reported a property the package emits as missing, and
+    fingerprinted the search result's definition instead of the catalog's.
+    """
+    return qualified_target_property(target_qname(target_prop, namespaces),
+                                     target_qname(class_target_type, namespaces))
+
+
+def catalog_property_definitions(catalog):
+    """``{key: definition}`` for every catalog property, keyed by its
+    ``qualifiedProperty`` and, when the catalog records one, its ``uri``.
+
+    One home for Stage 3's fingerprint, the review's refingerprint and
+    Stage 7 Check 12. The ``uri`` key grounds a full-IRI spelling the
+    namespace map cannot (SALI-FOLIO property URIs), which
+    `catalog_property_key` leaves as spelled.
+    """
+    definitions = {}
+    for ns_data in catalog.get("propertyIndex", {}).values():
+        for p in ns_data.get("properties", []):
+            definitions[p["qualifiedProperty"]] = p.get("definition")
+            if p.get("uri"):
+                definitions.setdefault(p["uri"], p.get("definition"))
+    return definitions
+
+
+def reuse_decision_target(prop):
+    """The target a ``reuse-property`` row names, or None. One selection for
+    the rows Stage 5's exit gate, the review refingerprint and Stage 7 Check
+    12 check: a ``create-property`` row reuses nothing, so a Stage 3 target
+    it still carries is not checked."""
+    if prop.get("action") != "reuse-property":
+        return None
+    return real_target_property(prop.get("targetProperty"))
+
+
+class PropertyTargetError(ValueError):
+    """A reused target property the run's reference catalog does not list."""
+
+
+def missing_reuse_target(prop, class_target_type, catalog):
+    """The catalog key of the target a ``reuse-property`` decision names when
+    the run's catalog does not list it, else None.
+
+    One home for Stage 5 (at selection and at exit) and Stage 7 Check 12,
+    through the same key and definitions: a class target is refused when it
+    is chosen, but a property target was stored as typed, counted decided,
+    and failed only at Check 12, which review can no longer reopen. A
+    catalog without a property index cannot say, so nothing is refused.
+    """
+    target = reuse_decision_target(prop)
+    if target is None or not (catalog or {}).get("propertyIndex"):
+        return None
+    key = catalog_property_key(target, class_target_type, catalog.get("namespaces", {}))
+    return None if key in catalog_property_definitions(catalog) else key
+
+
+def refingerprint_property(prop, class_target_type, catalog):
+    """Point a property decision's ``targetDefinition`` and
+    ``targetDefinitionHash`` at the target it now names.
+
+    The class cascade does this for a class target; a property decision
+    kept Stage 3's fingerprint of the candidate it replaced, and Check 12
+    reported the reviewer's choice as codebook drift. A decision that
+    reuses nothing carries no fingerprint.
+    """
+    target = reuse_decision_target(prop)
+    if target is None:
+        prop.pop("targetDefinitionHash", None)
+        return
+    key = catalog_property_key(target, class_target_type, catalog.get("namespaces", {}))
+    definition = catalog_property_definitions(catalog).get(key)
+    prop["targetDefinition"] = definition or ""
+    prop["targetDefinitionHash"] = definition_hash(definition)
+
+
+def source_declared_properties(inventory):
+    """The properties a source property list declares, as QNames.
+
+    One home for the question every generator must answer alike: a term the
+    source declares is minted into this package when no accepted reuse
+    replaces it; a term only a SHACL shape names (``rdfs:label``, or a
+    source term the source never declared) is referenced as the term it is.
+    `build_class_properties` harvests shape paths as class properties, so
+    such a term has a decision, but no emitter declares it.
+    """
+    return {p["qname"] for key in ("objectProperties", "datatypeProperties")
+            for p in inventory.get(key, [])}
+
+
+def shape_only_class_properties(inventory):
+    """{class QName: sorted property QNames only a SHACL shape names on it}.
+
+    One home for the OWL and CMF emitters. Both take a class's properties
+    from the source property lists, so an accepted reuse of a property only
+    a shape names reached the SHACL (`sh:path`) and neither the OWL
+    restriction nor the CMF class, where a declared property's reuse is
+    carried. `build_class_properties` is the one home for which properties
+    a class has; this is its shape-only remainder.
+    """
+    from ontology_mapper.build_strategy_reports import build_class_properties
+
+    declared = source_declared_properties(inventory)
+    return {cls: sorted(p for p in props if p not in declared)
+            for cls, props in build_class_properties(inventory).items()}
+
+
+def created_property_is_declared(pm):
+    """Whether the emitters declare a created term for this decision.
+
+    The OWL emitter walks the inventory: a source property with no accepted
+    reuse target is declared as a new term, whether its decision is still
+    pending or absent. The CMF walks the inventory for reuse and extend
+    classes, but an augmentation's properties from its `propertyMappings`
+    rows, so the CMF declares an augmentation property only when a row
+    exists. The extension catalog walks the decisions too, so it asks the
+    same question here — otherwise the package's own inventory of what it
+    adds omits terms its model declares.
+    """
+    return accepted_reuse_target(pm) is None
+
+
+def source_prefix(inventory):
+    """The primary source QName prefix: one home for every generator.
+
+    The inventory declares it (``primaryNamespace``, written by extraction and
+    CSV ingest). Classes are sorted by QName, so the first class belongs to
+    whichever namespace sorts first, and an augmenting namespace can win that
+    sort; it is only a fallback for inventories written before the declaration.
+    """
+    declared = (inventory.get("primaryNamespace") or {}).get("prefix") or ""
+    if declared:
+        return declared.rstrip(":")
+    classes = inventory.get("classes") or []
+    return classes[0]["qname"].split(":")[0] if classes else ""
+
+
+
+def component_iri(namespace_uri, name):
+    """A component's IRI from its namespace URI and name (NIEM NDR 6.0, 14.1.2)."""
+    if namespace_uri.endswith(("/", "#", ":")):
+        separator = ""
+    elif namespace_uri.startswith("urn:"):
+        separator = ":"
+    else:
+        separator = "/"
+    return f"{namespace_uri}{separator}{name}"
+
+
+def target_qname(term, namespaces):
+    """Ground a full-IRI target term to its catalog QName.
+
+    ``namespaces`` maps catalog prefixes to namespace URIs. A term that is not
+    an IRI, or whose namespace the catalog does not bind, is returned unchanged
+    so downstream reference validation still reports it.
+    """
+    if not is_full_iri(term):
+        return term
+    best = None
+    for prefix, uri in sorted(namespaces.items()):
+        base = component_iri(uri, "")
+        if term.startswith(base) and len(term) > len(base):
+            if best is None or len(base) > len(best[1]):
+                best = (prefix, base)
+    if best is None:
+        return term
+    prefix, base = best
+    return f"{prefix}:{term[len(base):]}"
+
+
+def created_property_qname(prop_qname, class_action, primary_prefix, bindings, edge_prefix):
+    """One emitted identity for a created property in OWL, CMF and the catalog.
+
+    A created property is a new term in the package's own namespace unless it
+    belongs to a source namespace the package declares and re-binds. Extraction
+    leaves a property whose namespace the manifest does not name as a full IRI
+    (`make_to_qname` returns the IRI unchanged), and such a term has no prefix
+    to split on and no binding to emit under: it is minted here like a primary
+    one, never split into the pseudo-prefix `https`.
+    """
+    prefix = "" if is_full_iri(prop_qname) else prop_qname.split(":", 1)[0]
+    if not prefix or prefix == primary_prefix:
+        prefix = edge_prefix.rstrip(":") if class_action == "reuse" else "ext"
+    else:
+        prefix = bindings.get(prefix, (prefix, ""))[0]
+    return f"{prefix}:{local_name(prop_qname)}"
+
+
+def source_namespaces(inventory):
+    """{source prefix: namespace URI}: the primary map and every augmenting
+    namespace, the prefixes a source QName can carry."""
+    source = {prefix.rstrip(":"): uri for uri, prefix in inventory.get("namespaceMap", {}).items()}
+    source.update({ns["prefix"].rstrip(":"): ns["namespace"]
+                   for ns in inventory.get("augmentingNamespaces", [])})
+    return source
+
+
+def source_namespace_bindings(inventory, target_ns_map, edge_prefix):
+    """Map source prefixes to (emitted prefix, URI), avoiding target collisions.
+
+    QName lookup keys stay unchanged. Both emitters use the same stable alias
+    only when one prefix would otherwise identify two different namespaces.
+    """
+    source = source_namespaces(inventory)
+    reserved = {**target_ns_map, edge_prefix.rstrip(":"): None, "ext": None,
+                "owl": "http://www.w3.org/2002/07/owl#",
+                "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+                "xsd": XSD, "xs": XSD, "skos": "http://www.w3.org/2004/02/skos/core#",
+                "sh": "http://www.w3.org/ns/shacl#", "dcterms": "http://purl.org/dc/terms/"}
+    occupied = set(reserved) | set(source)
+    bindings = {}
+    for prefix, uri in sorted(source.items()):
+        if prefix == source_prefix(inventory):
+            continue  # primary source properties get the edge/ext namespace
+        emitted = prefix
+        if prefix in reserved and reserved[prefix] != uri:
+            emitted = f"source_{prefix}"
+            suffix = 2
+            while emitted in occupied:
+                emitted = f"source_{prefix}_{suffix}"
+                suffix += 1
+            occupied.add(emitted)
+        bindings[prefix] = (emitted, uri)
+    return bindings
 
 
 def local_name(qname_or_iri):
-    """Extract local name from qname (prefix:Foo → Foo) or IRI."""
-    if ":" in qname_or_iri and not qname_or_iri.startswith("http"):
+    """Extract local name from qname (prefix:Foo → Foo) or IRI.
+
+    The inverse of `component_iri` for every separator it writes. That
+    function appends after a namespace already ending in "/", "#" or ":",
+    and otherwise joins with ":" for `urn:` and "/" for the rest, so the
+    name is whatever follows the LAST of those three characters: a `urn:`
+    name is read from the right, and a namespace ending in one separator
+    while containing another (`urn:example:model/v1`,
+    `https://example.test/ns:`) still reads back whole.
+    """
+    if is_full_iri(qname_or_iri):
+        cut = max(qname_or_iri.rfind(separator) for separator in ("#", "/", ":"))
+        return qname_or_iri[cut + 1:] or qname_or_iri
+    if ":" in qname_or_iri:
         return qname_or_iri.split(":", 1)[1]
-    if "#" in qname_or_iri:
-        return qname_or_iri.split("#")[-1]
-    return qname_or_iri.rsplit("/", 1)[-1]
+    return qname_or_iri
+
+
+def emitted_class_action(entry):
+    """The action the emitters act on for a mapping entry, or None.
+
+    "Only emit accepted mappings" — a `pending-review` entry is not one.
+    Review exit blocks pending concepts other than exclusions, so
+    reaching an emitter with one means review was bypassed. OWL and CMF
+    must agree about that or they disagree about which classes the
+    package contains.
+    """
+    if not entry:
+        return None
+    action = entry.get("action")
+    if action == "exclude":
+        # An exclusion is never presented for review (`get_pending_items`
+        # filters it out), so its status stays `pending-review` for the
+        # life of the run. Reading that as "undecided" made the emitters
+        # skip the exclusion redirect and drop object properties ranged
+        # on the excluded class — which the CMF kept declaring.
+        return action
+    if entry.get("reviewStatus") == "pending-review":
+        return None
+    return action
+
+
+def graph_name(qname, primary_prefix):
+    """The knowledge-graph name of a class or property: its local name in
+    the primary source namespace, ``<prefix>_<local>`` in any other.
+
+    Decided by the term's own namespace, never by what else the package
+    holds: a name chosen only when two terms collided renamed an existing
+    node label or relationship type as soon as a later package added the
+    second term, and data loaded under the earlier name stopped matching.
+    A full IRI has no prefix; its namespace's hash stands in for one
+    (``ns<hash>_<local>``), so terms of two namespaces never share a name.
+    Every name is an unquoted Cypher identifier (Check 8 reads labels as
+    \\w+).
+    """
+    local = local_name(qname)
+    if ":" in qname and not is_full_iri(qname):
+        prefix = qname.split(":", 1)[0]
+        text = local if prefix == primary_prefix else f"{prefix}_{local}"
+    else:
+        namespace = qname[:len(qname) - len(local)]
+        text = f"ns{hashlib.sha1(namespace.encode('utf-8')).hexdigest()[:6]}_{local}"
+    return graph_identifier(text)
+
+
+def graph_identifier(text):
+    """``text`` as an unquoted Cypher identifier: every other character
+    becomes ``_``, and a leading digit is prefixed with ``_``. One home for
+    graph names and the seed's key for an undeclared predicate, which kept
+    a leading digit (``2ndLine``) Neo4j does not accept unquoted."""
+    import re
+
+    text = re.sub(r"[^A-Za-z0-9_]", "_", text)
+    return f"_{text}" if text[:1].isdigit() else text
+
+
+def relationship_type(prop_name):
+    """An object property's graph name (`graph_property_names`) as a Neo4j
+    relationship type in SCREAMING_SNAKE_CASE."""
+    import re
+
+    name = local_name(prop_name)
+    # Insert underscore before uppercase letters (camelCase -> SCREAMING_SNAKE)
+    snake = re.sub(r"(?<=[a-z0-9])([A-Z])", r"_\1", name)
+    return snake.upper()
+
+
+def graph_labels(qnames, primary_prefix, distinct_as=None):
+    """{QName: graph name} for a set of terms, distinct by construction.
+
+    `graph_name` gives each term a name of its own; ``distinct_as`` maps a
+    name to what must differ (`relationship_type` for object properties,
+    whose ``hasPart`` and ``has_part`` are one type), the name itself by
+    default. Names can still meet: prefixes differing in a replaced
+    character (``a-b:X``, ``a_b:X``), a primary term spelled as another's
+    qualified name (``src:aug_Thing`` or ``src:aug-Thing``, ``aug:Thing``).
+    Among terms that meet, a primary-namespace term named by its own
+    (cleaned) local name keeps it: one whose local name needed no cleanup
+    first, then the first in QName order (``PartOf`` before ``partOf`` as
+    one relationship type). Each other term takes a suffix from its own
+    QName's hash. So another namespace's term never renames a primary one,
+    and a suffix never depends on the rest of the package; but a term's
+    name does depend on whether a term it cannot share a name with is
+    present: it takes its suffix when such a term is added and loses it
+    when that term is removed.
+    """
+    from collections import defaultdict
+
+    same = distinct_as or (lambda name: name)
+    candidates = {q: graph_name(q, primary_prefix) for q in set(qnames)}
+    groups = defaultdict(list)
+    for qname in sorted(candidates):
+        groups[same(candidates[qname])].append(qname)
+    names = {}
+    def keeps_own_name(qname):
+        return (not is_full_iri(qname) and qname.split(":", 1)[0] == primary_prefix
+                and candidates[qname] == graph_identifier(local_name(qname)))
+
+    for members in groups.values():
+        keepers = [q for q in members if keeps_own_name(q)]
+        keeper = members[0] if len(members) == 1 else min(
+            keepers, key=lambda q: (candidates[q] != local_name(q), q), default=None)
+        for qname in members:
+            names[qname] = (candidates[qname] if qname == keeper else
+                            f"{candidates[qname]}_{hashlib.sha1(qname.encode('utf-8')).hexdigest()[:8]}")
+    if len({same(n) for n in names.values()}) != len(names):
+        # A suffixed name met another term's own name; say so rather than
+        # merging two terms into one label, key or relationship type.
+        raise ValueError(f"graph names collide: {sorted(names.items())}")
+    return names
+
+
+def emitted_graph_labels(inventory, mappings):
+    """{class QName: node label} for the inventory classes the KG emits.
+
+    The one home for which classes reach the knowledge graph (inventory
+    classes whose `emitted_class_action` is reuse, extend or augment) and
+    what they are called there. The KG generator writes these labels and
+    Stage 7's schema check expects them; deciding the class set apart let a
+    matrix row with no inventory class change the labels.
+    """
+    by_concept = {m.get("sourceConcept"): m for m in mappings}
+    return graph_labels(
+        (c["qname"] for c in inventory.get("classes", [])
+         if emitted_class_action(by_concept.get(c["qname"])) in ("reuse", "extend", "augment")),
+        source_prefix(inventory))
+
+
+def shape_only_property_shapes(inventory):
+    """{class QName: {property QName: {"class", "datatype", "object"}}} for
+    every shape-only property (`shape_only_class_properties`): what the
+    class's evaluated shapes say its value is, an ``sh:class`` or an
+    ``sh:datatype``, each None when no shape says, and ``object``: whether
+    the property is a relationship. ``object`` is decided per property, not
+    per class (any shape giving it an ``sh:class``), so every consumer names
+    it the same way; decided per class, a path that is a relationship on
+    one class and a value on another was named by whichever shape came
+    last, and could share a relationship type with another property.
+
+    A shape-only property has no entry in the source property lists, so the
+    knowledge graph, which reads those lists, left it out of its node keys,
+    relationship types and import transforms while the OWL, SHACL and CMF
+    carried it.
+    """
+    shape_only = shape_only_class_properties(inventory)
+    out = {}
+    for shape in inventory.get("shaclShapes", []):
+        if not shape_property_is_evaluated(shape):
+            continue
+        for target in shape_target_classes(shape):
+            for sp in shape.get("properties", []):
+                path = sp.get("path")
+                if path not in shape_only.get(target, ()) or not shape_property_is_evaluated(sp):
+                    continue
+                spec = out.setdefault(target, {}).setdefault(path, {"class": None, "datatype": None})
+                spec["class"] = spec["class"] or sp.get("class")
+                spec["datatype"] = spec["datatype"] or sp.get("datatype")
+    relationships = {path for specs in out.values() for path, spec in specs.items() if spec["class"]}
+    for specs in out.values():
+        for path, spec in specs.items():
+            spec["object"] = path in relationships
+    return out
+
+
+def source_term_iri(namespaces, qname):
+    """A source term's IRI: a full IRI as it is (extraction keeps a shape
+    path outside the source namespaces, such as ``rdfs:label``, that way),
+    a QName from `source_namespaces`; None for a prefix no source namespace
+    declares."""
+    if is_full_iri(qname):
+        return qname
+    prefix, _, local = qname.partition(":")
+    return namespaces[prefix] + local if prefix in namespaces else None
+
+
+class GraphPropertyKeys(NamedTuple):
+    """How a seed triple's predicate IRI is named in the graph.
+
+    ``values``: {IRI: graph name} for every property `graph_property_names`
+    names, the node key a literal value takes. ``relationships``: the same
+    for the object properties only (declared, and shape-only ones a shape
+    gives an ``sh:class``), the ones whose node values are edges. One set
+    for both let a datatype property used with a node value become an edge
+    whose type could meet an object property's (`part_of`, `partOf`).
+    """
+    values: dict
+    relationships: dict
+
+
+def graph_property_keys(inventory):
+    """`GraphPropertyKeys` for every property `graph_property_names` names,
+    whether or not an active class owns it. The seed keyed only the active
+    classes' properties, so an unowned ``aug:name`` took the bare key
+    ``name`` and overwrote ``src:name`` on the same node.
+    """
+    names = graph_property_names(inventory)
+    declared = source_declared_properties(inventory)
+    namespaces = source_namespaces(inventory)
+    object_qnames = {p["qname"] for p in inventory.get("objectProperties", [])}
+    object_qnames |= {path for specs in shape_only_property_shapes(inventory).values()
+                      for path, spec in specs.items() if spec["object"]}
+    # A declared property is found by the IRI the inventory recorded; a
+    # shape-only one by its expanded QName (or the full IRI it is).
+    iri_qnames = {p["iri"]: p["qname"] for kind in ("objectProperties", "datatypeProperties")
+                  for p in inventory.get(kind, []) if p.get("iri")}
+    for qname in names:
+        iri = None if qname in declared else source_term_iri(namespaces, qname)
+        if iri:
+            iri_qnames.setdefault(iri, qname)
+    values = {iri: names[q] for iri, q in iri_qnames.items()}
+    relationships = {iri: names[q] for iri, q in iri_qnames.items() if q in object_qnames}
+    return GraphPropertyKeys(values, relationships)
+
+
+def graph_property_names(inventory):
+    """{property QName: graph name} for every inventory property and every
+    shape-only one: the node property key of a datatype property, the
+    relationship type (`relationship_type`) of an object property.
+    `src:subject` and `aug:subject` were one relationship type and
+    `src:name` / `aug:name` one node key; ``hasPart`` and ``has_part``
+    were one relationship type too.
+    """
+    prefix = source_prefix(inventory)
+    shape_only = {path: spec for specs in shape_only_property_shapes(inventory).values()
+                  for path, spec in specs.items()}
+    objects = [p["qname"] for p in inventory.get("objectProperties", [])]
+    objects += [path for path, spec in shape_only.items() if spec["object"]]
+    datatypes = [p["qname"] for p in inventory.get("datatypeProperties", [])]
+    datatypes += [path for path, spec in shape_only.items() if not spec["object"]]
+    names = graph_labels(datatypes, prefix)
+    names.update(graph_labels(objects, prefix, distinct_as=relationship_type))
+    return names
+
+
+def range_class_for(class_qname, mapping_by_concept, class_by_qname):
+    """The emitted source class an object range on *class_qname* stands for.
+
+    The class itself when it is emitted; for an excluded class, the nearest
+    emitted ancestor along first parents, through any number of exclusions;
+    None when there is none. One home for the redirect, so the OWL/SHACL and
+    CMF emitters name the same class for the same range: the OWL side went one
+    step and only to a reuse or extend parent while the CMF recursed through
+    any action, and the two models gave one property different ranges.
+    """
+    seen = set()
+    qname = class_qname
+    while qname and qname not in seen:
+        seen.add(qname)
+        action = emitted_class_action(mapping_by_concept.get(qname))
+        if action is None:
+            return None
+        if action != "exclude":
+            return qname
+        parents = (class_by_qname.get(qname) or {}).get("subClassOf") or []
+        qname = parents[0] if parents else None
+    return None
 
 
 def edge_class_name(qname):
     """Map source class qname to edge type name (e.g. prefix:Permit → PermitType)."""
     return local_name(qname) + "Type"
+
+
+def colliding_edge_class_names(concepts):
+    """Source concepts that would emit one edge class name.
+
+    `edge_class_name` is namespace-blind, so two active classes sharing a
+    local name across source namespaces — which augmenting and other
+    non-primary namespaces make ordinary — collapse into a single emitted
+    type carrying both superclasses, both labels and both property sets.
+    No emitter can tell them apart afterwards, so the OWL generator — the
+    entry every driver passes through, and the one that emits the class
+    blocks — asks this before writing anything and refuses.
+
+    Returns {emitted name: [source concepts]} for the colliding names only.
+    """
+    by_name = {}
+    for qname in concepts:
+        by_name.setdefault(edge_class_name(qname), []).append(qname)
+    return {name: sorted(qnames) for name, qnames in sorted(by_name.items())
+            if len(qnames) > 1}
 
 
 def target_to_qname(target_type):
@@ -44,35 +744,28 @@ def infer_domains_from_shapes(properties, shapes):
     and constrains property P, then P belongs to X."""
     shape_domains = {}
     for shape in shapes:
-        target_cls = shape["targetClass"]
-        for prop in shape["properties"]:
-            path = prop["path"]
-            shape_domains.setdefault(path, set()).add(target_cls)
+        if not shape_property_is_evaluated(shape):
+            continue
+        for prop in shape.get("properties", []):
+            path = prop.get("path")
+            if path and shape_property_is_evaluated(prop):
+                shape_domains.setdefault(path, set()).update(shape_target_classes(shape))
     return shape_domains
 
 
 def assign_properties_to_classes(properties, all_active_classes, shape_domains):
-    """Assign properties to classes using explicit domains, then SHACL inference."""
+    """Combine explicit domains and active SHACL associations for each property."""
     assigned = {}
     unassigned = []
 
     for prop in properties:
         qname = prop["qname"]
-        domains = prop["domain"]
-
-        if domains:
-            active_domains = [d for d in domains if d in all_active_classes]
-            if active_domains:
-                assigned[qname] = active_domains
-                continue
-
-        if qname in shape_domains:
-            shape_classes = [d for d in shape_domains[qname] if d in all_active_classes]
-            if shape_classes:
-                assigned[qname] = shape_classes
-                continue
-
-        unassigned.append(qname)
+        associations = set(prop["domain"]) | shape_domains.get(qname, set())
+        active = sorted(associations & set(all_active_classes))
+        if active:
+            assigned[qname] = active
+        else:
+            unassigned.append(qname)
 
     return assigned, unassigned
 
@@ -98,3 +791,29 @@ def detect_consolidations(matrix, class_by_qname):
             consolidations.append((parent, absorbed, scheme_name))
 
     return consolidations
+
+
+def shape_target_classes(shape):
+    """Every class a SHACL NodeShape targets — the one home for that question.
+
+    SHACL allows a NodeShape to carry several `sh:targetClass` values.
+    Extraction used to keep one arbitrarily under `targetClass`, so a shape
+    targeting two classes constrained only one of them and no consumer
+    could tell. `targetClasses` now carries them all; this falls back to
+    the single name for an inventory written before that, and for the test
+    fixtures that still build shapes by hand.
+    """
+    targets = shape.get("targetClasses")
+    if targets is not None:
+        return list(targets)
+    single = shape.get("targetClass")
+    return [single] if single else []
+
+
+def shape_property_is_evaluated(property_shape):
+    """Whether SHACL evaluates a shape, independently of result severity.
+
+    SHACL sections 2.1.4 and 2.1.6: severity categorizes results; only
+    deactivation disables evaluation. Applies to node and property shapes.
+    """
+    return not property_shape.get("deactivated", False)

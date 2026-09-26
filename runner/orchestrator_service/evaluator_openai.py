@@ -10,7 +10,7 @@ Sync (not async) because the smoke test runs serially over a small sample.
 """
 
 import json
-from datetime import datetime, timezone
+from ontology_mapper.run_dir_utils import utc_stamp
 from typing import Optional
 
 from orchestrator_service.evaluator import EvaluationContext, EvaluationError
@@ -100,7 +100,7 @@ def evaluate_file_openai(
         )
 
     evaluation.pop("_prefix_corrected", None)
-    evaluation["evaluatedAt"] = datetime.now(timezone.utc).isoformat()
+    evaluation["evaluatedAt"] = utc_stamp()
     evaluation["evaluatedBy"] = model
     evaluation["candidateCount"] = len(file_doc.get("candidates", []))
     return evaluation

@@ -9,6 +9,9 @@ Writes separate files for types and properties:
 - ``{run_dir}/search-results/types/{sanitized_qname}.json``
 - ``{run_dir}/search-results/properties/{sanitized_prop_qname}.json``
 
+Shared property QNames use parent-qualified filenames when needed; existing
+evaluated filenames are retained on resume. Document fields carry identity.
+
 Each file contains the source item, ranked candidates (filtered by score),
 and an evaluation slot.  The evaluator processes each file independently,
 then ``om-collect-alignments`` reassembles per-concept evaluations and
@@ -19,11 +22,14 @@ Usage:
 """
 
 import json
+import hashlib
 import re
 from pathlib import Path
 
+from ontology_mapper.generation_utils import local_name
 from ontology_mapper.pipeline_context import load_context
 from ontology_mapper.vector_index import OntologyEntry, query_index
+from ontology_mapper.semantic_search import class_filter_for_index, match_predicate
 
 
 # ---------------------------------------------------------------------------
@@ -101,13 +107,22 @@ def disambiguate_ids(candidates: list[dict]) -> list[dict]:
     return result
 
 
-def _property_qname(concept_qname: str, prop_name: str) -> str:
-    """Build a property qname from the parent concept's prefix.
+def _property_qname(concept_qname: str, prop: dict) -> str:
+    """The property's qname: the one the source ontology declared.
 
-    ``("dbpi:AddressType", "streetName")`` -> ``"dbpi:streetName"``
+    ``source-concepts.json`` carries it (``build_strategy_reports``). Only a
+    file written before that field existed falls back to manufacturing one
+    from the parent concept's prefix — which is right for a property in the
+    source namespace and WRONG for one owned by an augmenting namespace
+    (``fin:fiscalYearCode`` on ``dbpi:Fee`` became ``dbpi:fiscalYearCode``,
+    and every downstream stage inherited the wrong identity).
     """
+    qname = prop.get("qname")
+    if qname:
+        return qname
     prefix = concept_qname.split(":")[0] if ":" in concept_qname else ""
-    return f"{prefix}:{prop_name}" if prefix else prop_name
+    name = prop.get("name", "")
+    return f"{prefix}:{name}" if prefix else name
 
 
 # ---------------------------------------------------------------------------
@@ -135,7 +150,8 @@ def search_all_types(
             context="; ".join(c.get("superClasses", [])),
         ))
 
-    results = query_index(entries, target_index, "types", top_k=top_k)
+    results = query_index(entries, target_index, "types", top_k=top_k,
+                          eligible=match_predicate(class_filter_for_index(target_index)))
 
     return {qnames[i]: r["matches"] for i, r in enumerate(results)}
 
@@ -163,7 +179,7 @@ def search_all_properties(
     for c in concepts:
         concept_def = c.get("definition", "")
         for prop in c.get("properties", []):
-            pq = _property_qname(c["qname"], prop["name"])
+            pq = _property_qname(c["qname"], prop)
             keys.append((c["qname"], pq))
             entries.append(OntologyEntry(
                 id=pq,
@@ -238,6 +254,30 @@ def build_property_file(
 # Writing
 # ---------------------------------------------------------------------------
 
+def _requalify_property_file(filepath: Path, qname: str) -> None:
+    """Give a legacy property file the identity the source ontology declares.
+
+    The file was written with the property qualified under its parent's
+    prefix. Everything downstream — collection, the matrix builder, the
+    emitters' property lookups — keys the decision by ``sourceProperty``,
+    and the local-name fallback those stages apply is inventory-wide, not
+    per parent, so the mis-qualified name must not leave this stage. The
+    status, evaluation and candidates are kept; only the identity changes.
+    """
+    doc = json.loads(filepath.read_text(encoding="utf-8"))
+    recorded = doc.get("source", {}).get("qname")
+    if recorded == qname:
+        return
+    doc.setdefault("source", {})["qname"] = qname
+    evaluation = doc.get("evaluation")
+    if isinstance(evaluation, dict) and evaluation.get("sourceProperty") == recorded:
+        evaluation["sourceProperty"] = qname
+    filepath.write_text(
+        json.dumps(doc, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+
+
 def _write_file(filepath: Path, doc: dict) -> bool:
     """Write a search-result file, skipping evaluated ones.
 
@@ -248,7 +288,7 @@ def _write_file(filepath: Path, doc: dict) -> bool:
             existing = json.loads(filepath.read_text(encoding="utf-8"))
             if existing.get("status") == "evaluated":
                 return False
-        except (json.JSONDecodeError, KeyError):
+        except (json.JSONDecodeError, KeyError, AttributeError):
             pass
     filepath.write_text(
         json.dumps(doc, indent=2, ensure_ascii=False) + "\n",
@@ -274,6 +314,62 @@ def write_search_results(
     types_dir.mkdir(parents=True, exist_ok=True)
     props_dir.mkdir(parents=True, exist_ok=True)
 
+    # Keep legacy evaluated filenames, but identify a property occurrence by
+    # both its parent and its QName. One shared property may have different
+    # decisions on different types.
+    #
+    # Files written before ``source-concepts.json`` carried property QNames
+    # qualified every property under its parent's prefix (see
+    # ``_property_qname``), so an augmenting-namespace property's evaluated
+    # file is keyed ``(parent, parent-prefix:name)`` and can never match the
+    # declared identity. Index those by ``(parent, local name)`` as well and
+    # reuse the file when that local name is unique for the parent on both
+    # sides — one such legacy file, one such current property — the same
+    # rule ``generation_utils.property_qname_resolver`` applies to old
+    # matrices. An ambiguous local name is never guessed between, and a file
+    # that matches a current identity exactly is never offered as legacy.
+    identities = {(c["qname"], _property_qname(c["qname"], p))
+                  for c in concepts for p in c.get("properties", [])}
+    current_locals = {}
+    for parent, pq in identities:
+        key = (parent, local_name(pq))
+        current_locals[key] = current_locals.get(key, 0) + 1
+    occurrence_paths = {}
+    legacy_paths = {}
+    used_names = set()
+    for path in sorted(props_dir.glob("*.json")):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except OSError:
+            # A locked or unreadable file is one this pass cannot reuse,
+            # not a reason to end the search stage; its name stays taken.
+            used_names.add(path.name.casefold())
+            continue
+        except ValueError:
+            # Truncated by an interrupted write: nothing to reuse, so its
+            # name is free and its property's file is rewritten in place.
+            continue
+        if not isinstance(data, dict):
+            continue
+        used_names.add(path.name.casefold())
+        try:
+            source = data.get("source", {})
+            parent, recorded = source.get("parentType"), source.get("qname")
+            occurrence_paths[(parent, recorded)] = path
+            # Only the shape `_property_qname` used to manufacture: the
+            # parent concept's own prefix on the property's local name.
+            # Any other non-current qname is a DIFFERENT property that
+            # happens to share a local name, and claiming its file
+            # transplants a reviewer's decision onto a property whose
+            # definition they never saw.
+            parent_prefix = parent.split(":")[0] if parent and ":" in parent else ""
+            misqualified = bool(parent_prefix) and recorded == (
+                f"{parent_prefix}:{local_name(recorded)}")
+            if recorded and misqualified and (parent, recorded) not in identities:
+                legacy_paths.setdefault((parent, local_name(recorded)), []).append(path)
+        except AttributeError:
+            continue
+
     counts = {
         "types_written": 0, "types_skipped": 0,
         "props_written": 0, "props_skipped": 0,
@@ -282,7 +378,6 @@ def write_search_results(
 
     for concept in concepts:
         qname = concept["qname"]
-        prefix = qname.split(":")[0] if ":" in qname else ""
 
         # --- Type file ---
         raw_tc = type_results.get(qname, [])
@@ -299,7 +394,7 @@ def write_search_results(
         concept_def = concept.get("definition", "")
         prop_cands = property_results.get(qname, {})
         for prop in concept.get("properties", []):
-            pq = f"{prefix}:{prop['name']}" if prefix else prop["name"]
+            pq = _property_qname(qname, prop)
             raw_pc = prop_cands.get(pq, [])
             pc = filter_candidates(raw_pc, min_score_ratio)
             counts["candidates_filtered"] += len(raw_pc) - len(pc)
@@ -313,7 +408,23 @@ def write_search_results(
                 prop_range=prop.get("range", []),
                 candidates=disambiguate_ids(strip_scores(pc)),
             )
-            filepath = props_dir / (sanitize_filename(pq) + ".json")
+            identity = (qname, pq)
+            filepath = occurrence_paths.get(identity)
+            if filepath is None:
+                legacy_key = (qname, local_name(pq))
+                legacy = legacy_paths.get(legacy_key, [])
+                if len(legacy) == 1 and current_locals[legacy_key] == 1:
+                    filepath = legacy.pop()
+                    _requalify_property_file(filepath, pq)
+                    occurrence_paths[identity] = filepath
+            if filepath is None:
+                filename = sanitize_filename(pq) + ".json"
+                if filename.casefold() in used_names:
+                    digest = hashlib.sha256(json.dumps(identity).encode("utf-8")).hexdigest()[:16]
+                    filename = f"{sanitize_filename(qname)}--{sanitize_filename(pq)}--{digest}.json"
+                filepath = props_dir / filename
+                occurrence_paths[identity] = filepath
+                used_names.add(filename.casefold())
             if _write_file(filepath, doc):
                 counts["props_written"] += 1
             else:

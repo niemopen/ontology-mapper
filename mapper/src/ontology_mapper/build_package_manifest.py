@@ -20,7 +20,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from datetime import datetime, timezone
+from ontology_mapper.run_dir_utils import utc_stamp
 from collections import Counter, defaultdict
 
 
@@ -385,7 +385,7 @@ def build_manifest(pkg_dir):
 
     # Build manifest
     manifest = {
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "generatedAt": utc_stamp(),
         "packageName": pkg.name,
         "packagePath": str(pkg).replace("\\", "/"),
         "namespaces": {

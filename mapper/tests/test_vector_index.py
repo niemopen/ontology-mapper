@@ -368,3 +368,23 @@ class TestQueryIndex:
         assert "definition" in match
         assert match["rank"] == 1
         assert isinstance(match["score"], float)
+
+
+def test_eligibility_applies_before_top_k_truncation(fake_type_retrieval):
+    """A predicate filters the full ranking; ``top_k`` counts eligible matches."""
+    from ontology_mapper.vector_index import query_index
+
+    fake_type_retrieval(["t:D1", "t:D2", "t:D3", "t:C1", "t:C2", "t:C3"])
+    entry = OntologyEntry(id="s:X", definition="", kind="type")
+
+    def is_class(match):
+        return match["qname"].startswith("t:C")
+
+    [filtered] = query_index([entry], "t", "types", top_k=2, eligible=is_class)
+    assert [(m["qname"], m["rank"]) for m in filtered["matches"]] == [("t:C1", 1), ("t:C2", 2)]
+
+    [plain] = query_index([entry], "t", "types", top_k=2)
+    assert [m["qname"] for m in plain["matches"]] == ["t:D1", "t:D2"]
+
+    [exhausted] = query_index([entry], "t", "types", top_k=5, eligible=is_class)
+    assert [m["qname"] for m in exhausted["matches"]] == ["t:C1", "t:C2", "t:C3"]

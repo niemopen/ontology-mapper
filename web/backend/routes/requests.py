@@ -1,7 +1,7 @@
 """Ontology request routes — global (not org-scoped)."""
 
 import json
-from datetime import datetime, timezone
+from ontology_mapper.run_dir_utils import utc_stamp
 from pathlib import Path
 from uuid import uuid4
 
@@ -59,7 +59,7 @@ async def create_request(
         "status": "pending",
         "requested_by": user.get("sub", ""),
         "requested_org": org,
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": utc_stamp(),
         "completed_at": None,
     }
     requests.append(entry)
@@ -93,7 +93,7 @@ async def complete_request(
     for r in requests:
         if r["id"] == request_id:
             r["status"] = "completed"
-            r["completed_at"] = datetime.now(timezone.utc).isoformat()
+            r["completed_at"] = utc_stamp()
             _save_requests(requests)
             return r
     raise HTTPException(status_code=404, detail=f"Request not found: {request_id}")

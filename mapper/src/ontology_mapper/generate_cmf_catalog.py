@@ -31,6 +31,7 @@ import json
 import sys
 from collections import defaultdict
 from datetime import datetime, timezone
+from ontology_mapper.run_dir_utils import utc_stamp
 from pathlib import Path
 
 from lxml import etree
@@ -532,7 +533,7 @@ def build_catalog(types, properties, namespace_map, augmentation_map,
             f"{datetime.now(timezone.utc).strftime('%Y-%m-%d')}. "
             f"Source: {', '.join(Path(f).name for f in source_files)}."
         ),
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "generatedAt": utc_stamp(),
         "sources": source_files,
         "actions": {
             "reuse": "The source concept maps directly to an existing type. Use the target type as-is.",

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Stage 7: Validate — run all conformance checks on the edge package."""
 
-import hashlib
 import json
 import sys
 from pathlib import Path
-from datetime import datetime, timezone
+from ontology_mapper.run_dir_utils import utc_stamp
 
+from ontology_mapper.generation_utils import definition_hash
 from ontology_mapper.pipeline_context import load_context
 
 
@@ -24,6 +24,179 @@ def add_check(results, name, passed, details=""):
 # ---------------------------------------------------------------------------
 # Testable cross-reference helpers
 # ---------------------------------------------------------------------------
+# The files Stage 8 writes into the package, named one by one. Stage 7
+# validates everything else, so a report cannot speak for these and a second
+# finalize must not read its own first run as evidence of a stale report.
+# Not the whole `governance/` directory: Stage 6b writes the decision log,
+# generation audit, quality-gate report and coherence manifest there, and
+# Stage 7's decision-log check reads one of them. Excluding the directory
+# let a package be published with a decision log replaced after validation.
+# `finalize_package.main` is the one writer; keep these in step with it.
+STAGE_8_OUTPUTS = (
+    "governance/version-manifest.json",
+    "governance/lineage-manifest.json",
+    "governance/validation-report.json",
+    "governance/change-impact.md",
+)
+# The package manifest is Stage 6's, and Stage 8 writes only these keys into
+# it. It is digested without them: excluding the whole file let an edit to
+# its namespaces or target after validation be published as finalized.
+MANIFEST_NAME = "package-manifest.json"
+STAGE_8_MANIFEST_KEYS = ("finalizedAt", "version", "stats")
+# The version Stage 6 writes and the one Stage 8 publishes; withdrawing a
+# finalization restores the first.
+DRAFT_VERSION = "0.1.0"
+FINAL_VERSION = "1.0.0"
+
+
+def withdraw_stage_8_outputs(pkg_dir):
+    """Remove the certificate a previous Stage 8 left in the package.
+
+    Called before a package is regenerated or re-validated. Stage 8 is the
+    only writer of these files, so when a new Stage 6 or 7 fails and Stage 8
+    never runs, nothing else would replace a PASS report and a finalization
+    stamp that speak for the package's previous content. The package manifest
+    itself is Stage 6's; the stamp Stage 8 added is taken back and its
+    version restored to Stage 6's. Stage 8's stats stay: they count the same
+    matrix, the digest ignores them, and the next Stage 6b or 8 rewrites them.
+    Returns the paths withdrawn, relative to the package.
+    """
+    import json
+    from pathlib import Path
+
+    pkg_dir = Path(pkg_dir)
+    withdrawn = []
+    for name in STAGE_8_OUTPUTS:
+        path = pkg_dir / name
+        if path.exists():
+            path.unlink()
+            withdrawn.append(name)
+    path = pkg_dir / MANIFEST_NAME
+    if path.exists():
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+        if manifest.pop("finalizedAt", None) is not None:
+            manifest["version"] = DRAFT_VERSION
+            path.write_text(json.dumps(manifest, indent=2) + "\n",
+                            encoding="utf-8")
+            withdrawn.append(MANIFEST_NAME)
+    return withdrawn
+
+
+def validated_artifacts(pkg_dir):
+    """The package files a validation report speaks for, sorted."""
+    from pathlib import Path
+
+    pkg_dir = Path(pkg_dir)
+    return sorted(
+        p for p in pkg_dir.rglob("*")
+        if p.is_file()
+        and p.relative_to(pkg_dir).as_posix() not in STAGE_8_OUTPUTS
+    )
+
+
+def _digest(pkg_dir, path):
+    """sha256 of a validated file; the package manifest without the keys
+    Stage 8 writes, so finalizing does not stale its own report."""
+    import hashlib
+    import json
+
+    if path.relative_to(pkg_dir).as_posix() == MANIFEST_NAME:
+        try:
+            manifest = json.loads(path.read_text(encoding="utf-8"))
+        except ValueError:
+            return hashlib.sha256(path.read_bytes()).hexdigest()
+        if isinstance(manifest, dict):
+            stage_6 = {k: v for k, v in manifest.items() if k not in STAGE_8_MANIFEST_KEYS}
+            return hashlib.sha256(json.dumps(stage_6, sort_keys=True).encode("utf-8")).hexdigest()
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def artifact_digests(pkg_dir):
+    """`{path relative to the package: sha256}` over the validated files."""
+    from pathlib import Path
+
+    pkg_dir = Path(pkg_dir)
+    return {p.relative_to(pkg_dir).as_posix(): _digest(pkg_dir, p)
+            for p in validated_artifacts(pkg_dir)}
+
+
+def report_not_passed(report):
+    """Why a validation report certifies no pass, or None when it does.
+
+    One home for "did Stage 7 pass?": Stage 8 and the runner's stage
+    verifier both ask it. A pass is `allPassed: true` over a non-empty list
+    of check records that each say "pass". `allPassed` alone let a report
+    with no checks, a failing check or a malformed entry through Stage 8.
+    """
+    checks = report.get("checks") if isinstance(report, dict) else None
+    if not isinstance(checks, list) or not checks:
+        return "records no checks"
+    malformed = sum(1 for c in checks if not isinstance(c, dict))
+    if malformed:
+        return f"{malformed} check entries are not check records"
+    failed = [c.get("check", "?") for c in checks if c.get("status") != "pass"]
+    if failed:
+        return f"{len(failed)} checks did not pass: {', '.join(failed)}"
+    if report.get("allPassed") is not True:
+        return f"allPassed is {report.get('allPassed')!r}, not true"
+    return None
+
+
+def stale_against_package(report_path, pkg_dir, report=None):
+    """The artifact a validation report does not speak for, or None.
+
+    A report certifies the files as they were when it ran; `--from-stage 8`
+    never runs Stage 7 at all, so publishing an older report records a PASS
+    for files nobody validated. Answered by comparing the digests the report
+    recorded, because a timestamp cannot carry it: regenerating a package
+    takes less than a filesystem timestamp tick, so a report written after
+    it looks newer than every file it should have refused.
+    """
+    import json
+    from pathlib import Path
+
+    report_path, pkg_dir = Path(report_path), Path(pkg_dir)
+    if not report_path.exists():
+        return None
+    if not pkg_dir.is_dir():
+        # No package to speak for: a mistyped --package-dir, or one deleted
+        # after validation. Answering None read as "covers the package".
+        return str(pkg_dir)
+    if report is None:
+        try:
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return None
+    if not isinstance(report, dict):
+        return str(report_path)  # No report object, so no claim about any file.
+
+    if "validatedArtifacts" in report:
+        # Present means the report speaks by content. An empty, null or
+        # malformed digest speaks for no file; reading it as the pre-digest
+        # report below let the clock pass a package nothing validated.
+        recorded = report["validatedArtifacts"]
+        if not isinstance(recorded, dict):
+            recorded = {}
+        current = artifact_digests(pkg_dir)
+        changed = [name for name, digest in current.items()
+                   if recorded.get(name) != digest]
+        changed += [name for name in recorded if name not in current]
+        return str(pkg_dir / sorted(changed)[0]) if changed else None
+
+    # A report from before digests were recorded. The clock under-reports —
+    # that is the defect above — but it never refuses a package it cannot
+    # speak to, which is the behaviour such a run dir already had.
+    # Such a report never covered the package manifest, which Stage 8
+    # rewrites; counting it read a report's own finalize as a change.
+    stamped = report_path.stat().st_mtime_ns
+    newer = [p for p in validated_artifacts(pkg_dir)
+             if p.relative_to(pkg_dir).as_posix() != MANIFEST_NAME
+             and p.stat().st_mtime_ns > stamped]
+    if not newer:
+        return None
+    return str(sorted(newer, key=lambda p: p.stat().st_mtime_ns)[-1])
+
+
 def check_schema_labels(schema_content, active_labels):
     """Check that Cypher schema constraint/index labels reference active classes.
 
@@ -127,19 +300,21 @@ def validate_cmf_schema(cmf_path):
     return errors
 
 
-def check_cmf_consistency(cmf_path, mappings_list):
+def check_cmf_consistency(cmf_path, mappings_list, generated_namespace_uris):
     """Check that CMF XML is well-formed, XSD-valid, and consistent with the matrix.
 
     Validates:
     - CMF XML parses without error
     - CMF conforms to the official NIEM CMF XSD schema
-    - Class count matches active (reuse + extend) classes in matrix
-    - AugmentationRecord entries exist for augment-action mappings
+    - Every structures:ref binds to a declaration of a compatible kind
+    - Generated class count matches active (reuse + extend) classes in matrix
+    - Generated AugmentationRecord entries exist for augment-action mappings
     - At least one property exists
 
     Args:
         cmf_path: Path to the .cmf XML file.
         mappings_list: List of mapping entry dicts from the matrix.
+        generated_namespace_uris: Edge and extension namespace URIs from context.
 
     Returns:
         List of error strings. Empty means all checks pass.
@@ -162,29 +337,31 @@ def check_cmf_consistency(cmf_path, mappings_list):
     errors.extend(xsd_errors)
 
     root = tree.getroot()
+    errors.extend(check_cmf_references(root))
     # CMF uses a namespace — find it dynamically
-    nsmap = root.nsmap
-    cmf_ns = nsmap.get(None) or nsmap.get("cmf", "")
-    ns = {"cmf": cmf_ns} if cmf_ns else {}
+    cmf_ns = etree.QName(root).namespace
+    prefix = f"{{{cmf_ns}}}" if cmf_ns else ""
 
-    def find_all(tag):
-        if ns:
-            return root.findall(f"cmf:{tag}", ns)
-        return root.findall(tag)
+    def find_all(tag, parent=root):
+        return parent.findall(f"{prefix}{tag}")
 
-    # Count CMF elements
-    cmf_classes = find_all("Class")
+    def attribute_value(element, name):
+        if element is None:
+            return None
+        return next((value for key, value in element.attrib.items()
+                     if etree.QName(key).localname == name), None)
+
+    # Imported definitions validate references, but cannot stand in for mappings.
+    generated_namespaces = [element for element in find_all("Namespace")
+                            if element.findtext(f"{prefix}NamespaceURI") in generated_namespace_uris]
+    generated_ids = {attribute_value(element, "id") for element in generated_namespaces}
+    cmf_classes = [element for element in find_all("Class")
+                   if attribute_value(element.find(f"{prefix}Namespace"), "ref") in generated_ids]
     cmf_obj_props = find_all("ObjectProperty")
     cmf_data_props = find_all("DataProperty")
-    cmf_namespaces = find_all("Namespace")
 
-    # Count augmentation records across all namespaces
-    cmf_aug_count = 0
-    for ns_el in cmf_namespaces:
-        if cmf_ns:
-            cmf_aug_count += len(ns_el.findall(f"cmf:AugmentationRecord", ns))
-        else:
-            cmf_aug_count += len(ns_el.findall("AugmentationRecord"))
+    cmf_aug_count = sum(len(find_all("AugmentationRecord", element))
+                        for element in generated_namespaces)
 
     # Expected counts from matrix
     reuse_extend = sum(1 for m in mappings_list
@@ -196,14 +373,14 @@ def check_cmf_consistency(cmf_path, mappings_list):
     # augmentation records instead)
     if len(cmf_classes) < reuse_extend:
         errors.append(
-            f"CMF has {len(cmf_classes)} classes, expected >= {reuse_extend} "
+            f"CMF has {len(cmf_classes)} generated classes, expected >= {reuse_extend} "
             f"(reuse + extend from matrix)"
         )
 
     # Check augmentation records
     if augment_count > 0 and cmf_aug_count == 0:
         errors.append(
-            f"Matrix has {augment_count} augment actions but CMF has no "
+            f"Matrix has {augment_count} augment actions but CMF has no generated "
             f"AugmentationRecords"
         )
 
@@ -215,11 +392,41 @@ def check_cmf_consistency(cmf_path, mappings_list):
     return errors
 
 
-def _hash_definition(definition):
-    """Hash a definition string the same way collect_alignments does."""
-    if definition is None:
-        return None
-    return hashlib.sha256(definition.encode("utf-8")).hexdigest()[:16]
+def check_cmf_references(root):
+    """XSD validation alone does not enforce CMF ID binding or referent kinds."""
+    from lxml import etree
+
+    declarations = {}
+    references = []
+    for element in root.iter():
+        for attribute, value in element.attrib.items():
+            name = etree.QName(attribute)
+            if name.localname == "id":
+                declarations[(name.namespace, value)] = etree.QName(element).localname
+            elif name.localname == "ref":
+                references.append((name.namespace, value, etree.QName(element).localname))
+    datatypes = {"Datatype", "Restriction", "List", "Union"}
+    properties = {"Property", "ObjectProperty", "DataProperty"}
+    compatible = {
+        "Namespace": {"Namespace"}, "Class": {"Class"}, "SubClassOf": {"Class"},
+        "ObjectProperty": {"ObjectProperty"}, "DataProperty": {"DataProperty"},
+        "Property": properties, "SubPropertyOf": properties,
+        "Datatype": datatypes, "RestrictionBase": datatypes,
+        "ListItemDatatype": datatypes, "UnionMemberDatatype": datatypes,
+    }
+    errors = []
+    for namespace, ref, kind in references:
+        actual = declarations.get((namespace, ref))
+        if actual is None:
+            errors.append(f"Unbound CMF reference: {kind} -> {ref}")
+        elif actual not in compatible.get(kind, {kind}):
+            errors.append(f"Incompatible CMF reference: {kind} -> {ref} is {actual}")
+    return errors
+
+
+# The fingerprint's one home is generation_utils.definition_hash, shared with
+# alignment collection and the review cascade that write the stored hashes.
+_hash_definition = definition_hash
 
 
 def check_codebook_drift(mappings_list, catalog):
@@ -244,28 +451,32 @@ def check_codebook_drift(mappings_list, catalog):
     for t in catalog.get("types", []):
         type_defs[t["qname"]] = t.get("definition")
 
-    # Build lookup: qualifiedProperty -> definition from catalog propertyIndex
-    prop_defs = {}
-    for ns_data in catalog.get("propertyIndex", {}).values():
-        for p in ns_data.get("properties", []):
-            prop_defs[p["qualifiedProperty"]] = p.get("definition")
+    from ontology_mapper.generation_utils import (
+        accepted_reuse_target, catalog_property_definitions, catalog_property_key,
+        reuse_decision_target, target_qname)
 
+    prop_defs = catalog_property_definitions(catalog)
+
+    namespaces = catalog.get("namespaces", {})
     for m in mappings_list:
         concept = m.get("sourceConcept", "")
-        target_type = m.get("targetType")
+        # One identity: a matrix saved before selections were canonicalized
+        # can hold a target's full IRI, which names the same catalog class.
+        # Looking the IRI up by spelling reported it "not found in catalog".
+        target_type = target_qname(m.get("targetType"), catalog.get("namespaces", {}))
         stored_hash = m.get("targetDefinitionHash")
 
-        if target_type and stored_hash:
-            current_def = type_defs.get(target_type)
-            if current_def is None and target_type in type_defs:
-                current_def = type_defs[target_type]
-            current_hash = _hash_definition(current_def)
-
-            if target_type not in type_defs:
-                errors.append(
-                    f"{concept}: target type {target_type} not found in catalog"
-                )
-            elif current_hash != stored_hash:
+        # A target that left the catalog is drift whether or not the matrix
+        # recorded a fingerprint for it — that branch was unreachable while
+        # the whole block required a stored hash. A target still present with
+        # no stored hash has nothing to compare, and is not drift.
+        if target_type and target_type not in type_defs:
+            errors.append(
+                f"{concept}: target type {target_type} not found in catalog"
+            )
+        elif target_type and stored_hash:
+            current_hash = _hash_definition(type_defs.get(target_type))
+            if current_hash != stored_hash:
                 errors.append(
                     f"{concept}: {target_type} definition changed "
                     f"(was {stored_hash}, now {current_hash})"
@@ -273,10 +484,19 @@ def check_codebook_drift(mappings_list, catalog):
 
         for p in m.get("propertyMappings", []):
             src_prop = p.get("sourceProperty", "")
-            target_prop = p.get("targetProperty")
+            # Only reuse-property rows, as the Stage 5 exit gate checks: a
+            # create-property row reuses nothing, and failing it on a Stage 3
+            # target it still carried contradicted a review that passed. Past
+            # review every row is accepted, so both check the same rows.
+            target_prop = reuse_decision_target(p)
             prop_hash = p.get("targetDefinitionHash")
 
-            if target_prop and prop_hash and target_prop != "[undecided]":
+            # As for a class target: a reused property that left the catalog
+            # (or never was in it) is an error whether or not a fingerprint
+            # was recorded; a review decision records none for a target the
+            # catalog lacks.
+            if target_prop and (prop_hash or accepted_reuse_target(p)):
+                target_prop = catalog_property_key(target_prop, m.get("targetType"), namespaces)
                 current_prop_def = prop_defs.get(target_prop)
                 current_prop_hash = _hash_definition(current_prop_def)
 
@@ -285,31 +505,43 @@ def check_codebook_drift(mappings_list, catalog):
                         f"{concept}/{src_prop}: target property {target_prop} "
                         f"not found in catalog"
                     )
-                elif current_prop_hash != prop_hash:
+                elif prop_hash and current_prop_hash != prop_hash:
+                    # A review decision saved before decisions were
+                    # refingerprinted still carries the hash of Stage 3's
+                    # candidate, not of the chosen target; say how to tell
+                    # that from a catalog change and what clearing it needs.
+                    # Naming a page action was wrong: after Stage 6 the
+                    # review page is read-only.
                     errors.append(
                         f"{concept}/{src_prop}: {target_prop} definition "
-                        f"changed (was {prop_hash}, now {current_prop_hash})"
+                        f"changed (was {prop_hash}, now {current_prop_hash}); "
+                        f"if the catalog has not changed since review, the "
+                        f"fingerprint predates the review decision (a review "
+                        f"saved before decisions recorded their own), and "
+                        f"re-resolving the property in Stage 5 review records "
+                        f"the current one; that needs the approved review "
+                        f"reopened, which the web page and CLI do not yet "
+                        f"offer"
                     )
 
     return errors
 
 
-def extract_active_labels(mappings_list):
-    """Extract active class labels from mapping matrix entries.
+def extract_active_labels(inventory, mappings_list):
+    """The node labels the graph generator writes for this run.
 
     Args:
+        inventory: The concept inventory.
         mappings_list: List of mapping entry dicts.
 
     Returns:
-        Set of label strings (local names).
+        Set of label strings, from `emitted_graph_labels` — the generator's
+        own answer, so the check cannot disagree with it about the class
+        set or the naming.
     """
-    labels = set()
-    for m in mappings_list:
-        if m.get("action") in ("reuse", "extend", "augment"):
-            concept = m.get("sourceConcept", "")
-            label = concept.split(":")[-1] if ":" in concept else concept
-            labels.add(label)
-    return labels
+    from ontology_mapper.generation_utils import emitted_graph_labels
+
+    return set(emitted_graph_labels(inventory, mappings_list).values())
 
 
 def main():
@@ -351,7 +583,7 @@ def main():
         # Load edge ontology
         data_g = Graph()
         for f in (PKG / "ontology").glob("*.ttl"):
-            if "combined" not in f.name and "all" not in f.name:
+            if not f.stem.endswith(("-combined", "-all")):
                 data_g.parse(str(f), format="turtle")
 
         # Load valid test fixture as data
@@ -392,14 +624,21 @@ def main():
         else:
             mapped_concepts = set()
     else:
-        # Fall back to mapper run matrix
+        # The run's matrix, so the checks below still have one to read; but
+        # a package without its own copy fails here. Validating the run's
+        # copy in its place passed a package whose matrix the digest does
+        # not cover, and Stage 8 would publish from it.
         matrix = json.loads((RUN_DIR / "mapping-matrix.json").read_text(encoding="utf-8"))
         mapped_concepts = {e["sourceConcept"] for e in matrix["mappings"]}
 
     unmapped = internal_classes - mapped_concepts
-    add_check(checks, "mapping-completeness", len(unmapped) == 0,
-          f"{len(mapped_concepts)}/{len(internal_classes)} classes mapped" +
-          (f", unmapped: {unmapped}" if unmapped else ""))
+    if not matrix_path.exists():
+        add_check(checks, "mapping-completeness", False,
+                  "the package has no mappings/mapping-matrix.json; re-run from Stage 6")
+    else:
+        add_check(checks, "mapping-completeness", len(unmapped) == 0,
+              f"{len(mapped_concepts)}/{len(internal_classes)} classes mapped" +
+              (f", unmapped: {unmapped}" if unmapped else ""))
 
     # ── Check 4: Extension catalog vs matrix count ───────────────────────────
     print("\n  Check 4: Extension catalog count")
@@ -420,14 +659,16 @@ def main():
 
     # ── Check 5: Decision log vs mapped concept count ──────────────────────
     print("\n  Check 5: Decision log count")
+    # The package's own log: the run directory's copy is not what ships.
     dec_log_path = PKG / "governance" / "decision-log.json"
     if not dec_log_path.exists():
-        dec_log_path = RUN_DIR / "decision-log.json"
-
-    dec_log = json.loads(dec_log_path.read_text(encoding="utf-8"))
-    dec_count = len(dec_log.get("decisions", []))
-    add_check(checks, "decision-log-count", dec_count >= len(mapped_concepts),
-          f"{dec_count} decisions for {len(mapped_concepts)} mapped concepts")
+        add_check(checks, "decision-log-count", False,
+                  "the package has no governance/decision-log.json; re-run from Stage 6")
+    else:
+        dec_log = json.loads(dec_log_path.read_text(encoding="utf-8"))
+        dec_count = len(dec_log.get("decisions", []))
+        add_check(checks, "decision-log-count", dec_count >= len(mapped_concepts),
+              f"{dec_count} decisions for {len(mapped_concepts)} mapped concepts")
 
     # ── Check 6: Cypher script validity ──────────────────────────────────
     print("\n  Check 6: Cypher script validity")
@@ -477,7 +718,7 @@ def main():
     # ── Check 8: Schema labels match active classes ───────────────────────
     print("\n  Check 8: Schema-to-ontology consistency")
     schema_path = kg_dir / "neo4j" / "schema.cypher" if kg_dir.exists() else None
-    active_labels = extract_active_labels(mappings_list)
+    active_labels = extract_active_labels(inv, mappings_list)
 
     if schema_path and schema_path.exists():
         schema_errors = check_schema_labels(
@@ -539,18 +780,24 @@ def main():
           (f", {len(transform_errors)} errors: " + "; ".join(transform_errors[:3])
            if transform_errors else ", all transforms match"))
 
-    # ── Check 11: CMF consistency (NIEM only) ─────────────────────────────
-    if target_ontology == "niem":
+    # ── Check 11: CMF consistency (required when the target has a CMF
+    # reference model, otherwise when present) ──
+    from ontology_mapper.cmf_reference import reference_cmf_installed
+    cmf_dir = PKG / "cmf"
+    cmf_path = cmf_dir / f"{ctx.cmf_model_stem}.cmf"
+    if reference_cmf_installed(target_ontology, target_version) or cmf_dir.exists():
         print("\n  Check 11: CMF consistency")
-        cmf_dir = PKG / "cmf"
-        cmf_path = cmf_dir / f"{ctx.cmf_model_stem}.cmf" if cmf_dir.exists() else None
 
-        if cmf_path and cmf_path.exists():
-            cmf_errors = check_cmf_consistency(cmf_path, mappings_list)
+        if cmf_path.exists():
+            cmf_errors = check_cmf_consistency(
+                cmf_path, mappings_list, {ctx.edge_namespace, ctx.extension_namespace})
         elif cmf_dir.exists():
             cmf_errors = [f"CMF file not found: {ctx.cmf_model_stem}.cmf"]
         else:
-            cmf_errors = ["cmf/ directory not found"]
+            # A reference model installed after Stage 6 omitted the CMF: the
+            # package predates it, and only regenerating gives it a CMF.
+            cmf_errors = ["cmf/ directory not found; a CMF reference model is installed "
+                          "for this target now, so re-run Stage 6 to generate it"]
 
         add_check(checks, "cmf-consistency", len(cmf_errors) == 0,
               "CMF matches matrix" if not cmf_errors else "; ".join(cmf_errors[:3]))
@@ -577,12 +824,16 @@ def main():
     all_passed = all(c["status"] == "pass" for c in checks)
     report = {
         "stage": "7",
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "generatedAt": utc_stamp(),
         "allPassed": all_passed,
         "checkCount": len(checks),
         "passCount": sum(1 for c in checks if c["status"] == "pass"),
         "failCount": sum(1 for c in checks if c["status"] == "FAIL"),
         "checks": checks,
+        # What this report speaks for. Stage 8 and the stage verifier
+        # compare these rather than timestamps, which cannot separate a
+        # package written just before the report from one written after.
+        "validatedArtifacts": artifact_digests(PKG),
     }
 
     out_path = RUN_DIR / "validation-report.json"
@@ -590,7 +841,8 @@ def main():
 
     print(f"\n  {'ALL CHECKS PASSED' if all_passed else 'SOME CHECKS FAILED'}")
     print(f"  Report: {out_path}")
+    return 0 if all_passed else 1
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

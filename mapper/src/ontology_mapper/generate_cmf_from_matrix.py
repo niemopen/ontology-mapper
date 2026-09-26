@@ -1,7 +1,7 @@
 """Build a CmfModel directly from the mapping matrix and concept inventory.
 
-Produces spec-compliant CMF per NIEM NDR v6.0. Target-ontology agnostic —
-works for any source/target combination.
+Builds local CMF declarations and target references for any source/target
+combination. cmf_reference completes the serialized model with native definitions.
 
 The builder reads the same inputs as generate_edge_ontology.py (concept
 inventory, mapping matrix, target catalog namespace map) and populates
@@ -19,12 +19,27 @@ from ontology_mapper.owl_cmf_bridge import (
     CmfRestriction,
 )
 from ontology_mapper.generation_utils import (
+    emitted_class_action,
+    range_class_for,
     local_name,
     edge_class_name,
     infer_domains_from_shapes,
     assign_properties_to_classes,
     detect_consolidations,
+    property_mapping_index,
+    property_qname_resolver,
+    accepted_reuse_target,
+    shape_target_classes,
+    shape_property_is_evaluated,
+    source_namespace_bindings,
+    created_property_qname,
+    source_prefix,
+    target_qname,
+    is_full_iri,
+    qualified_target_property,
+    shape_only_class_properties,
 )
+from ontology_mapper.ontology_specific import extension_conformance_target
 
 
 # XSD IRI prefix → CMF datatype ref
@@ -73,8 +88,12 @@ def _cmf_id(prefix: str, name: str) -> str:
 
 
 def _qname_prefix(qname: str) -> str:
-    """Extract namespace prefix from a qualified name (e.g. 'nc:PersonType' → 'nc')."""
-    if ":" in qname and not qname.startswith("http"):
+    """Extract namespace prefix from a qualified name (e.g. 'nc:PersonType' → 'nc').
+
+    A full IRI has no prefix — `is_full_iri` answers that for every emitter;
+    testing for "http" read `urn:example:x` as the prefix `urn`.
+    """
+    if ":" in qname and not is_full_iri(qname):
         return qname.split(":", 1)[0]
     return ""
 
@@ -82,7 +101,7 @@ def _qname_prefix(qname: str) -> str:
 class MatrixToCmfBuilder:
     """Build a CmfModel directly from the mapping matrix and concept inventory.
 
-    Produces spec-compliant CMF per NDR v6.0. Target-ontology agnostic.
+    Target-ontology agnostic; reference completion follows serialization.
     """
 
     def __init__(self, matrix: dict, inventory: dict, ctx, target_ns_map: dict):
@@ -97,19 +116,22 @@ class MatrixToCmfBuilder:
         self._obj_by_qname = {p["qname"]: p for p in inventory["objectProperties"]}
         self._dt_by_qname = {p["qname"]: p for p in inventory["datatypeProperties"]}
 
-        # Detect source prefix from first class
-        sample = inventory["classes"][0] if inventory["classes"] else None
-        self._source_prefix = (sample["qname"].split(":")[0] + ":") if sample else ""
+        # Primary source prefix (one home: generation_utils.source_prefix).
+        # Reading it from the first sorted class let an augmenting namespace
+        # that sorts first reclassify every primary property as external.
+        primary = source_prefix(inventory)
+        self._source_prefix = f"{primary}:" if primary else ""
 
-        # Property mapping lookup: (class_qname, prop_local) → propertyMapping
-        self._prop_mapping = {}
-        for m in matrix["mappings"]:
-            for pm in m.get("propertyMappings") or []:
-                self._prop_mapping[(m["sourceConcept"], pm["sourceProperty"])] = pm
+        # Property mapping lookup, keyed by the property's QNAME — the
+        # identity the matrix records. Shared home with the OWL emitter so
+        # the two cannot drift (generation_utils.property_mapping_index).
+        self._prop_mapping = property_mapping_index(matrix, inventory)
+        self._resolve_prop_qname = property_qname_resolver(inventory)
 
         # Edge/ext prefix for CMF ids (strip trailing ':' and '-edge:')
         self._edge_prefix = ctx.edge_prefix.rstrip(":")  # e.g. "dbpi-edge"
         self._ext_prefix = "ext"
+        self._source_bindings = source_namespace_bindings(inventory, target_ns_map, self._edge_prefix)
 
         # Classified concepts (populated by _classify_concepts)
         self._reuse = []     # (qname, target_type, label, comment)
@@ -120,16 +142,20 @@ class MatrixToCmfBuilder:
         # SHACL cardinality lookup: (class_qname, prop_path) → {minCount, maxCount}
         self._shacl_cardinality = {}
         for shape in inventory.get("shaclShapes", []):
-            cls = shape["targetClass"]
-            for prop in shape.get("properties", []):
-                key = (cls, prop["path"])
-                self._shacl_cardinality[key] = {
-                    "minCount": prop.get("minCount"),
-                    "maxCount": prop.get("maxCount"),
-                }
+            if not shape_property_is_evaluated(shape):
+                continue
+            for cls in shape_target_classes(shape):
+                for prop in shape.get("properties", []):
+                    if not prop.get("path") or not shape_property_is_evaluated(prop):
+                        continue        # a SHACL path expression names no property
+                    bounds = self._shacl_cardinality.setdefault((cls, prop["path"]), {})
+                    for key, combine in (("minCount", max), ("maxCount", min)):
+                        value = prop.get(key)
+                        if value is not None:
+                            bounds[key] = combine(bounds.get(key, value), value)
 
     def build(self) -> CmfModel:
-        """Build the complete CmfModel."""
+        """Build local components and references from the accepted matrix."""
         model = CmfModel()
         self._classify_concepts()
         self._build_namespaces(model)
@@ -148,9 +174,9 @@ class MatrixToCmfBuilder:
         for cls in self.inventory["classes"]:
             qname = cls["qname"]
             m = self._mapping_by_concept.get(qname)
-            if not m:
+            action = emitted_class_action(m)
+            if action is None:
                 continue
-            action = m["action"]
             target = m.get("targetType")
             if action == "reuse":
                 self._reuse.append((qname, target, cls["label"], cls["comment"]))
@@ -173,23 +199,31 @@ class MatrixToCmfBuilder:
 
     def _build_namespaces(self, model: CmfModel):
         """Create CmfNamespace entries for edge, ext, and target namespaces."""
+        conformance = extension_conformance_target(
+            self.ctx.target_ontology, self.ctx.target_version)
+
         # Edge namespace (always present)
         model.namespaces.append(CmfNamespace(
             ns_id=self._edge_prefix,
-            uri=self.ctx.edge_ns_hash.rstrip("#"),
+            uri=self.ctx.edge_ns_hash,
             prefix=self._edge_prefix,
             documentation=f"Edge ontology for {self.ctx.source}",
             category="EXTENSION",
+            conformance_target=conformance,
         ))
 
-        # Extension namespace (only if extend-action classes exist)
-        if self._extend:
+        # Extension namespace. Declared for augment classes too, not only
+        # extend ones: `_property_prefix` returns the EXT prefix for EVERY
+        # non-reuse action, so an augment-only run emitted properties into
+        # a namespace the model never declared.
+        if self._extend or self._augment:
             model.namespaces.append(CmfNamespace(
                 ns_id=self._ext_prefix,
-                uri=self.ctx.ext_ns_hash.rstrip("#"),
+                uri=self.ctx.ext_ns_hash,
                 prefix=self._ext_prefix,
                 documentation=f"Extension types for {self.ctx.source}",
                 category="EXTENSION",
+                conformance_target=conformance,
             ))
 
         # Target namespaces referenced by reuse/augment mappings
@@ -201,13 +235,29 @@ class MatrixToCmfBuilder:
             self._add_target_ns(model, augmented, seen_prefixes)
         for qname, base, _, _ in self._extend:
             self._add_target_ns(model, base, seen_prefixes)
+        for mapping in self.matrix["mappings"]:
+            for pm in mapping.get("propertyMappings") or []:
+                self._add_target_ns(model, qualified_target_property(
+                    accepted_reuse_target(pm), mapping.get("targetType")), seen_prefixes)
 
         # Source namespace for cross-namespace properties
-        for prop in self.inventory["objectProperties"] + self.inventory["datatypeProperties"]:
-            if not prop["qname"].startswith(self._source_prefix):
-                prefix = _qname_prefix(prop["qname"])
+        properties = self.inventory["objectProperties"] + self.inventory["datatypeProperties"]
+        # A full-IRI range `_resolve_range` grounds to a target class names
+        # that class's namespace; it reads the first range only, so only
+        # that one can.
+        for prop in properties:
+            for r in prop.get("range", [])[:1]:
+                if is_full_iri(r):
+                    self._add_target_ns(model, r, seen_prefixes)
+        source_refs = {prop["qname"] for prop in properties}
+        source_refs.update(r for prop in properties for r in prop.get("range", [])
+                           if _qname_prefix(r) in self._source_bindings)
+        for qname in sorted(source_refs):
+            if not qname.startswith(self._source_prefix):
+                prefix = _qname_prefix(qname)
+                prefix, uri = self._source_bindings.get(prefix, (
+                    prefix, self.target_ns_map.get(prefix, f"urn:unknown:{prefix}")))
                 if prefix and prefix not in seen_prefixes:
-                    uri = self.target_ns_map.get(prefix, f"urn:unknown:{prefix}")
                     model.namespaces.append(CmfNamespace(
                         ns_id=prefix, uri=uri, prefix=prefix,
                         category="EXTERNAL",
@@ -218,7 +268,7 @@ class MatrixToCmfBuilder:
         """Add a target namespace if not already present."""
         if not qname:
             return
-        prefix = _qname_prefix(qname)
+        prefix = _qname_prefix(target_qname(qname, self.target_ns_map))
         if not prefix or prefix in seen:
             return
         uri = self.target_ns_map.get(prefix, f"urn:unknown:{prefix}")
@@ -279,6 +329,8 @@ class MatrixToCmfBuilder:
                 if active and prop["qname"] not in dt_assigned:
                     dt_assigned[prop["qname"]] = active
 
+        shape_only = shape_only_class_properties(self.inventory)
+
         # Build class_id lookup for property assignment
         class_id_by_qname = {}
         for qname, _, _, _ in self._reuse:
@@ -318,6 +370,27 @@ class MatrixToCmfBuilder:
                 self._emit_property(model, cmf_cls, cls_qname, action,
                                     pq, prop_data, is_object=False, emitted=emitted_props)
 
+            # A property only a shape names is never minted, but its accepted
+            # reuse is a reference to the target property like any other;
+            # completion gives the reference the native property's kind.
+            for pq in shape_only.get(cls_qname, []):
+                if accepted_reuse_target(self._prop_mapping.get((cls_qname, pq))):
+                    self._emit_property(model, cmf_cls, cls_qname, action,
+                                        pq, {}, is_object=False, emitted=emitted_props)
+
+    def _property_prefix(self, cls_action: str, prop_qname: str) -> str:
+        """The CMF namespace a created property is emitted under.
+
+        The augmentation records must name exactly the ids
+        `_emit_property` declares. The augment branch previously built its
+        refs with the EDGE prefix while the declaration side uses EXT for
+        every non-reuse action, so every augment record pointed at an id
+        the model does not contain.
+        """
+        return created_property_qname(
+            prop_qname, cls_action, self._source_prefix.rstrip(":"),
+            self._source_bindings, self._edge_prefix).split(":", 1)[0]
+
     def _emit_property(self, model: CmfModel, cmf_cls: CmfClass,
                        cls_qname: str, cls_action: str,
                        prop_qname: str, prop_data: dict,
@@ -326,29 +399,21 @@ class MatrixToCmfBuilder:
         prop_local = local_name(prop_qname)
 
         # Check for reuse-property mapping
-        pm = self._prop_mapping.get((cls_qname, prop_local))
-        if pm and pm.get("action") == "reuse-property":
-            if pm.get("targetProperty") and pm.get("reviewStatus") == "accepted":
-                # Property already exists on target — just reference it
-                target_prop = pm["targetProperty"]
-                target_id = self._qname_to_cmf_id(target_prop)
-                min_occ, max_occ = self._get_cardinality(cls_qname, prop_qname)
-                cmf_cls.properties.append(CmfHasProperty(
-                    property_ref=target_id,
-                    is_object=is_object,
-                    min_occurs=min_occ,
-                    max_occurs=max_occ,
-                ))
-                return
+        target_prop = accepted_reuse_target(self._prop_mapping.get((cls_qname, prop_qname)))
+        if target_prop:
+            # Property already exists on target — just reference it
+            target_id = self._qname_to_cmf_id(qualified_target_property(
+                target_prop, self._mapping_by_concept.get(cls_qname, {}).get("targetType")))
+            min_occ, max_occ = self._get_cardinality(cls_qname, prop_qname)
+            cmf_cls.properties.append(CmfHasProperty(
+                property_ref=target_id,
+                is_object=is_object,
+                min_occurs=min_occ,
+                max_occurs=max_occ,
+            ))
+            return
 
-        # Determine the CMF property prefix based on action
-        if not prop_qname.startswith(self._source_prefix):
-            prop_prefix = _qname_prefix(prop_qname)
-        elif cls_action == "reuse":
-            prop_prefix = self._edge_prefix
-        else:
-            prop_prefix = self._ext_prefix
-
+        prop_prefix = self._property_prefix(cls_action, prop_qname)
         prop_name = prop_local
         prop_id = _cmf_id(prop_prefix, prop_name)
 
@@ -383,18 +448,29 @@ class MatrixToCmfBuilder:
         ))
 
     def _resolve_range(self, ranges: list) -> str:
-        """Resolve object property range to a CMF class ref."""
-        for r in ranges:
+        """Resolve object property range to a CMF class ref.
+
+        The first range only, as the OWL emitter's `object_range_ref` reads
+        it: resolving a later one named a range the OWL left open.
+        """
+        for r in ranges[:1]:
             if r.startswith(_XSD_PREFIX) or r.startswith(_XSD_SHORT):
                 continue
-            if r.startswith(self._source_prefix):
+            if r.startswith(self._source_prefix) or r in self._class_by_qname:
                 mapped = self._map_source_class_ref(r)
                 if mapped:
                     return mapped
             else:
+                # A full IRI in a namespace the target catalog binds is
+                # grounded as the OWL emitter's `map_range_ref` grounds it,
+                # so both models name the same range.
+                grounded = target_qname(r, self.target_ns_map)
+                if grounded != r:
+                    return self._qname_to_cmf_id(grounded)
                 # External range — use as-is
                 prefix = _qname_prefix(r)
                 if prefix:
+                    prefix = self._source_bindings.get(prefix, (prefix, ""))[0]
                     return _cmf_id(prefix, local_name(r))
         return ""
 
@@ -406,24 +482,24 @@ class MatrixToCmfBuilder:
         return "xs.string"  # default
 
     def _map_source_class_ref(self, qname: str) -> str:
-        """Map a source class reference to a CMF class id via the mapping matrix."""
-        m = self._mapping_by_concept.get(qname)
-        if not m:
+        """Map a source class reference to a CMF class id via the mapping matrix.
+
+        An excluded class resolves through `range_class_for`, the redirect
+        the OWL emitter uses too.
+        """
+        emitted = range_class_for(qname, self._mapping_by_concept, self._class_by_qname)
+        if emitted is None:
             return ""
-        action = m["action"]
+        m = self._mapping_by_concept[emitted]
+        action = emitted_class_action(m)
         target = m.get("targetType")
 
         if action == "reuse" and target:
             return self._qname_to_cmf_id(target)
         elif action == "extend":
-            return _cmf_id(self._ext_prefix, edge_class_name(qname))
+            return _cmf_id(self._ext_prefix, edge_class_name(emitted))
         elif action == "augment" and target:
             return self._qname_to_cmf_id(target)
-        elif action == "exclude":
-            cls = self._class_by_qname.get(qname)
-            if cls and cls.get("subClassOf"):
-                parent = cls["subClassOf"][0]
-                return self._map_source_class_ref(parent)
         return ""
 
     def _get_cardinality(self, cls_qname: str, prop_qname: str) -> tuple:
@@ -445,6 +521,25 @@ class MatrixToCmfBuilder:
         edge_ns = self._find_namespace(model, self._edge_prefix)
         if not edge_ns:
             return
+        declared = {p.prop_id for p in model.properties}
+        # Only identical records are redundant. Different occurrences
+        # carry different source assertions and must not be selected by
+        # inventory order or silently merged into a new policy.
+        recorded = {(a.class_ref, a.property_ref, a.is_object, a.min_occurs, a.max_occurs)
+                    for a in edge_ns.augmentations}
+
+        def record(class_ref, property_ref, is_object, min_occurs, max_occurs):
+            key = (class_ref, property_ref, is_object, min_occurs, max_occurs)
+            if key in recorded:
+                return
+            recorded.add(key)
+            edge_ns.augmentations.append(CmfAugmentationRecord(
+                class_ref=class_ref,
+                property_ref=property_ref,
+                is_object=is_object,
+                min_occurs=min_occurs,
+                max_occurs=max_occurs,
+            ))
 
         # Reuse classes: new (non-reused) properties augment the target type
         for qname, target, _, _ in self._reuse:
@@ -457,16 +552,18 @@ class MatrixToCmfBuilder:
                 continue
 
             for hp in cmf_cls.properties:
-                # Skip reuse-property refs (they're already on the target)
-                prop_prefix = hp.property_ref.split(".")[0] if "." in hp.property_ref else ""
-                if prop_prefix == self._edge_prefix:
-                    edge_ns.augmentations.append(CmfAugmentationRecord(
-                        class_ref=target_id,
-                        property_ref=hp.property_ref,
-                        is_object=hp.is_object,
-                        min_occurs=hp.min_occurs,
-                        max_occurs=hp.max_occurs,
-                    ))
+                # Skip reuse-property refs (they're already on the target).
+                # A created property is one this model declares, whichever
+                # namespace it was emitted under: a property owned by an
+                # augmenting source namespace is declared under that
+                # namespace's prefix, not the edge prefix.
+                if hp.property_ref in declared:
+                    record(target_id, hp.property_ref, hp.is_object,
+                           hp.min_occurs, hp.max_occurs)
+
+        # A property only a shape names is never minted, but its accepted
+        # reuse augments the target type as a declared one's does.
+        shape_only = shape_only_class_properties(self.inventory)
 
         # Augment classes: all new properties augment the augmented type
         for qname, target, _, _, augmented in self._augment:
@@ -474,21 +571,54 @@ class MatrixToCmfBuilder:
             if not augmented_id:
                 continue
 
-            # Find properties assigned to this augment class
-            # (augment classes don't have a CmfClass, so we check assignment directly)
+            # Find properties assigned to this augment class. An augment
+            # class has no CmfClass (augmentation is transparent), so its
+            # created properties are declared here — without this they were
+            # referenced by every record and defined by none.
             m = self._mapping_by_concept.get(qname, {})
             for pm in m.get("propertyMappings") or []:
-                if pm.get("action") == "reuse-property":
-                    continue  # already on target
-                prop_local = local_name(pm.get("sourceProperty", ""))
-                prop_id = _cmf_id(self._edge_prefix, prop_local)
-                edge_ns.augmentations.append(CmfAugmentationRecord(
-                    class_ref=augmented_id,
-                    property_ref=prop_id,
-                    is_object=True,  # default; refined if property exists in inventory
-                    min_occurs=0,
-                    max_occurs="unbounded",
-                ))
+                # Resolve through the same reconciliation the property
+                # index uses. Reading the raw `sourceProperty` here meant a
+                # mis-qualified augmenting-namespace name failed the
+                # inventory lookup and the decision vanished silently.
+                prop_qname = self._resolve_prop_qname(pm.get("sourceProperty", ""), qname)
+                prop_data = (self._obj_by_qname.get(prop_qname)
+                             or self._dt_by_qname.get(prop_qname))
+                if prop_data is None and prop_qname not in shape_only.get(qname, []):
+                    continue  # not a property of the source inventory
+                is_object = prop_qname in self._obj_by_qname
+                target_prop = accepted_reuse_target(pm)
+                if target_prop:
+                    # Augment is selected when a match exists elsewhere in the
+                    # target ontology. Reference it; do not declare it again.
+                    min_occ, max_occ = self._get_cardinality(qname, prop_qname)
+                    record(augmented_id, self._qname_to_cmf_id(qualified_target_property(
+                               target_prop, self._mapping_by_concept.get(qname, {}).get("targetType"))),
+                           is_object, min_occ, max_occ)
+                    continue
+                if prop_data is None:
+                    continue  # a shape-only term is referenced, never minted
+                prop_prefix = self._property_prefix("augment", prop_qname)
+                prop_id = _cmf_id(prop_prefix, local_name(prop_qname))
+                if prop_id not in declared:
+                    declared.add(prop_id)
+                    model.properties.append(CmfProperty(
+                        prop_id=prop_id,
+                        name=local_name(prop_qname),
+                        namespace_ref=prop_prefix,
+                        documentation=prop_data.get("label", ""),
+                        is_object=is_object,
+                        class_ref=(self._resolve_range(prop_data.get("range", []))
+                                   if is_object else ""),
+                        datatype_ref=("" if is_object
+                                      else self._resolve_datatype(prop_data.get("range", []))),
+                    ))
+                # The occurrence the source asserts, not a hardcoded default.
+                min_occ, max_occ = self._get_cardinality(qname, prop_qname)
+                record(augmented_id, prop_id, is_object, min_occ, max_occ)
+
+        edge_ns.augmentations.sort(key=lambda a: (
+            a.class_ref, a.property_ref, a.is_object, a.min_occurs, a.max_occurs))
 
     # ------------------------------------------------------------------
     # Codelists
@@ -544,10 +674,16 @@ class MatrixToCmfBuilder:
     # ------------------------------------------------------------------
 
     def _qname_to_cmf_id(self, qname: str) -> str:
-        """Convert a qualified name (e.g. 'nc:PersonType') to CMF id ('nc.PersonType')."""
+        """Convert a qualified name (e.g. 'nc:PersonType') to CMF id ('nc.PersonType').
+
+        An accepted full IRI is grounded to its catalog QName first; the class
+        policy admits IRIs, so the emitter must carry them. An IRI outside the
+        catalog namespaces is left as-is for reference validation to report.
+        """
         if not qname:
             return ""
-        if ":" in qname and not qname.startswith("http"):
+        qname = target_qname(qname, self.target_ns_map)
+        if ":" in qname and not is_full_iri(qname):
             prefix, name = qname.split(":", 1)
             return _cmf_id(prefix, name)
         return qname

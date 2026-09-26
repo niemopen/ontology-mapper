@@ -260,3 +260,278 @@ class TestReconcileManifest:
 
     def test_returns_false_when_no_manifest(self, tmp_path):
         assert reconcile_manifest(tmp_path, _make_matrix([])) is False
+
+
+class TestStageTimingParsing:
+    """Durations must survive the `Z` format the pipeline actually writes.
+
+    The suite passed while `_load_stage_timings` used a bare
+    `datetime.fromisoformat`, which rejects a trailing `Z` before Python
+    3.11 and had its `ValueError` swallowed — so on a supported
+    interpreter every duration in `version-manifest.json` was silently
+    `null` and no test noticed.
+    """
+
+    @staticmethod
+    def _state(started, completed):
+        return {"stages": {"3": {"started_at": started, "completed_at": completed,
+                                 "status": "completed", "notes": "align"}}}
+
+    def test_z_form_yields_a_real_duration(self):
+        from ontology_mapper.finalize_package import _load_stage_timings
+
+        timings = _load_stage_timings(
+            self._state("2026-05-14T19:50:00Z", "2026-05-14T19:52:30Z"))
+        assert timings[0]["durationSeconds"] == 150.0
+
+    def test_mixed_z_and_offset_forms_agree(self):
+        """Legacy state files carry the `+00:00` form the web backend wrote."""
+        from ontology_mapper.finalize_package import _load_stage_timings
+
+        timings = _load_stage_timings(
+            self._state("2026-05-14T19:50:00+00:00", "2026-05-14T19:52:30Z"))
+        assert timings[0]["durationSeconds"] == 150.0
+
+    def test_out_of_order_stamps_are_unknown_not_negative(self):
+        from ontology_mapper.finalize_package import _load_stage_timings
+
+        timings = _load_stage_timings(
+            self._state("2026-05-14T19:52:30Z", "2026-05-14T19:50:00Z"))
+        assert timings[0]["durationSeconds"] is None
+
+    def test_total_duration_spans_the_run(self):
+        from ontology_mapper.finalize_package import _load_stage_timings, _total_duration
+
+        state = {"stages": {
+            "1": {"started_at": "2026-05-14T19:00:00Z",
+                  "completed_at": "2026-05-14T19:00:10Z", "status": "completed"},
+            "7": {"started_at": "2026-05-14T19:05:00Z",
+                  "completed_at": "2026-05-14T19:06:00Z", "status": "completed"},
+        }}
+        assert _total_duration(_load_stage_timings(state)) == 360.0
+
+    def test_unparseable_stamp_is_unknown(self):
+        from ontology_mapper.finalize_package import _load_stage_timings
+
+        timings = _load_stage_timings(self._state("not-a-time", "2026-05-14T19:52:30Z"))
+        assert timings[0]["durationSeconds"] is None
+
+    def test_rounding_does_not_hide_reversed_fractional_timestamps(self):
+        timings = _load_stage_timings(self._state("2026-09-14T12:00:00.010Z", "2026-09-14T12:00:00.000Z"))
+        assert timings[0]["durationSeconds"] is None
+        assert _total_duration(timings) is None
+
+    def test_invalid_endpoint_does_not_shorten_the_reported_total(self):
+        state = {"stages": {
+            "1": {"started_at": "invalid", "completed_at": "2026-09-14T12:00:10Z"},
+            "2": {"started_at": "2026-09-14T12:01:00Z", "completed_at": "2026-09-14T12:02:00Z"}}}
+        assert _total_duration(_load_stage_timings(state)) is None
+
+
+class TestFinalizeEndToEnd:
+    """`main()` itself, not its helpers: the freshness guard was referenced
+    there for a whole branch without being imported, so every run raised
+    NameError and Stage 8 published nothing at all."""
+
+    def _run_dir(self, tmp_path, validated=True):
+        from ontology_mapper.validate_edge_package import artifact_digests
+
+        run_dir = tmp_path / "run"
+        pkg = run_dir / "edge-package"
+        (pkg / "ontology").mkdir(parents=True)
+        (pkg / "ontology" / "core.ttl").write_text("# core", encoding="utf-8")
+        (pkg / "package-manifest.json").write_text(
+            json.dumps({"name": "sample-edge"}) + "\n", encoding="utf-8")
+        (run_dir / ".mapper-state.json").write_text(json.dumps({"inputs": {
+            "organization": "redvale", "source": "dbpi",
+            "target_ontology": "niem", "target_version": "6.0"}}), encoding="utf-8")
+        (run_dir / "mapping-matrix.json").write_text(json.dumps({"mappings": [
+            {"sourceConcept": "src:Permit", "action": "reuse",
+             "reviewStatus": "accepted", "targetType": "nc:PermitType"}]}),
+            encoding="utf-8")
+        # Stage 6b's copy, which Stage 7 digests and Stage 8 reads.
+        (pkg / "mappings").mkdir()
+        (pkg / "mappings" / "mapping-matrix.json").write_text(
+            (run_dir / "mapping-matrix.json").read_text(encoding="utf-8"), encoding="utf-8")
+        report = {"stage": "7", "allPassed": True,
+                  "checks": [{"check": "sample", "status": "pass"}]}
+        if validated:
+            report["validatedArtifacts"] = artifact_digests(pkg)
+        (run_dir / "validation-report.json").write_text(
+            json.dumps(report), encoding="utf-8")
+        return run_dir, pkg
+
+    def _finalize(self, run_dir, monkeypatch):
+        import sys
+        from ontology_mapper import finalize_package
+
+        monkeypatch.setattr(sys, "argv",
+                            ["om-finalize", "--run-dir", str(run_dir)])
+        try:
+            finalize_package.main()
+        except SystemExit as exc:
+            return exc.code
+        return 0
+
+    def test_finalize_publishes_the_governance_artifacts(self, tmp_path, monkeypatch):
+        run_dir, pkg = self._run_dir(tmp_path)
+        assert self._finalize(run_dir, monkeypatch) == 0
+        gov = pkg / "governance"
+        assert (gov / "version-manifest.json").exists()
+        assert (gov / "lineage-manifest.json").exists()
+        assert (gov / "validation-report.json").exists()
+        assert (gov / "change-impact.md").exists()
+        assert json.loads((pkg / "package-manifest.json")
+                          .read_text(encoding="utf-8"))["finalizedAt"]
+
+    def test_a_second_finalize_does_not_refuse_its_own_first_run(self, tmp_path, monkeypatch):
+        run_dir, _ = self._run_dir(tmp_path)
+        assert self._finalize(run_dir, monkeypatch) == 0
+        assert self._finalize(run_dir, monkeypatch) == 0
+
+    def test_a_package_rewritten_after_validation_is_refused(self, tmp_path, monkeypatch, capsys):
+        run_dir, pkg = self._run_dir(tmp_path)
+        (pkg / "ontology" / "core.ttl").write_text("# regenerated", encoding="utf-8")
+        assert self._finalize(run_dir, monkeypatch) == 1
+        assert "core.ttl" in capsys.readouterr().out
+
+    def test_a_missing_package_is_refused_for_what_it_is(self, tmp_path, monkeypatch, capsys):
+        """No package directory: the refusal must not claim a file changed
+        after validation, which sends the operator to re-validate files
+        that are not there."""
+        import shutil
+        run_dir, pkg = self._run_dir(tmp_path)
+        shutil.rmtree(pkg)
+        assert self._finalize(run_dir, monkeypatch) == 1
+        out = capsys.readouterr().out
+        assert f"does not cover {pkg}" in out
+        assert "before that file changed" not in out
+
+    def test_a_package_whose_validation_failed_is_not_published(self, tmp_path, monkeypatch, capsys):
+        """`--from-stage 8` after a failed Stage 7: the report covers the
+        package, and it failed, so nothing is stamped or published."""
+        run_dir, pkg = self._run_dir(tmp_path)
+        report = json.loads((run_dir / "validation-report.json").read_text(encoding="utf-8"))
+        report.update(allPassed=False, failCount=1, checks=[
+            {"check": "turtle-syntax", "status": "FAIL", "details": "parse error"}])
+        (run_dir / "validation-report.json").write_text(json.dumps(report), encoding="utf-8")
+        assert self._finalize(run_dir, monkeypatch) == 1
+        assert "turtle-syntax" in capsys.readouterr().out
+        assert not (pkg / "governance").exists()
+        assert "finalizedAt" not in json.loads((pkg / "package-manifest.json").read_text(encoding="utf-8"))
+
+    def test_the_published_stats_come_from_the_validated_matrix(self, tmp_path, monkeypatch):
+        """Stage 7 validates and digests the package's copy of the matrix;
+        the run directory's copy is outside the digest. Reading that one
+        first published statistics nobody validated."""
+        from ontology_mapper.validate_edge_package import artifact_digests
+
+        run_dir, pkg = self._run_dir(tmp_path)
+        # Edited after validation, in the copy no digest covers.
+        (run_dir / "mapping-matrix.json").write_text(json.dumps({"mappings": [
+            {"sourceConcept": "src:Permit", "action": "exclude"}]}), encoding="utf-8")
+
+        assert self._finalize(run_dir, monkeypatch) == 0
+        stats = json.loads((pkg / "package-manifest.json").read_text(encoding="utf-8"))["stats"]
+        assert stats["actionCounts"] == {"reuse": 1}
+
+    def test_a_package_without_its_matrix_is_not_published_from_the_run_copy(
+            self, tmp_path, monkeypatch, capsys):
+        """The run directory's copy is outside the digest: falling back to it
+        when the package lacks its own published statistics from data no
+        validation covered."""
+        from ontology_mapper.validate_edge_package import artifact_digests
+
+        run_dir, pkg = self._run_dir(tmp_path)
+        (pkg / "mappings" / "mapping-matrix.json").unlink()
+        (pkg / "mappings").rmdir()
+        report = json.loads((run_dir / "validation-report.json").read_text(encoding="utf-8"))
+        report["validatedArtifacts"] = artifact_digests(pkg)
+        (run_dir / "validation-report.json").write_text(json.dumps(report), encoding="utf-8")
+        assert self._finalize(run_dir, monkeypatch) == 1
+        assert "lacks the matrix" in capsys.readouterr().out
+        assert "finalizedAt" not in json.loads((pkg / "package-manifest.json").read_text(encoding="utf-8"))
+
+    def test_a_manifest_edited_after_validation_is_refused(self, tmp_path, monkeypatch, capsys):
+        """The manifest was outside the digest, so a namespace edited after
+        validation was published as finalized."""
+        run_dir, pkg = self._run_dir(tmp_path)
+        (pkg / "package-manifest.json").write_text(json.dumps(
+            {"name": "sample-edge", "edgeNamespace": "https://tampered.example/edge#"}),
+            encoding="utf-8")
+        assert self._finalize(run_dir, monkeypatch) == 1
+        assert "package-manifest.json" in capsys.readouterr().out
+        assert not (pkg / "governance").exists()
+
+    def test_a_package_without_its_manifest_is_not_published(self, tmp_path, monkeypatch, capsys):
+        """Validated without one: finalizing reported a package whose manifest
+        carried no stamp at all."""
+        from ontology_mapper.validate_edge_package import artifact_digests
+
+        run_dir, pkg = self._run_dir(tmp_path)
+        (pkg / "package-manifest.json").unlink()
+        report = json.loads((run_dir / "validation-report.json").read_text(encoding="utf-8"))
+        report["validatedArtifacts"] = artifact_digests(pkg)
+        (run_dir / "validation-report.json").write_text(json.dumps(report), encoding="utf-8")
+        assert self._finalize(run_dir, monkeypatch) == 1
+        assert "no package-manifest.json" in capsys.readouterr().out
+        assert not (pkg / "governance").exists()
+
+    def test_the_change_impact_reports_the_validated_audit(self, tmp_path, monkeypatch):
+        """The run directory's audit is outside the digest; reading it put
+        warnings nobody validated into the published change-impact report."""
+        run_dir, pkg = self._run_dir(tmp_path)
+        (run_dir / "generation-audit.json").write_text(json.dumps({"findings": [
+            {"severity": "warning", "concept": "src:Permit", "message": "Injected"}]}),
+            encoding="utf-8")
+        assert self._finalize(run_dir, monkeypatch) == 0
+        assert "Injected" not in (pkg / "governance" / "change-impact.md").read_text(encoding="utf-8")
+
+    def test_the_published_version_is_withdrawn_with_the_stamp(self, tmp_path, monkeypatch):
+        from ontology_mapper.validate_edge_package import (
+            DRAFT_VERSION, FINAL_VERSION, withdraw_stage_8_outputs)
+
+        run_dir, pkg = self._run_dir(tmp_path)
+        assert self._finalize(run_dir, monkeypatch) == 0
+        manifest = json.loads((pkg / "package-manifest.json").read_text(encoding="utf-8"))
+        assert manifest["version"] == FINAL_VERSION
+        withdraw_stage_8_outputs(pkg)
+        manifest = json.loads((pkg / "package-manifest.json").read_text(encoding="utf-8"))
+        assert "finalizedAt" not in manifest
+        assert manifest["version"] == DRAFT_VERSION
+
+    def test_a_report_without_digests_survives_its_own_finalize(self, tmp_path, monkeypatch):
+        """Round 19: a pre-digest report falls back to the clock, and once the
+        manifest was validated, Stage 8's own rewrite of it read as a change,
+        so every second finalize was refused."""
+        import os
+        from ontology_mapper.validate_edge_package import stale_against_package
+
+        run_dir, pkg = self._run_dir(tmp_path, validated=False)
+        report = run_dir / "validation-report.json"
+        old = report.stat().st_mtime_ns - 10**9
+        for p in pkg.rglob("*"):
+            if p.is_file():
+                os.utime(p, ns=(old, old))
+        assert self._finalize(run_dir, monkeypatch) == 0
+        assert stale_against_package(report, pkg) is None
+        assert self._finalize(run_dir, monkeypatch) == 0
+
+    @pytest.mark.parametrize("checks", [[], [{"check": "x", "status": "FAIL"}], [1], None])
+    def test_a_report_that_certifies_no_pass_is_not_published(self, tmp_path, monkeypatch, checks):
+        """Copilot 2026-09-26: Stage 8 read `allPassed` alone, so a report
+        with no checks, a failing check or a malformed entry was published
+        (or raised) when `--from-stage 8` skipped the stage verifier."""
+        run_dir, pkg = self._run_dir(tmp_path)
+        report_path = run_dir / "validation-report.json"
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        report["checks"] = checks
+        report_path.write_text(json.dumps(report), encoding="utf-8")
+        assert self._finalize(run_dir, monkeypatch) == 1
+        assert not (pkg / "governance").exists()
+
+    def test_a_package_stage_7_never_validated_is_not_published(self, tmp_path, monkeypatch):
+        run_dir, pkg = self._run_dir(tmp_path)
+        (run_dir / "validation-report.json").unlink()
+        assert self._finalize(run_dir, monkeypatch) == 1
+        assert not (pkg / "governance").exists()

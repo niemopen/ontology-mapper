@@ -6,7 +6,7 @@ selected by call_structured_async() per OM_LLM_PROVIDER; this module
 doesn't care which one runs.
 """
 
-from datetime import datetime, timezone
+from ontology_mapper.run_dir_utils import utc_stamp
 from typing import NamedTuple, Optional
 
 from orchestrator_service.prompts import build_type_prompt, build_property_prompt
@@ -104,7 +104,7 @@ async def evaluate_file(
     eff_model = _rm(eff_provider, model)
 
     # Add provenance metadata (not part of LLM output — added post-validation)
-    evaluation["evaluatedAt"] = datetime.now(timezone.utc).isoformat()
+    evaluation["evaluatedAt"] = utc_stamp()
     evaluation["evaluatedBy"] = f"{eff_provider}:{eff_model}"
     evaluation["candidateCount"] = len(file_doc.get("candidates", []))
 

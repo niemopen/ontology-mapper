@@ -12,7 +12,7 @@ are available for manual use outside the automated runner.
 
 import json
 from pathlib import Path
-from datetime import datetime, timezone
+from ontology_mapper.run_dir_utils import utc_stamp
 
 from ontology_mapper.run_dir_utils import resolve_run_dir
 
@@ -99,11 +99,14 @@ def get_pending_property_items(entry):
     - must_decide_props: human-must-decide (evaluator could not choose)
     """
     props = entry.get("propertyMappings") or []
-    pending = [p for p in props if p.get("reviewStatus") == "pending-review"]
+    # Undecided whatever its status (`property_undecided`): a reuse accepted
+    # without a target is listed here, not under "Already decided".
+    must_decide = [p for p in props if property_undecided(p)]
+    pending = [p for p in props
+               if p.get("reviewStatus") == "pending-review" and not property_undecided(p)]
 
     reuse = [p for p in pending if p["action"] == "reuse-property"]
     create = [p for p in pending if p["action"] == "create-property"]
-    must_decide = [p for p in pending if p["action"] == "human-must-decide"]
 
     return reuse, create, must_decide
 
@@ -124,7 +127,8 @@ def format_property_review(entry):
     concept = entry["sourceConcept"]
 
     reuse_props, create_props, must_decide_props = get_pending_property_items(entry)
-    decided = [p for p in props if p.get("reviewStatus") != "pending-review"]
+    decided = [p for p in props
+               if p.get("reviewStatus") != "pending-review" and not property_undecided(p)]
 
     lines = [f"\n  Property mappings for {concept} ({len(props)} total):"]
 
@@ -173,7 +177,70 @@ def format_property_review(entry):
     return "\n".join(lines)
 
 
-def apply_property_decision(entry, source_property, decision):
+# The two decisions a reviewer can make about a property.
+PROPERTY_DECISION_ACTIONS = ("reuse-property", "create-property")
+
+
+def property_undecided(prop):
+    """Does this property still need a human decision?
+
+    One home for Stage 5's exit gate and every count and view of blocking
+    properties (CLI and web). A property is decided only by the two
+    decisions review can make: ``create-property``, or ``reuse-property``
+    with a real target (the one the emitters reuse, `accepted_reuse_target`).
+    Everything else is undecided: ``human-must-decide``, a reuse without a
+    target, and any other action string. Listing the undecided cases
+    instead let an unlisted action ("create", "exclude") close review.
+    """
+    from ontology_mapper.generation_utils import real_target_property
+
+    action = prop.get("action")
+    if action == "create-property":
+        return False
+    if action == "reuse-property":
+        return real_target_property(prop.get("targetProperty")) is None
+    return True
+
+
+def undecided_properties(entries):
+    """``[{"concept", "property"}]`` for every undecided property of *entries*.
+
+    A ``propertyMappings`` of the wrong shape raises rather than reading as
+    "no properties": the exit gate reports such a matrix as unreadable,
+    since Stage 6 could not read it either.
+    """
+    return [{"concept": e["sourceConcept"], "property": p["sourceProperty"]}
+            for e in entries
+            for p in e.get("propertyMappings", [])
+            if property_undecided(p)]
+
+
+def find_mapping_entry(entries, concept_ref):
+    """The mapping entry a reviewer named, as ``(entry, candidates)``.
+
+    One home for the CLI review and the web routes. An exact QName wins;
+    otherwise a local name must name exactly one entry, case-sensitively
+    first, then case-insensitively. When the name fits several entries,
+    ``entry`` is None and ``candidates`` lists them: picking the first let
+    "Person" rewrite an accepted decision on ``a:Person`` when the reviewer
+    meant ``b:Person``. ``candidates`` is empty when nothing matches.
+    """
+    entries = list(entries)
+    for e in entries:
+        if e.get("sourceConcept") == concept_ref:
+            return e, [concept_ref]
+    suffix = f":{concept_ref}"
+    for fold in (lambda s: s, str.lower):
+        matches = [e for e in entries
+                   if fold(e.get("sourceConcept", "")).endswith(fold(suffix))]
+        if len(matches) == 1:
+            return matches[0], [matches[0]["sourceConcept"]]
+        if matches:
+            return None, sorted(e["sourceConcept"] for e in matches)
+    return None, []
+
+
+def apply_property_decision(entry, source_property, decision, catalog):
     """Apply a human review decision to a single property mapping.
 
     Args:
@@ -182,17 +249,37 @@ def apply_property_decision(entry, source_property, decision):
         decision: Dict with keys: action (reuse-property or create-property),
                   targetProperty (optional), notes (optional),
                   confidence (optional, defaults to "confident").
+        catalog: The run's reference catalog. The decision's target
+                  definition and fingerprint are taken from it
+                  (`generation_utils.refingerprint_property`), so Stage 7
+                  Check 12 compares against the target the reviewer chose.
 
     Returns True if the property was found and updated, False otherwise.
+    Raises `PropertyTargetError`, leaving the entry untouched, when the
+    decision reuses a target the catalog does not list: as for a class
+    target, the choice is refused when made, not at Stage 7.
     """
+    from ontology_mapper.generation_utils import (
+        PropertyTargetError, missing_reuse_target, refingerprint_property)
+
     for p in (entry.get("propertyMappings") or []):
         if p["sourceProperty"] == source_property:
+            proposed = {"action": decision["action"],
+                        "targetProperty": decision.get("targetProperty", p.get("targetProperty"))}
+            missing = missing_reuse_target(proposed, entry.get("targetType"), catalog)
+            if missing:
+                raise PropertyTargetError(
+                    f"{missing} is not a property in this run's reference catalog; "
+                    f"reuse a property it lists, or create-property")
             p["action"] = decision["action"]
             p["reviewStatus"] = "accepted"
             p["confidence"] = decision.get("confidence", "confident")
             p["confidenceExplicit"] = True
             if "targetProperty" in decision:
                 p["targetProperty"] = decision["targetProperty"]
+            # The fingerprint follows the target now named; a definition the
+            # decision supplies still describes it for display.
+            refingerprint_property(p, entry.get("targetType"), catalog)
             if "targetDefinition" in decision:
                 p["targetDefinition"] = decision["targetDefinition"]
             if "targetType" in decision:
@@ -206,22 +293,24 @@ def apply_property_decision(entry, source_property, decision):
 def apply_all_property_accepts(entry, confidence="confident"):
     """Accept all pending property mappings for a class entry.
 
-    Skips human-must-decide properties — those cannot be bulk-accepted
-    and must be resolved individually. Also cascades confidence to
+    Skips undecided properties (`property_undecided`) - those cannot be
+    bulk-accepted and must be resolved individually - whatever their status,
+    so the count is what the exit gate still blocks on. Deciding by action
+    here accepted a pending reuse without a target and reported nothing
+    skipped while review stayed blocked. Also cascades confidence to
     already-accepted properties that weren't explicitly set by the user.
 
-    Returns (accepted_count, skipped_must_decide_count).
+    Returns (accepted_count, undecided_count).
     """
     accepted = 0
     skipped = 0
     for p in (entry.get("propertyMappings") or []):
-        if p.get("reviewStatus") == "pending-review":
-            if p.get("action") == "human-must-decide":
-                skipped += 1
-            else:
-                p["reviewStatus"] = "accepted"
-                p["confidence"] = confidence
-                accepted += 1
+        if property_undecided(p):
+            skipped += 1
+        elif p.get("reviewStatus") == "pending-review":
+            p["reviewStatus"] = "accepted"
+            p["confidence"] = confidence
+            accepted += 1
         elif p.get("reviewStatus") == "accepted" and not p.get("confidenceExplicit"):
             # Cascade type-level confidence to properties the user didn't explicitly set
             p["confidence"] = confidence
@@ -290,9 +379,36 @@ def apply_decision_with_cascade(entry, decision, target_ontology, catalog):
         catalog: Reference catalog dict.
     """
     old_target = entry.get("targetType")
-    new_target = decision.get("targetType")
+    changed = False
+    if "targetType" in decision:
+        from ontology_mapper.ontology_specific import (
+            ClassTargetError,
+            canonical_class_target,
+        )
+        # Compare identities, not spellings: the stored form and the
+        # selection are the same target when they canonicalize alike (a
+        # legacy full IRI against its catalog QName), and the accepted form
+        # is always the canonical one. A stored target the policy now
+        # rejects is compared as written; the selection replaces it.
+        new_target = canonical_class_target(decision["targetType"], target_ontology, catalog)
+        try:
+            old_canonical = canonical_class_target(old_target, target_ontology, catalog)
+        except ClassTargetError:
+            old_canonical = old_target
+        decision = {**decision, "targetType": new_target}
+        changed = new_target != old_canonical
+        if not changed:
+            # Re-accepting the same class is the reviewer's obvious move
+            # when a blocker names stored scaffolding, and a plain apply
+            # does not rebuild scaffolding: without this the rejected
+            # `baseType`/`augmentsType` survives the repair and blocks
+            # review exit again, with no reviewer action that clears it.
+            from ontology_mapper.ontology_specific import invalid_class_targets
+            candidate = {**entry, "targetType": new_target}
+            changed = bool(invalid_class_targets(
+                {"mappings": [candidate]}, target_ontology, catalog))
 
-    if "targetType" in decision and new_target != old_target:
+    if changed:
         from ontology_mapper.ontology_specific import (
             reclassify_for_target_type_change,
         )
@@ -305,6 +421,14 @@ def apply_decision_with_cascade(entry, decision, target_ontology, catalog):
             entry["notes"] = decision["notes"]
     else:
         apply_decision(entry, decision)
+        if "targetType" in decision:
+            # Selecting the class the entry already targets is an approval of
+            # that mapping, so it means what approve means in every driver:
+            # the class and its property decisions are accepted together.
+            # Accepting the class alone left its properties pending, which
+            # the web's exit gate allows and generation reads as "no accepted
+            # reuse" — a reviewed NIEM reuse emitted as a created property.
+            apply_all_property_accepts(entry, confidence=entry["confidence"])
 
 
 def apply_accept(entry):
@@ -368,7 +492,7 @@ def validate_property_decision(prop):
     action = prop.get("action")
 
     if action == "reuse-property":
-        if not prop.get("targetProperty"):
+        if property_undecided(prop):
             issues.append("reuse-property requires targetProperty")
 
     elif action == "create-property":
@@ -403,7 +527,7 @@ def save_decisions(run_dir, decisions):
                    sourceConcept, action. Optional: targetType, notes.
     """
     path = run_dir / DECISIONS_FILENAME
-    now = datetime.now(timezone.utc).isoformat()
+    now = utc_stamp()
 
     # Add reviewedAt to each new decision
     for d in decisions:
@@ -541,7 +665,7 @@ def save_matrix(run_dir, matrix, dec_log, applied_decisions):
 
     # Recompute summary and finalize
     recompute_summary(matrix)
-    matrix["humanReviewApplied"] = datetime.now(timezone.utc).isoformat()
+    matrix["humanReviewApplied"] = utc_stamp()
     matrix["mappings"] = sorted(matrix["mappings"], key=lambda m: m["sourceConcept"])
 
     # Write files
@@ -586,8 +710,13 @@ def group_by_action(pending_items):
 # ---------------------------------------------------------------------------
 # Stage 5 Completion (shared between CLI and web)
 # ---------------------------------------------------------------------------
-def check_stage_5_exit(matrix):
+def check_stage_5_exit(matrix, cascade):
     """Check whether Stage 5 exit criteria are met.
+
+    ``cascade`` is the ``(target_ontology, catalog)`` pair the class-target
+    policy needs; every caller has it, so an accepted decision saved before
+    the policy existed cannot leave review unexamined just because the
+    reviewer made no selection this session.
 
     Returns (can_exit, blockers) where blockers is a list of strings
     describing what still needs resolution.
@@ -597,16 +726,28 @@ def check_stage_5_exit(matrix):
     if pending:
         blockers.append(f"{len(pending)} concepts still pending review")
 
-    must_decide = []
-    for entry in matrix.get("mappings", []):
-        for prop in entry.get("propertyMappings", []):
-            if prop.get("action") == "human-must-decide" and prop.get("reviewStatus") == "pending-review":
-                must_decide.append({
-                    "concept": entry["sourceConcept"],
-                    "property": prop["sourceProperty"],
-                })
+    must_decide = undecided_properties(matrix.get("mappings", []))
     if must_decide:
-        blockers.append(f"{len(must_decide)} properties require human decision")
+        # Named, so a resumed CLI session can resolve them without a hunt.
+        blockers.append(f"{len(must_decide)} properties require human decision: "
+                        + ", ".join(f"{m['concept']} {m['property']}" for m in must_decide))
+
+    from ontology_mapper.ontology_specific import invalid_class_targets
+
+    target_ontology, catalog = cascade
+    for concept, target, message in invalid_class_targets(matrix, target_ontology, catalog):
+        blockers.append(f"{concept}: {message}")
+
+    # A reused property target the catalog lacks, saved before selection
+    # checked it (or edited in): Stage 7 Check 12 would fail it, after
+    # review can no longer be reopened.
+    from ontology_mapper.generation_utils import missing_reuse_target
+    for m in matrix.get("mappings", []):
+        for p in m.get("propertyMappings") or []:
+            missing = missing_reuse_target(p, m.get("targetType"), catalog)
+            if missing:
+                blockers.append(f"{m['sourceConcept']} {p.get('sourceProperty')}: "
+                                f"target property {missing} is not in the reference catalog")
 
     return len(blockers) == 0, blockers
 
@@ -614,7 +755,14 @@ def check_stage_5_exit(matrix):
 def complete_stage_5(run_dir):
     """Run post-review completion steps for Stage 5.
 
-    Assumes exit criteria have already been checked via check_stage_5_exit().
+    The exit criteria are enforced here rather than assumed. The web
+    presents them through `stage_5_gate` before it asks; the CLI review
+    loop has no gate of its own, and its own stage verification reads
+    pending status only. Marking the stage complete is the boundary both
+    drivers share, so the one exit predicate answers here for both. A
+    catalog that will not load leaves the saved class targets unproven,
+    which blocks exit for the same reason it does in the web gate.
+
     Runs residual entropy calculation and marks the stage complete.
 
     Returns (success, error_message).
@@ -622,6 +770,23 @@ def complete_stage_5(run_dir):
     import subprocess
 
     run_dir = Path(run_dir)
+    try:
+        # The matrix alone, not `load_inputs`: the exit criteria never
+        # consult the decision log, and naming it in a failure message
+        # would point the operator at the wrong file. Reading it and
+        # asking the question sit together inside the guard because a
+        # matrix edited outside review — the premise this check exists
+        # for — is exactly the input whose shape may not hold.
+        matrix = json.loads(
+            (run_dir / "mapping-matrix.json").read_text(encoding="utf-8"))
+        can_exit, blockers = check_stage_5_exit(matrix,
+                                                load_cascade_context(run_dir))
+    except Exception as exc:
+        return False, f"Stage 5 exit criteria could not be checked: {exc}"
+    if not can_exit:
+        return False, ("Stage 5 exit criteria not met:\n  - "
+                       + "\n  - ".join(blockers))
+
     env = {**__import__("os").environ}
 
     # Residual entropy
@@ -651,8 +816,29 @@ def _prop_counts(entry):
     props = entry.get("propertyMappings") or []
     reuse = sum(1 for p in props if p.get("action") == "reuse-property")
     create = sum(1 for p in props if p.get("action") == "create-property")
-    must_decide = sum(1 for p in props if p.get("action") == "human-must-decide")
+    must_decide = sum(1 for p in props if property_undecided(p))
     return len(props), reuse, create, must_decide
+
+
+def approve_all_blockers(matrix):
+    """The undecided properties that block approve-all: those of the pending
+    concepts it would approve. One home for the web route, the page's
+    Approve All button (GET /review ``approveAllBlocked``) and both CLI
+    paths; the page counted every undecided property, so it disabled the
+    button for an approve-all the route would perform."""
+    return undecided_properties(get_pending_items(matrix))
+
+
+def _undecided_blocker_lines(matrix):
+    """Lines naming the undecided properties that still block Stage 5 when
+    no concept is pending: "No items pending review" read as review done
+    while the exit check still refused."""
+    undecided = undecided_properties(matrix.get("mappings", []))
+    if not undecided:
+        return []
+    return ([f"No concepts pending review, but {len(undecided)} undecided properties still block Stage 5:"]
+            + [f"  {u['concept']} {u['property']}" for u in undecided]
+            + ["Resolve them in the Stage 5 review loop (run_pipeline) or the web review page."])
 
 
 def _cmd_present(args):
@@ -661,7 +847,7 @@ def _cmd_present(args):
     pending = get_pending_items(matrix)
 
     if not pending:
-        print("No items pending review.")
+        print("\n".join(_undecided_blocker_lines(matrix)) or "No items pending review.")
         return
 
     groups = group_by_action(pending)
@@ -704,7 +890,7 @@ def _cmd_present(args):
     ]
     reuse_props = sum(1 for p in all_props if p.get("action") == "reuse-property")
     create_props = sum(1 for p in all_props if p.get("action") == "create-property")
-    must_decide_props = sum(1 for p in all_props if p.get("action") == "human-must-decide")
+    must_decide_props = sum(1 for p in all_props if property_undecided(p))
     total_props = len(all_props)
 
     summary = matrix.get("summary", {})
@@ -738,19 +924,13 @@ def _cmd_detail(args):
     # Also check non-pending items so detail works after accept
     all_entries = {m["sourceConcept"]: m for m in matrix["mappings"]}
 
-    # Try exact match, then suffix match
-    entry = all_entries.get(args.concept)
+    entry, candidates = find_mapping_entry(all_entries.values(), args.concept)
     if not entry:
-        suffix = f":{args.concept}"
-        matches = [e for qname, e in all_entries.items() if qname.endswith(suffix)]
-        if len(matches) == 1:
-            entry = matches[0]
-        elif len(matches) > 1:
-            print(f"Ambiguous: {args.concept} matches {[m['sourceConcept'] for m in matches]}")
-            return
+        if len(candidates) > 1:
+            print(f"Ambiguous: {args.concept} matches {candidates}")
         else:
             print(f"Not found: {args.concept}")
-            return
+        return
 
     print(f"\n  {entry['sourceConcept']}")
     print(format_review_item(entry))
@@ -762,25 +942,20 @@ def _cmd_detail(args):
 def _cmd_accept_all(args):
     """Accept all pending items as-is and save.
 
-    Refuses to run if any human-must-decide properties exist — those must
-    be resolved individually first.
+    Refuses to run if any undecided properties exist — those must be
+    resolved individually first.
     """
     run_dir, matrix, dec_log = load_inputs(args.run_dir)
     pending = get_pending_items(matrix)
 
     if not pending:
-        print("No items pending review.")
+        print("\n".join(_undecided_blocker_lines(matrix)) or "No items pending review.")
         return
 
-    # Block accept-all if any human-must-decide properties remain
-    must_decide_count = sum(
-        1 for entry in pending
-        for p in (entry.get("propertyMappings") or [])
-        if p.get("action") == "human-must-decide"
-        and p.get("reviewStatus") == "pending-review"
-    )
+    # Block accept-all if any undecided properties remain
+    must_decide_count = len(approve_all_blockers(matrix))
     if must_decide_count:
-        print(f"Cannot approve-all: {must_decide_count} human-must-decide "
+        print(f"Cannot approve-all: {must_decide_count} undecided "
               f"properties must be resolved individually first.")
         return
 
@@ -841,15 +1016,14 @@ def _cmd_accept(args):
     """Accept a single concept's current recommendation and save."""
     run_dir, matrix, dec_log = load_inputs(args.run_dir)
 
-    target_entry = None
-    for m in matrix["mappings"]:
-        if m["sourceConcept"] == args.concept:
-            target_entry = m
-            break
-
+    target_entry, candidates = find_mapping_entry(matrix["mappings"], args.concept)
     if target_entry is None:
-        print(f"Error: concept '{args.concept}' not found in mapping matrix.")
+        if len(candidates) > 1:
+            print(f"Error: concept '{args.concept}' is ambiguous: {candidates}")
+        else:
+            print(f"Error: concept '{args.concept}' not found in mapping matrix.")
         raise SystemExit(1)
+    args.concept = target_entry["sourceConcept"]
 
     if target_entry.get("reviewStatus") != "pending-review":
         print(f"Concept '{args.concept}' is not pending review (status: {target_entry.get('reviewStatus')}).")
@@ -869,7 +1043,7 @@ def _cmd_accept(args):
     save_matrix(run_dir, matrix, dec_log, applied)
     print(f"Approved: {args.concept} ({target_entry['action']})")
     if skipped:
-        print(f"  *** {skipped} human-must-decide properties were NOT approved ***")
+        print(f"  *** {skipped} undecided properties were NOT approved ***")
         print(f"  *** These must be resolved individually ***")
 
 

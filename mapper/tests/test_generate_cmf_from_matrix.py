@@ -142,9 +142,143 @@ def _build(matrix, inventory, ctx=None, target_ns_map=None):
     return builder.build()
 
 
+def test_explicit_domain_and_subclass_shape_keep_both_reviewed_occurrences():
+    from rdflib import Graph, RDFS, OWL, URIRef
+    from .test_generate_edge_ontology import TestNiemOWLPatterns
+
+    inv = _make_inventory(
+        classes=[_make_class("src:A"), _make_class("src:B", sub_class_of=["src:A"])],
+        dt_props=[_make_dt_prop("src:code", domain=["src:A"])],
+        shapes=[_make_shape("src:B", [_make_shape_prop("src:code", 1, 1)])])
+    matrix = _make_matrix([_make_mapping(q, "reuse", target, property_mappings=[
+        _make_prop_mapping("src:code", "reuse-property", "nc:CodeText")])
+        for q, target in [("src:A", "nc:BaseType"), ("src:B", "nc:SpecialType")]])
+    [b] = [cls for cls in _build(matrix, inv).classes if cls.name == "BType"]
+    assert [(p.property_ref, p.min_occurs, p.max_occurs) for p in b.properties] == [("nc.CodeText", 1, "1")]
+    files = TestNiemOWLPatterns._run_generation(inv, matrix)
+    graph = Graph().parse(data=files["test-edge-core.ttl"], format="turtle")
+    b_ref = URIRef("http://testorg.gov/test/edge#BType")
+    assert any(graph.value(r, OWL.onProperty) is not None for r in graph.objects(b_ref, RDFS.subClassOf))
+
+
+@pytest.mark.parametrize("action", ["reuse", "extend", "augment"])
+@pytest.mark.parametrize("collision", [False, True])
+@pytest.mark.parametrize("object_property", [False, True])
+def test_source_and_target_namespace_identities_agree_in_both_formats(action, collision, object_property):
+    from rdflib import Graph, RDFS, SH, OWL, URIRef
+    from .test_generate_edge_ontology import TestNiemOWLPatterns
+
+    target_uri = "https://example.org/target-nc/"
+    source_uri = "https://example.org/source-nc/" if collision else target_uri
+    inv = _make_inventory(classes=[_make_class("src:X")],
+        dt_props=[_make_dt_prop("nc:custom", domain=["src:X"]), _make_dt_prop("src:standard", domain=["src:X"])],
+        shapes=[_make_shape("src:X", [_make_shape_prop("nc:custom", 1, 1), _make_shape_prop("src:standard")])])
+    if object_property:
+        inv["datatypeProperties"] = inv["datatypeProperties"][1:]
+        inv["objectProperties"] = [_make_obj_prop("nc:custom", domain=["src:X"], range_list=["nc:OtherType"])]
+    inv["namespaceMap"] = {source_uri: "nc:"}
+    inv["augmentingNamespaces"] = [{"prefix": "nc", "namespace": source_uri}]
+    matrix = _make_matrix([_make_mapping("src:X", action, "nc:BaseType", property_mappings=[
+        _make_prop_mapping("nc:custom"), _make_prop_mapping("src:standard", "reuse-property", "nc:KnownText")])])
+    model = _build(matrix, inv, target_ns_map={"nc": target_uri})
+    namespaces = {ns.ns_id: ns.uri for ns in model.namespaces}
+    assert namespaces["nc"] == target_uri
+    [created] = model.properties
+    assert namespaces[created.namespace_ref] + created.name == source_uri + "custom"
+    if object_property:
+        prefix, local = created.class_ref.split(".", 1)
+        assert namespaces[prefix] + local == source_uri + "OtherType"
+    refs = [p.property_ref for cls in model.classes for p in cls.properties]
+    refs += [a.property_ref for ns in model.namespaces for a in ns.augmentations]
+    assert created.prop_id in refs and "nc.KnownText" in refs
+
+    files = TestNiemOWLPatterns._run_generation(inv, matrix, catalog={"namespaces": {"nc": target_uri}})
+    graph = Graph()
+    for name in ("test-edge-core.ttl", "test-edge-extensions.ttl", "test-edge-shapes.ttl"):
+        graph.parse(data=files[name], format="turtle")
+    assert (URIRef(source_uri + "custom"), None, None) in graph
+    assert URIRef(source_uri + "custom") in set(graph.objects(None, SH.path))
+    assert URIRef(target_uri + "KnownText") in set(graph.objects(None, OWL.onProperty))
+    if object_property:
+        assert graph.value(URIRef(source_uri + "custom"), RDFS.range) == URIRef(source_uri + "OtherType")
+    if action == "augment":
+        assert graph.value(URIRef(source_uri + "custom"), RDFS.domain) == URIRef(target_uri + "BaseType")
+
+
+@pytest.mark.parametrize("bounds", [(1, 2), (0, 0), (1, None), (None, 2)])
+def test_cmf_conjoins_all_active_bounds_independently_of_shape_order(bounds):
+    minimum, maximum = bounds
+    shapes = [_make_shape("src:A", [_make_shape_prop("src:p", min_count=minimum)]),
+              _make_shape("src:A", [_make_shape_prop("src:p", max_count=maximum)]),
+              {**_make_shape("src:A", [_make_shape_prop("src:p", 50, 50)]), "deactivated": True}]
+    matrix = _make_matrix([_make_mapping("src:A", "extend", "nc:BaseType")])
+    for ordering in (shapes, list(reversed(shapes))):
+        inv = _make_inventory(classes=[_make_class("src:A")],
+            dt_props=[_make_dt_prop("src:p", domain=["src:A"])], shapes=ordering)
+        [prop] = _build(matrix, inv).classes[0].properties
+        assert (prop.min_occurs, prop.max_occurs) == (minimum or 0, str(maximum) if maximum is not None else "unbounded")
+
+
+def test_namespace_used_only_by_object_range_is_declared():
+    inv = _make_inventory(classes=[_make_class("src:X")],
+        obj_props=[_make_obj_prop("src:link", domain=["src:X"], range_list=["nc:OtherType"])])
+    inv["namespaceMap"] = {"https://example.org/source/": "nc:"}
+    matrix = _make_matrix([_make_mapping("src:X", "extend", "nc:BaseType")])
+    model = _build(matrix, inv, target_ns_map={"nc": "https://example.org/target/"})
+    [prop] = model.properties
+    prefix, local = prop.class_ref.split(".", 1)
+    namespaces = {ns.ns_id: ns.uri for ns in model.namespaces}
+    assert namespaces[prefix] + local == "https://example.org/source/OtherType"
+
+
 # ---------------------------------------------------------------------------
 # Tests: Namespaces
 # ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("deactivate", ["shape", "property", None])
+def test_cmf_uses_only_active_shape_bounds(deactivate):
+    prop = {"path": "src:value", "minCount": 1, "maxCount": 1,
+            "severity": "Warning", "deactivated": deactivate == "property"}
+    inv = _make_inventory(classes=[_make_class("src:Foo")],
+                          dt_props=[_make_dt_prop("src:value", domain=["src:Foo"])],
+                          shapes=[{"targetClass": "src:Foo", "properties": [prop],
+                                   "deactivated": deactivate == "shape"}])
+    model = _build(_make_matrix([_make_mapping("src:Foo", "reuse", "nc:PersonType")]), inv)
+    [hp] = model.classes[0].properties
+    assert (hp.min_occurs, hp.max_occurs) == ((1, "1") if deactivate is None else (0, "unbounded"))
+
+
+class TestConformanceTarget:
+    """every EXTENSION-category namespace asserts the target ontology's
+    conformance target, taken from its ontology-specific policy."""
+    EXPECTED = "https://docs.oasis-open.org/niemopen/ns/specification/NDR/6.0/#ExtensionSchemaDocument"
+
+    def test_extension_namespaces_assert_it(self):
+        inv = _make_inventory(classes=[_make_class("src:Foo"), _make_class("src:Bar")])
+        matrix = _make_matrix([
+            _make_mapping("src:Foo", "reuse", "nc:PersonType"),
+            _make_mapping("src:Bar", "extend", "nc:PersonType", base_type="nc:PersonType"),
+        ])
+        model = _build(matrix, inv)
+        extensions = [n for n in model.namespaces if n.category == "EXTENSION"]
+        assert len(extensions) == 2
+        assert all(n.conformance_target == self.EXPECTED for n in extensions)
+
+    def test_external_namespaces_do_not(self):
+        inv = _make_inventory(classes=[_make_class("src:Foo")])
+        model = _build(_make_matrix([_make_mapping("src:Foo", "reuse", "nc:PersonType")]), inv)
+        for n in model.namespaces:
+            if n.category != "EXTENSION":
+                assert not n.conformance_target
+
+    def test_a_target_without_a_pack_asserts_nothing(self):
+        """No invented URI for an ontology whose pack declares no such rule."""
+        inv = _make_inventory(classes=[_make_class("src:Foo")])
+        ctx = _make_ctx(target_ontology="sali-folio", target_version="2.0")
+        model = _build(_make_matrix([_make_mapping("src:Foo", "reuse", "nc:PersonType")]),
+                       inv, ctx=ctx)
+        assert all(not n.conformance_target for n in model.namespaces)
+
 
 class TestNamespaces:
     def test_edge_namespace_always_created(self):
@@ -155,7 +289,7 @@ class TestNamespaces:
         edge_ns = [n for n in model.namespaces if n.ns_id == "test-edge"]
         assert len(edge_ns) == 1
         assert edge_ns[0].category == "EXTENSION"
-        assert edge_ns[0].uri == "http://testorg.gov/test/edge"
+        assert edge_ns[0].uri == "http://testorg.gov/test/edge#"
 
     def test_ext_namespace_only_when_extend_exists(self):
         inv = _make_inventory(classes=[_make_class("src:Foo")])
@@ -332,6 +466,8 @@ class TestProperties:
         assert cls.properties[0].max_occurs == "1"
 
     def test_reuse_property_uses_target_ref(self):
+        """the matrix names the property by QNAME, so the lookup that
+        resolves the decision must key on the qname too."""
         inv = _make_inventory(
             classes=[_make_class("src:Foo")],
             dt_props=[_make_dt_prop("src:personName", domain=["src:Foo"])],
@@ -339,7 +475,7 @@ class TestProperties:
         matrix = _make_matrix([_make_mapping(
             "src:Foo", "reuse", "nc:PersonType",
             property_mappings=[_make_prop_mapping(
-                "personName", action="reuse-property",
+                "src:personName", action="reuse-property",
                 target_prop="nc:PersonName", review="accepted",
             )],
         )])
@@ -348,6 +484,39 @@ class TestProperties:
         cls = model.classes[0]
         assert len(cls.properties) == 1
         assert cls.properties[0].property_ref == "nc.PersonName"
+
+    def test_reuse_property_resolves_a_misqualified_matrix_name(self):
+        """A matrix written before the Stage-3 qname fix names an
+        augmenting-namespace property under the source prefix."""
+        inv = _make_inventory(
+            classes=[_make_class("src:Fee")],
+            dt_props=[_make_dt_prop("fin:fiscalYearCode", domain=["src:Fee"])],
+        )
+        matrix = _make_matrix([_make_mapping(
+            "src:Fee", "reuse", "nc:ObligationType",
+            property_mappings=[_make_prop_mapping(
+                "src:fiscalYearCode", action="reuse-property",
+                target_prop="nc:FiscalYearDate", review="accepted",
+            )],
+        )])
+        cls = _build(matrix, inv).classes[0]
+        assert [p.property_ref for p in cls.properties] == ["nc.FiscalYearDate"]
+
+    def test_unaccepted_reuse_property_is_still_declared(self):
+        """Only an ACCEPTED decision defers to the target."""
+        inv = _make_inventory(
+            classes=[_make_class("src:Foo")],
+            dt_props=[_make_dt_prop("src:personName", domain=["src:Foo"])],
+        )
+        matrix = _make_matrix([_make_mapping(
+            "src:Foo", "reuse", "nc:PersonType",
+            property_mappings=[_make_prop_mapping(
+                "src:personName", action="reuse-property",
+                target_prop="nc:PersonName", review="pending-review",
+            )],
+        )])
+        cls = _build(matrix, inv).classes[0]
+        assert [p.property_ref for p in cls.properties] != ["nc.PersonName"]
 
     def test_cardinality_from_shacl(self):
         inv = _make_inventory(
@@ -420,6 +589,84 @@ class TestAugmentations:
         assert aug.class_ref == "nc.FooType"
         assert "extra" in aug.property_ref
 
+    # -- the augment branch ------------------------------------------
+    @staticmethod
+    def _augment_model(shapes=None, obj=False):
+        prop = _make_obj_prop("src:extra", domain=["src:Foo"], range_list=["src:Bar"]) if obj \
+            else _make_dt_prop("src:extra", domain=["src:Foo"])
+        inv = _make_inventory(
+            classes=[_make_class("src:Foo"), _make_class("src:Bar")],
+            obj_props=[prop] if obj else [],
+            dt_props=[] if obj else [prop],
+            shapes=shapes or [],
+        )
+        matrix = _make_matrix([_make_mapping(
+            "src:Foo", "augment", "nc:PersonType", augments_type="nc:PersonType",
+            property_mappings=[_make_prop_mapping("src:extra", action="create-property")],
+        )])
+        return _build(matrix, inv)
+
+    def test_augment_created_property_is_declared_not_just_referenced(self):
+        """An augment class has no CmfClass, so its created properties were
+        referenced by every record and declared by none."""
+        model = self._augment_model()
+        declared = {p.prop_id for p in model.properties}
+        records = [a for ns in model.namespaces for a in ns.augmentations]
+        assert records, "fixture must produce an augmentation record"
+        assert all(a.property_ref in declared for a in records), (
+            f"dangling: {[a.property_ref for a in records if a.property_ref not in declared]}")
+
+    def test_augment_record_uses_the_extension_prefix(self):
+        """The declaration side puts a non-reuse property in EXT; the record
+        must name the same id, not an EDGE-prefixed one."""
+        model = self._augment_model()
+        [record] = [a for ns in model.namespaces for a in ns.augmentations]
+        assert record.property_ref.startswith("ext.")
+
+    def test_augment_record_carries_the_asserted_occurrence(self):
+        """Not a hardcoded 0..unbounded."""
+        shapes = [_make_shape("src:Foo", [_make_shape_prop("src:extra", min_count=1, max_count=1)])]
+        [record] = [a for ns in self._augment_model(shapes).namespaces for a in ns.augmentations]
+        assert (record.min_occurs, record.max_occurs) == (1, "1")
+
+    def test_augment_record_is_object_reflects_the_property_kind(self):
+        """Not a hardcoded True."""
+        [dt] = [a for ns in self._augment_model().namespaces for a in ns.augmentations]
+        assert dt.is_object is False
+        [obj] = [a for ns in self._augment_model(obj=True).namespaces for a in ns.augmentations]
+        assert obj.is_object is True
+
+    def test_augment_reuse_property_keeps_target_reference_without_redeclaration(self):
+        inv = _make_inventory(
+            classes=[_make_class("src:Foo")],
+            dt_props=[_make_dt_prop("src:existingProp", domain=["src:Foo"])],
+        )
+        matrix = _make_matrix([_make_mapping(
+            "src:Foo", "augment", "nc:PersonType", augments_type="nc:PersonType",
+            property_mappings=[_make_prop_mapping(
+                "src:existingProp", action="reuse-property",
+                target_prop="nc:PersonName", review="accepted")],
+        )])
+        model = _build(matrix, inv)
+        assert [a.property_ref for ns in model.namespaces for a in ns.augmentations] == ["nc.PersonName"]
+        assert not any("existingProp" in p.prop_id for p in model.properties)
+
+    def test_augment_borrowed_property_preserves_bounds_and_namespace(self):
+        inv = _make_inventory(
+            classes=[_make_class("src:Foo")],
+            dt_props=[_make_dt_prop("src:flag", domain=["src:Foo"])],
+            shapes=[_make_shape("src:Foo", [_make_shape_prop("src:flag", 0, 0)])],
+        )
+        matrix = _make_matrix([_make_mapping(
+            "src:Foo", "augment", "nc:BaseType", property_mappings=[
+                _make_prop_mapping("src:flag", "reuse-property", "other:FlagText")])])
+        model = _build(matrix, inv, target_ns_map={"nc": "https://example.org/nc/", "other": "https://example.org/other/"})
+        [record] = [a for ns in model.namespaces for a in ns.augmentations]
+        assert (record.class_ref, record.property_ref, record.is_object, record.min_occurs, record.max_occurs) == (
+            "nc.BaseType", "other.FlagText", False, 0, "0")
+        assert not model.properties
+        assert any(n.ns_id == "other" and n.uri == "https://example.org/other/" for n in model.namespaces)
+
     def test_reuse_property_no_augmentation(self):
         inv = _make_inventory(
             classes=[_make_class("src:Foo")],
@@ -428,7 +675,7 @@ class TestAugmentations:
         matrix = _make_matrix([_make_mapping(
             "src:Foo", "reuse", "nc:FooType",
             property_mappings=[_make_prop_mapping(
-                "existingProp", action="reuse-property",
+                "src:existingProp", action="reuse-property",
                 target_prop="nc:ExistingProp", review="accepted",
             )],
         )])
@@ -542,6 +789,25 @@ class TestSpecCompliance:
             assert ns.uri, f"Namespace missing URI: {ns.ns_id}"
             assert ns.prefix, f"Namespace missing prefix: {ns.ns_id}"
             assert ns.category, f"Namespace missing category: {ns.ns_id}"
+
+    @pytest.mark.parametrize("target, version", [("nods", "1.0"), ("sali-folio", "2.0"), ("niem", "6.0")])
+    def test_the_cmf_for_any_target_uses_the_structures_namespace_the_cmf_schema_imports(
+            self, tmp_path, target, version):
+        """The structures namespace belongs to the CMF format. A target's own
+        version (NODS 1.0, SALI 2.0) put there made the CMF XSD reject every
+        structures:id and structures:ref."""
+        from ontology_mapper.ontology_specific import cmf_structures_version
+        from ontology_mapper.validate_edge_package import validate_cmf_schema
+
+        set_niem_version(cmf_structures_version(target, version))
+        inv = _make_inventory(
+            classes=[_make_class("src:Permit")],
+            dt_props=[_make_dt_prop("src:permitNumber", domain=["src:Permit"])],
+        )
+        model = _build(_make_matrix([_make_mapping("src:Permit", "extend", "nc:PermitType")]), inv)
+        cmf_path = tmp_path / "model.cmf"
+        cmf_path.write_text(CmfXmlSerializer(model).serialize(), encoding="utf-8")
+        assert validate_cmf_schema(cmf_path) == []
 
     def test_xml_serialization_roundtrip(self):
         """Build → serialize XML → parse back → compare counts."""
@@ -896,3 +1162,262 @@ class TestNtacAdminExamples:
         assert len(prefixes) == 5
         # Should include xs (XSD) and at least one CORE/DOMAIN namespace
         assert "xs" in prefixes
+
+
+class TestAugmentNamespaceAndRecords:
+    """Span-9 F6/F8/F9: three defects in the augment path of the CMF model."""
+
+    @staticmethod
+    def _dt(qname, label="p"):
+        return {"qname": qname, "label": label, "domain": [], "range": []}
+
+    def test_ext_namespace_is_declared_for_an_augment_only_run(self):
+        """`_property_prefix` returns EXT for every non-reuse action, so an
+        augment class emits properties under `ext` — but `ext` was declared
+        only when an EXTEND class existed. A run with augments and no
+        extends put properties in a namespace the model never declared."""
+        inv = _make_inventory(
+            classes=[_make_class("src:Geo")],
+            dt_props=[self._dt("src:geoCode")])
+        matrix = _make_matrix([
+            _make_mapping("src:Geo", "augment", "nc:LocationType",
+                          augments_type="nc:LocationType",
+                          property_mappings=[_make_prop_mapping("src:geoCode")]),
+        ])
+        model = _build(matrix, inv)
+
+        declared = {n.ns_id for n in model.namespaces}
+        used = {p.namespace_ref for p in model.properties}
+        assert used, "expected the augment class to declare a property"
+        assert used <= declared, (
+            f"properties emitted into undeclared namespaces: {used - declared}")
+
+    def test_a_misqualified_augment_property_is_still_found(self):
+        """The matrix names the property with the parent concept's prefix
+        (`src:fiscalYearCode`) while the inventory owns it under an
+        augmenting namespace (`fin:fiscalYearCode`). Reading the raw name
+        failed the inventory lookup and dropped the decision in silence."""
+        inv = _make_inventory(
+            classes=[_make_class("src:Fee")],
+            dt_props=[self._dt("fin:fiscalYearCode")])
+        matrix = _make_matrix([
+            _make_mapping("src:Fee", "augment", "nc:ObligationType",
+                          augments_type="nc:ObligationType",
+                          property_mappings=[
+                              _make_prop_mapping("src:fiscalYearCode")]),
+        ])
+        model = _build(matrix, inv)
+
+        names = {p.name for p in model.properties}
+        assert "fiscalYearCode" in names, (
+            "the augment property was dropped because its recorded qname "
+            f"did not match the inventory; got {names}")
+
+    def test_an_ambiguous_name_is_not_guessed(self):
+        """Two inventory properties share the local name, so there is no
+        single right answer and the decision stays unapplied."""
+        inv = _make_inventory(
+            classes=[_make_class("src:Fee")],
+            dt_props=[self._dt("fin:code"), self._dt("geo:code")])
+        matrix = _make_matrix([
+            _make_mapping("src:Fee", "augment", "nc:ObligationType",
+                          augments_type="nc:ObligationType",
+                          property_mappings=[_make_prop_mapping("src:code")]),
+        ])
+        model = _build(matrix, inv)
+        assert [p for p in model.properties if p.name == "code"] == []
+
+    def test_one_augmentation_record_per_class_and_property(self):
+        """Two source classes augmenting the same target with the same
+        property said it twice. The record means "this property may appear
+        on this type"; repeating it adds nothing and miscounts."""
+        inv = _make_inventory(
+            classes=[_make_class("src:Geo"), _make_class("src:Place")],
+            dt_props=[self._dt("src:geoCode")])
+        matrix = _make_matrix([
+            _make_mapping("src:Geo", "augment", "nc:LocationType",
+                          augments_type="nc:LocationType",
+                          property_mappings=[_make_prop_mapping("src:geoCode")]),
+            _make_mapping("src:Place", "augment", "nc:LocationType",
+                          augments_type="nc:LocationType",
+                          property_mappings=[_make_prop_mapping("src:geoCode")]),
+        ])
+        model = _build(matrix, inv)
+
+        records = [a for ns in model.namespaces for a in ns.augmentations]
+        pairs = [(a.class_ref, a.property_ref) for a in records]
+        assert len(pairs) == len(set(pairs)), f"duplicate records: {pairs}"
+        assert len(pairs) == 1
+
+    def test_distinct_properties_still_each_get_a_record(self):
+        """The dedupe must not collapse genuinely different records."""
+        inv = _make_inventory(
+            classes=[_make_class("src:Geo")],
+            dt_props=[self._dt("src:geoCode"), self._dt("src:geoName")])
+        matrix = _make_matrix([
+            _make_mapping("src:Geo", "augment", "nc:LocationType",
+                          augments_type="nc:LocationType",
+                          property_mappings=[
+                              _make_prop_mapping("src:geoCode"),
+                              _make_prop_mapping("src:geoName")]),
+        ])
+        model = _build(matrix, inv)
+        records = [a for ns in model.namespaces for a in ns.augmentations]
+        assert len({a.property_ref for a in records}) == 2
+
+    def test_source_namespace_uri_is_taken_from_inventory(self):
+        inv = _make_inventory(classes=[_make_class("src:Fee")],
+                              dt_props=[self._dt("fin:fiscalYearCode")])
+        inv["namespaceMap"] = {"https://example.org/finance/": "fin:"}
+        matrix = _make_matrix([_make_mapping("src:Fee", "augment", "nc:ObligationType",
+            property_mappings=[_make_prop_mapping("fin:fiscalYearCode")])])
+        model = _build(matrix, inv)
+        namespace = next(n for n in model.namespaces if n.ns_id == "fin")
+        assert namespace.uri == "https://example.org/finance/"
+        assert model.properties[0].namespace_ref == "fin"
+
+    def test_differing_occurrences_are_preserved_in_either_inventory_order(self):
+        inv = _make_inventory(classes=[_make_class("src:Geo"), _make_class("src:Place")],
+                              dt_props=[self._dt("src:geoCode")],
+                              shapes=[_make_shape("src:Geo", [_make_shape_prop("src:geoCode", 1, 1)])])
+        matrix = _make_matrix([_make_mapping(c["qname"], "augment", "nc:LocationType",
+            property_mappings=[_make_prop_mapping("src:geoCode")]) for c in inv["classes"]])
+        def records():
+            return [(a.class_ref, a.property_ref, a.min_occurs, a.max_occurs)
+                    for n in _build(matrix, inv).namespaces for a in n.augmentations]
+        forward = records()
+        inv["classes"].reverse()
+        assert records() == forward
+        assert {(r[2], r[3]) for r in forward} == {(1, "1"), (0, "unbounded")}
+
+
+class TestDeclaredPrimaryNamespace:
+    """The declared primary namespace, not class sort order, is the source prefix."""
+
+    def test_augmenting_class_sorting_first_keeps_primary_properties_in_edge_namespace(self):
+        inv = _make_inventory(
+            classes=[_make_class("abc:Thing"), _make_class("dbpi:Fee")],
+            dt_props=[_make_dt_prop("dbpi:amount", domain=["dbpi:Fee"]),
+                      _make_dt_prop("abc:note", domain=["dbpi:Fee"])])
+        inv["primaryNamespace"] = {"prefix": "dbpi", "uri": "https://example.test/dbpi#"}
+        inv["namespaceMap"] = {"https://example.test/dbpi#": "dbpi:",
+                               "https://example.test/abc#": "abc:"}
+        inv["augmentingNamespaces"] = [{"prefix": "abc", "namespace": "https://example.test/abc#",
+                                        "propertyCount": 1, "properties": ["abc:note"]}]
+        matrix = _make_matrix([_make_mapping("dbpi:Fee", "reuse", "nc:FeeType", property_mappings=[
+            _make_prop_mapping("dbpi:amount"), _make_prop_mapping("abc:note")])])
+
+        model = _build(matrix, inv)
+
+        [fee] = [cls for cls in model.classes if cls.name == "FeeType"]
+        assert sorted(p.property_ref for p in fee.properties) == ["abc.note", "test-edge.amount"]
+        external = {n.ns_id: n.uri for n in model.namespaces if n.category == "EXTERNAL"}
+        assert external == {"abc": "https://example.test/abc#",
+                            "nc": "http://example.org/niem-core/6.0"}
+        assert "dbpi" not in {n.ns_id for n in model.namespaces}
+
+    def test_created_augmenting_namespace_property_on_reuse_class_gets_augmentation_record(self):
+        """Every property this model declares for a reuse class augments the target,
+        including one emitted under an augmenting source namespace's prefix."""
+        inv = _make_inventory(
+            classes=[_make_class("dbpi:Fee")],
+            dt_props=[_make_dt_prop("dbpi:amount", domain=["dbpi:Fee"]),
+                      _make_dt_prop("abc:note", domain=["dbpi:Fee"]),
+                      _make_dt_prop("dbpi:paid", domain=["dbpi:Fee"])])
+        inv["primaryNamespace"] = {"prefix": "dbpi", "uri": "https://example.test/dbpi#"}
+        inv["namespaceMap"] = {"https://example.test/dbpi#": "dbpi:",
+                               "https://example.test/abc#": "abc:"}
+        matrix = _make_matrix([_make_mapping("dbpi:Fee", "reuse", "nc:FeeType", property_mappings=[
+            _make_prop_mapping("dbpi:amount"),
+            _make_prop_mapping("abc:note"),
+            _make_prop_mapping("dbpi:paid", action="reuse-property", target_prop="nc:AmountValue")])])
+
+        model = _build(matrix, inv)
+
+        records = {(a.class_ref, a.property_ref)
+                   for n in model.namespaces for a in n.augmentations}
+        assert records == {("nc.FeeType", "test-edge.amount"), ("nc.FeeType", "abc.note")}
+        assert not any(r[1] == "nc.AmountValue" for r in records)
+
+
+class TestFullIriTargets:
+    """Accepted full-IRI targets are emitted as CMF ids bound to catalog namespaces."""
+
+    NC = "https://docs.oasis-open.org/niemopen/ns/model/niem-core/6.0/"
+    J = "https://docs.oasis-open.org/niemopen/ns/model/domains/justice/6.0/"
+    NS = {"nc": NC, "j": J}
+
+    def test_class_base_augmentation_and_property_iris_become_cmf_ids(self):
+        inv = _make_inventory(
+            classes=[_make_class("src:A"), _make_class("src:B"), _make_class("src:C")],
+            dt_props=[_make_dt_prop("src:code", domain=["src:A"]),
+                      _make_dt_prop("src:extra", domain=["src:C"])])
+        matrix = _make_matrix([
+            _make_mapping("src:A", "reuse", self.NC + "PersonType", property_mappings=[
+                _make_prop_mapping("src:code", "reuse-property", self.NC + "PersonNameText")]),
+            _make_mapping("src:B", "extend", self.NC + "ItemType", base_type=self.NC + "ItemType"),
+            _make_mapping("src:C", "augment", self.J + "ChargeType",
+                          augments_type=self.J + "ChargeType",
+                          property_mappings=[_make_prop_mapping("src:extra")]),
+        ])
+
+        model = _build(matrix, inv, target_ns_map=self.NS)
+
+        by_name = {cls.name: cls for cls in model.classes}
+        assert by_name["AType"].sub_class_of == "nc.PersonType"
+        assert [p.property_ref for p in by_name["AType"].properties] == ["nc.PersonNameText"]
+        assert by_name["BType"].sub_class_of == "nc.ItemType"
+        external = {n.ns_id: n.uri for n in model.namespaces if n.category == "EXTERNAL"}
+        assert external == self.NS
+        augmentations = {(a.class_ref, a.property_ref)
+                         for ns in model.namespaces for a in getattr(ns, "augmentations", [])}
+        assert ("j.ChargeType", "ext.extra") in augmentations
+
+    def test_iri_outside_catalog_namespaces_is_left_for_reference_validation(self):
+        inv = _make_inventory(classes=[_make_class("src:A")])
+        matrix = _make_matrix([_make_mapping("src:A", "reuse", "https://other.test/model/X")])
+
+        model = _build(matrix, inv, target_ns_map=self.NS)
+
+        [a] = model.classes
+        assert a.sub_class_of == "https://other.test/model/X"
+        assert [n.ns_id for n in model.namespaces] == ["test-edge"]
+
+
+def test_a_full_iri_target_class_range_names_the_same_class_as_the_owl():
+    """Whole-PR review: the OWL grounded a full-IRI range in a catalog
+    namespace to the target class; the CMF dropped it, so the two models
+    disagreed about what the property points at."""
+    from ontology_mapper.generation_utils import component_iri
+    ns = "http://example.org/niem-core/6.0"
+    inv = _make_inventory(
+        classes=[_make_class("src:A")],
+        obj_props=[_make_obj_prop("src:about", domain=["src:A"],
+                                  range_list=[component_iri(ns, "PersonType")])])
+    matrix = _make_matrix([_make_mapping("src:A", "reuse", "nc:BaseType", property_mappings=[
+        _make_prop_mapping("src:about", "create-property")])])
+    model = _build(matrix, inv, target_ns_map={"nc": ns})
+    [about] = [p for p in model.properties if p.name == "about"]
+    assert about.class_ref == "nc.PersonType"
+    assert "nc" in {n.prefix for n in model.namespaces}
+
+
+@pytest.mark.parametrize("first", [None, "http://www.w3.org/2001/XMLSchema#string",
+                                   "https://elsewhere.test/Thing"])
+def test_only_the_first_range_names_the_class_as_in_the_owl(first):
+    """Round 19: the OWL reads range[0]; the CMF took the first range it could
+    resolve, so a bound IRI in second place named a class the OWL left open."""
+    from ontology_mapper.generation_utils import component_iri
+    ns = "http://example.org/niem-core/6.0"
+    ranges = ([first] if first else []) + [component_iri(ns, "PersonType")]
+    inv = _make_inventory(classes=[_make_class("src:A")],
+                          obj_props=[_make_obj_prop("src:about", domain=["src:A"], range_list=ranges)])
+    matrix = _make_matrix([_make_mapping("src:A", "reuse", "nc:BaseType", property_mappings=[
+        _make_prop_mapping("src:about", "create-property")])])
+    [about] = [p for p in _build(matrix, inv, target_ns_map={"nc": ns}).properties if p.name == "about"]
+    assert about.class_ref == ("nc.PersonType" if first is None else "")
+    # Nor is the namespace of a range it no longer reads declared.
+    jns = "http://example.org/justice/6.0"
+    inv["objectProperties"][0]["range"] = ([first] if first else []) + [component_iri(jns, "ArrestType")]
+    model = _build(matrix, inv, target_ns_map={"nc": ns, "j": jns})
+    assert ("j" in {n.prefix for n in model.namespaces}) == (first is None)

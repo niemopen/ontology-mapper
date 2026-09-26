@@ -26,6 +26,34 @@ from runner_tools.run_pipeline import (
 )
 
 
+@pytest.mark.parametrize("from_stage", range(1, 7))
+@pytest.mark.parametrize("evidence", ["accepted", "marker", "fresh"])
+def test_resume_protects_review_before_any_stage(tmp_path, monkeypatch, from_stage, evidence):
+    import runner_tools.run_pipeline as runner
+
+    (tmp_path / ".mapper-state.json").write_text('{"inputs": {}}', encoding="utf-8")
+    matrix = {"mappings": [{"reviewStatus": "accepted" if evidence == "accepted"
+                            else "pending-review"}]}
+    if evidence == "marker":
+        matrix["humanReviewApplied"] = "2026-09-10T12:00:00Z"
+    path = tmp_path / "mapping-matrix.json"
+    path.write_text(json.dumps(matrix), encoding="utf-8")
+    before = path.read_bytes()
+    calls = []
+    for stage in range(1, 9):
+        monkeypatch.setattr(runner, f"run_stage_{stage}",
+                            lambda *args, s=stage: calls.append(s))
+    monkeypatch.setattr(runner, "print_summary", lambda *args: None)
+    if from_stage <= 4 and evidence != "fresh":
+        with pytest.raises(StageError, match="already carries"):
+            runner.run_pipeline(run_dir=str(tmp_path), from_stage=from_stage)
+        assert calls == []
+    else:
+        runner.run_pipeline(run_dir=str(tmp_path), from_stage=from_stage)
+        assert calls == list(range(from_stage, 9))
+    assert path.read_bytes() == before
+
+
 # ---------------------------------------------------------------------------
 # StageTimer
 # ---------------------------------------------------------------------------
@@ -72,7 +100,7 @@ class TestVerifyStage:
     def test_passes_clean(self, mock_verify):
         mock_verify.return_value = {
             "stage": "1",
-            "checks": [{"status": "pass", "severity": "error", "checkId": "1", "message": "ok"}],
+            "checks": [{"status": "pass", "severity": "error", "name": "1", "detail": "ok"}],
             "summary": {"total": 1, "pass": 1, "fail": 0, "warn": 0},
         }
         result = verify_stage(Path("/fake"), "1")
@@ -82,7 +110,7 @@ class TestVerifyStage:
     def test_raises_on_error_failures(self, mock_verify):
         mock_verify.return_value = {
             "stage": "1",
-            "checks": [{"status": "fail", "severity": "error", "checkId": "1", "message": "missing file"}],
+            "checks": [{"status": "fail", "severity": "error", "name": "1", "detail": "missing file"}],
             "summary": {"total": 1, "pass": 0, "fail": 1, "warn": 0},
         }
         with pytest.raises(VerificationError, match="missing file"):
@@ -93,8 +121,8 @@ class TestVerifyStage:
         mock_verify.return_value = {
             "stage": "1",
             "checks": [
-                {"status": "pass", "severity": "error", "checkId": "1", "message": "ok"},
-                {"status": "fail", "severity": "warning", "checkId": "2", "message": "minor"},
+                {"status": "pass", "severity": "error", "name": "1", "detail": "ok"},
+                {"status": "fail", "severity": "warning", "name": "2", "detail": "minor"},
             ],
             "summary": {"total": 2, "pass": 1, "fail": 0, "warn": 1},
         }
@@ -266,6 +294,45 @@ class TestResolveConceptLookup:
         pending = _make_pending()
         assert _resolve_concept(pending, "NoSuchType") is None
 
+    def test_a_name_two_entries_share_resolves_to_neither(self):
+        pending = [{"sourceConcept": "a:Person"}, {"sourceConcept": "b:Person"}]
+        assert _resolve_concept(pending, "Person") is None
+        assert _resolve_concept(pending, "person") is None
+        assert _resolve_concept(pending, "b:Person")["sourceConcept"] == "b:Person"
+
+
+def _two_people():
+    """Two approved classes sharing a local name: a:Person's property is
+    decided, b:Person's is not."""
+    return {"mappings": [
+        {"sourceConcept": "a:Person", "action": "reuse", "targetType": "nc:PersonType",
+         "reviewStatus": "accepted", "propertyMappings": [
+             {"sourceProperty": "src:name", "action": "reuse-property",
+              "targetProperty": "nc:PersonName", "reviewStatus": "accepted"}]},
+        {"sourceConcept": "b:Person", "action": "reuse", "targetType": "nc:PersonType",
+         "reviewStatus": "accepted", "propertyMappings": [
+             {"sourceProperty": "src:name", "action": "human-must-decide",
+              "targetProperty": "[undecided]", "reviewStatus": "pending-review"}]},
+    ], "summary": {"actionCounts": {}}}
+
+
+def test_resolve_property_refuses_a_class_name_two_entries_share(tmp_path):
+    """"Person" named a:Person first and rewrote its accepted decision while
+    b:Person, the one the reviewer meant, stayed undecided."""
+    matrix = _two_people()
+    before = json.dumps(matrix, sort_keys=True)
+    action = {"action": "resolve_property", "concept": "Person",
+              "source_property": "src:name", "property_action": "create-property"}
+    msg, applied, _ = _dispatch_review_action(action, tmp_path, matrix, {"decisions": []}, [], ("niem", {}))
+    assert applied == []
+    assert "ambiguous" in msg and "a:Person" in msg and "b:Person" in msg
+    assert json.dumps(matrix, sort_keys=True) == before
+
+    action["concept"] = "b:Person"
+    msg, applied, _ = _dispatch_review_action(action, tmp_path, matrix, {"decisions": []}, [], ("niem", {}))
+    assert matrix["mappings"][1]["propertyMappings"][0]["action"] == "create-property"
+    assert matrix["mappings"][0]["propertyMappings"][0]["action"] == "reuse-property"
+
 
 # ---------------------------------------------------------------------------
 # Stage 5: _build_pending_summary
@@ -377,11 +444,64 @@ class TestDispatchReviewAction:
             "target_property": "nc:PersonName",
         }
         msg, applied, _ = _dispatch_review_action(
-            action, tmp_path, matrix, dec_log, pending, None)
+            action, tmp_path, matrix, dec_log, pending, ("niem", {}))
         assert len(applied) == 1
         prop = pending[0]["propertyMappings"][0]
         assert prop["action"] == "reuse-property"
         assert prop["reviewStatus"] == "accepted"
+
+    @pytest.mark.parametrize("prop_action", ["create", "exclude", "human-must-decide"])
+    def test_resolve_property_refuses_an_action_review_cannot_make(self, tmp_path, prop_action):
+        """Round thirteen: any non-empty property_action was written, and the
+        exit gate read the unknown action as decided."""
+        matrix, dec_log, pending = self._make_context(tmp_path)
+        pending[0]["propertyMappings"] = [{
+            "sourceProperty": "personName", "action": "human-must-decide",
+            "reviewStatus": "pending-review"}]
+        action = {"action": "resolve_property", "concept": "PersonType",
+                  "source_property": "personName", "property_action": prop_action}
+        msg, applied, _ = _dispatch_review_action(
+            action, tmp_path, matrix, dec_log, pending, ("niem", {}))
+        assert applied == []
+        assert "reuse-property or create-property" in msg
+        assert pending[0]["propertyMappings"][0]["action"] == "human-must-decide"
+
+    def test_change_target_to_the_same_class_in_another_spelling_keeps_the_action(self, tmp_path):
+        """A same-identity selection is applied, not cascaded; the dispatcher must
+        supply the action apply_decision requires, or the review loop dies."""
+        import json as _json
+        from ontology_mapper.run_dir_utils import resolve_specs_dir
+
+        catalog = _json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json").read_text(encoding="utf-8"))
+        matrix, dec_log, pending = self._make_context(tmp_path)
+        entry = pending[0]
+        entry["targetType"] = catalog["namespaces"]["nc"] + "PersonType"
+        entry["action"] = "reuse"
+        action = {"action": "change_target", "concept": entry["sourceConcept"], "new_target_type": "nc:PersonType"}
+        msg, applied, _ = _dispatch_review_action(action, tmp_path, matrix, dec_log, pending, ("niem", catalog))
+        assert entry["targetType"] == "nc:PersonType"
+        assert entry["action"] == "reuse"
+        assert entry["ruleId"] == "human-review"
+        assert applied[0]["targetType"] == "nc:PersonType"
+
+    @pytest.mark.parametrize("target", ["nc:BooleanType", "nc:PersonTyp"])
+    def test_change_target_to_a_rejected_selection_answers_instead_of_dying(self, tmp_path, target):
+        """A datatype or a misspelling is answered with the policy's message;
+        the entry is untouched and the loop continues."""
+        import copy
+        import json as _json
+        from ontology_mapper.run_dir_utils import resolve_specs_dir
+
+        catalog = _json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json").read_text(encoding="utf-8"))
+        matrix, dec_log, pending = self._make_context(tmp_path)
+        entry = pending[0]
+        entry["targetType"] = "nc:PersonType"
+        before = copy.deepcopy(entry)
+        action = {"action": "change_target", "concept": entry["sourceConcept"], "new_target_type": target}
+        msg, applied, _ = _dispatch_review_action(action, tmp_path, matrix, dec_log, pending, ("niem", catalog))
+        assert "not a class" in msg and target in msg
+        assert applied == []
+        assert entry == before
 
     def test_search_action(self, tmp_path):
         """Search action calls catalog_search."""
@@ -447,3 +567,326 @@ class TestStage5Metric:
         result = _stage_metric(tmp_path, "5")
         assert "1 pending" in result
         assert "1 accepted" in result
+
+
+# ---------------------------------------------------------------------------
+# Stage 7: failed validation still produces the feedback report
+# ---------------------------------------------------------------------------
+
+def test_stage_5_loop_offers_the_repair_for_a_blocked_accepted_target(tmp_path, monkeypatch):
+    """A matrix saved before the class policy: every class accepted, one with
+    a datatype base. Nothing is pending, but review cannot close, so the loop
+    must still prompt; change_target to the same class rebuilds the base."""
+    import runner_tools.run_pipeline as runner
+
+    (tmp_path / ".mapper-state.json").write_text(json.dumps(
+        {"inputs": {"target_ontology": "niem", "target_version": "6.0"}, "stages": {}}),
+        encoding="utf-8")
+    entry = {"sourceConcept": "src:A", "action": "extend", "targetType": "nc:PersonType",
+             "baseType": "niem-xs:token", "extensionType": "A",
+             "reviewStatus": "accepted", "propertyMappings": []}
+    (tmp_path / "mapping-matrix.json").write_text(json.dumps({"mappings": [entry]}), encoding="utf-8")
+    (tmp_path / "decision-log.json").write_text(json.dumps({"decisions": []}), encoding="utf-8")
+
+    prompts = []
+    monkeypatch.setattr("builtins.input", lambda p="": prompts.append(p) or "rebase A on PersonType")
+    monkeypatch.setattr(runner, "_call_claude_interpret", lambda prompt: {
+        "action": "change_target", "concept": "src:A", "new_target_type": "nc:PersonType"})
+    monkeypatch.setattr(runner, "_cmd_present", lambda args: None)
+
+    runner.run_stage_5_loop(tmp_path)
+    # The first selection rebuilds the rejected scaffolding and returns the
+    # entry to pending review; the second, now valid, accepts it.
+    assert len(prompts) == 2
+    saved = json.loads((tmp_path / "mapping-matrix.json").read_text(encoding="utf-8"))
+    assert saved["mappings"][0].get("baseType") != "niem-xs:token"
+    assert saved["mappings"][0]["reviewStatus"] == "accepted"
+
+
+def test_stage_5_loop_resolves_an_undecided_property_of_an_approved_class(tmp_path, monkeypatch):
+    """Approving a class leaves its human-must-decide property pending and
+    says to resolve it individually. The class is no longer pending, so the
+    resolver must still find it, or review can never close."""
+    import runner_tools.run_pipeline as runner
+
+    (tmp_path / ".mapper-state.json").write_text(json.dumps(
+        {"inputs": {"target_ontology": "niem", "target_version": "6.0"}, "stages": {}}),
+        encoding="utf-8")
+    entry = {"sourceConcept": "src:A", "action": "reuse", "targetType": "nc:PersonType",
+             "reviewStatus": "accepted",
+             "propertyMappings": [{"sourceProperty": "src:name", "action": "human-must-decide",
+                                   "reviewStatus": "pending-review"}]}
+    (tmp_path / "mapping-matrix.json").write_text(json.dumps({"mappings": [entry]}), encoding="utf-8")
+    (tmp_path / "decision-log.json").write_text(json.dumps({"decisions": []}), encoding="utf-8")
+
+    prompts = []
+
+    def reviewer(p=""):
+        prompts.append(p)
+        if len(prompts) > 3:  # a loop that cannot close would otherwise hang
+            raise KeyboardInterrupt
+        return "name is a new property"
+
+    monkeypatch.setattr("builtins.input", reviewer)
+    monkeypatch.setattr(runner, "_call_claude_interpret", lambda prompt: {
+        "action": "resolve_property", "concept": "A", "source_property": "src:name",
+        "property_action": "create-property"})
+    monkeypatch.setattr(runner, "_cmd_present", lambda args: None)
+
+    runner.run_stage_5_loop(tmp_path)
+    assert len(prompts) == 1
+    saved = json.loads((tmp_path / "mapping-matrix.json").read_text(encoding="utf-8"))
+    prop = saved["mappings"][0]["propertyMappings"][0]
+    assert (prop["action"], prop["reviewStatus"]) == ("create-property", "accepted")
+
+
+def test_stage_5_loop_without_a_catalog_fails_the_stage_rather_than_crashing(tmp_path):
+    """No catalog means no class target can be proven; the runner reports a
+    Stage 5 error the pipeline summarises, not a traceback."""
+    import runner_tools.run_pipeline as runner
+
+    (tmp_path / ".mapper-state.json").write_text(json.dumps(
+        {"inputs": {"target_ontology": "niem", "target_version": "9.9"}, "stages": {}}),
+        encoding="utf-8")
+    entry = {"sourceConcept": "src:A", "action": "reuse", "targetType": "nc:PersonType",
+             "reviewStatus": "pending-review", "propertyMappings": []}
+    (tmp_path / "mapping-matrix.json").write_text(json.dumps({"mappings": [entry]}), encoding="utf-8")
+    (tmp_path / "decision-log.json").write_text(json.dumps({"decisions": []}), encoding="utf-8")
+
+    with pytest.raises(StageError, match="exit criteria could not be checked"):
+        runner.run_stage_5_loop(tmp_path)
+
+
+def _finalized_run(run_dir):
+    """A run whose previous Stages 7 and 8 passed and stamped the package."""
+    stamp = "2026-09-01T00:00:00Z"
+    stages = {s: {"stage": s, "status": "completed", "started_at": stamp,
+                  "completed_at": stamp, "error": None, "artifacts": [], "notes": None}
+              for s in "12345678"}
+    (run_dir / ".mapper-state.json").write_text(json.dumps({
+        "run_id": "sample", "created_at": stamp, "updated_at": stamp,
+        "inputs": {"target_ontology": "niem", "target_version": "6.0"},
+        "stages": stages, "highest_completed": "8", "current_stage": "8"}), encoding="utf-8")
+    gov = run_dir / "edge-package" / "governance"
+    gov.mkdir(parents=True)
+    (gov / "validation-report.json").write_text('{"allPassed": true}', encoding="utf-8")
+    (gov / "decision-log.json").write_text("{}", encoding="utf-8")  # Stage 6b's
+    (run_dir / "edge-package" / "package-manifest.json").write_text(
+        json.dumps({"name": "sample", "finalizedAt": stamp}), encoding="utf-8")
+    return run_dir / "edge-package"
+
+
+@pytest.mark.parametrize("valid", [False, True])
+def test_stage_7_writes_feedback_report_before_stopping_on_failed_validation(tmp_path, monkeypatch, valid):
+    import runner_tools.run_pipeline as runner
+
+    pkg = _finalized_run(tmp_path)
+    commands = []
+
+    def run_cmd(stage, cmd, cwd=None):
+        commands.append(cmd[0])
+        if cmd[0] == "om-validate" and not valid:
+            # A failed validation has written its report before exiting nonzero.
+            (tmp_path / "validation-report.json").write_text('{"checks": []}', encoding="utf-8")
+            raise StageError(stage, "Command failed (rc=1): om-validate")
+        return ""
+
+    def verify_stage(run_dir, stage):
+        if not valid:
+            raise VerificationError(stage, "1 error(s):\n  - [validation_all_pass] 1 checks failed")
+        return {}
+
+    monkeypatch.setattr(runner, "run_cmd", run_cmd)
+    monkeypatch.setattr(runner, "verify_stage", verify_stage)
+
+    if valid:
+        runner.run_stage_7(tmp_path, [])
+        assert commands == ["om-validate", "python", "om-pipeline"]
+    else:
+        with pytest.raises(VerificationError, match="validation_all_pass"):
+            runner.run_stage_7(tmp_path, [])
+        # feedback_report.py ran after the failed validation; mark-complete did not
+        assert commands == ["om-validate", "python"]
+        # Nothing from the previous Stage 8 still reads as validated or final.
+        assert not (pkg / "governance" / "validation-report.json").exists()
+        assert (pkg / "governance" / "decision-log.json").exists()
+        assert "finalizedAt" not in json.loads((pkg / "package-manifest.json").read_text(encoding="utf-8"))
+        state = json.loads((tmp_path / ".mapper-state.json").read_text(encoding="utf-8"))
+        assert state["stages"]["7"]["status"] == "failed"
+        assert state["stages"]["8"]["status"] == "pending"
+        assert state["highest_completed"] == "6"
+
+
+
+def test_a_feedback_crash_after_failed_validation_reports_the_validation(tmp_path, monkeypatch):
+    """Both orchestrators name the same cause: the web keeps the validation
+    failure when the feedback report then crashes; so does the runner."""
+    import runner_tools.run_pipeline as runner
+
+    _finalized_run(tmp_path)
+
+    def run_cmd(stage, cmd, cwd=None):
+        if cmd[0] == "om-validate":
+            (tmp_path / "validation-report.json").write_text('{"checks": []}', encoding="utf-8")
+            raise StageError(stage, "Command failed (rc=1): om-validate\nSOME CHECKS FAILED")
+        if cmd[0] == "python":
+            raise StageError(stage, "Command failed (rc=1): feedback_report.py\nTraceback KeyError")
+        return ""
+
+    monkeypatch.setattr(runner, "run_cmd", run_cmd)
+    monkeypatch.setattr(runner, "verify_stage", lambda *a: pytest.fail("verify must not run"))
+    with pytest.raises(StageError, match="SOME CHECKS FAILED"):
+        runner.run_stage_7(tmp_path, [])
+
+
+def test_stage_7_discards_a_previous_runs_report_before_validating(tmp_path, monkeypatch):
+    """A stale report must not turn a validator crash into a failed validation
+    with stale feedback and stale verification."""
+    import runner_tools.run_pipeline as runner
+
+    _finalized_run(tmp_path)
+    (tmp_path / "validation-report.json").write_text('{"checks": [], "stale": true}', encoding="utf-8")
+    (tmp_path / "feedback-report.json").write_text('{"stale": true}', encoding="utf-8")
+    commands = []
+
+    def run_cmd(stage, cmd, cwd=None):
+        commands.append(cmd[0])
+        if cmd[0] == "om-validate":
+            assert not (tmp_path / "validation-report.json").exists()  # cleared before the run
+            raise StageError(stage, "Command failed (rc=1): om-validate\nTraceback ... KeyError")
+        return ""
+
+    monkeypatch.setattr(runner, "run_cmd", run_cmd)
+    monkeypatch.setattr(runner, "verify_stage", lambda *a: pytest.fail("verify must not run"))
+    with pytest.raises(StageError, match="Traceback"):
+        runner.run_stage_7(tmp_path, [])
+    assert commands == ["om-validate"]
+    assert not (tmp_path / "feedback-report.json").exists()
+
+
+def test_stage_7_validator_crash_without_a_report_is_raised_as_is(tmp_path, monkeypatch):
+    """No validation-report.json means the validator crashed, not that checks
+    failed: the error (stderr in its message) is raised; no feedback report runs."""
+    import runner_tools.run_pipeline as runner
+
+    _finalized_run(tmp_path)
+    commands = []
+
+    def run_cmd(stage, cmd, cwd=None):
+        commands.append(cmd[0])
+        if cmd[0] == "om-validate":
+            raise StageError(stage, "Command failed (rc=1): om-validate\nTraceback ... KeyError")
+        return ""
+
+    monkeypatch.setattr(runner, "run_cmd", run_cmd)
+    monkeypatch.setattr(runner, "verify_stage", lambda *a: pytest.fail("verify must not run"))
+    with pytest.raises(StageError, match="Traceback"):
+        runner.run_stage_7(tmp_path, [])
+    assert commands == ["om-validate"]
+
+@pytest.mark.parametrize("target,refused", [
+    ("hs:PersonRoleCodeSimpleType", True), ("https://unbound.test/Thing", True), ("nc:PersonType", False)])
+def test_stage_6_refuses_a_saved_target_the_policy_rejects(tmp_path, monkeypatch, target, refused):
+    """A resume at Stage 6 makes no selections, so the generation entry is the
+    only place a pre-policy matrix can still be caught."""
+    import json as _json
+    import runner_tools.run_pipeline as runner
+    from ontology_mapper.run_dir_utils import resolve_specs_dir
+
+    catalog = _json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json").read_text(encoding="utf-8"))
+    monkeypatch.setattr(runner, "load_cascade_context", lambda run_dir: ("niem", catalog))
+    (tmp_path / "mapping-matrix.json").write_text(_json.dumps({"mappings": [
+        {"sourceConcept": "src:A", "action": "reuse", "targetType": target, "reviewStatus": "accepted"}]}),
+        encoding="utf-8")
+
+    commands = []
+    monkeypatch.setattr(runner, "run_cmd", lambda stage, cmd, cwd=None: commands.append(cmd[0]) or "")
+    monkeypatch.setattr(runner, "verify_stage", lambda *a: {})
+
+    if refused:
+        with pytest.raises(StageError, match="src:A"):
+            runner.run_stage_6(tmp_path, [])
+        assert commands == []          # nothing generated
+    else:
+        runner.run_stage_6(tmp_path, [])
+        assert commands[0] == "om-pipeline"
+
+
+def test_stage_6_refuses_a_matrix_reopened_after_stage_5(tmp_path, monkeypatch):
+    """The web continuation refuses pending review; the runner's Stage 6
+    entry now asks the same question instead of the class policy alone."""
+    import json as _json
+    import runner_tools.run_pipeline as runner
+    from ontology_mapper.run_dir_utils import resolve_specs_dir
+
+    catalog = _json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json").read_text(encoding="utf-8"))
+    monkeypatch.setattr(runner, "load_cascade_context", lambda run_dir: ("niem", catalog))
+    (tmp_path / "mapping-matrix.json").write_text(_json.dumps({"mappings": [
+        {"sourceConcept": "src:A", "action": "reuse", "targetType": "nc:PersonType",
+         "reviewStatus": "pending-review"}]}), encoding="utf-8")
+    with pytest.raises(StageError, match="pending review"):
+        runner.refuse_invalid_class_targets(tmp_path)
+
+
+def test_stage_6_without_a_matrix_does_not_refuse(tmp_path, monkeypatch):
+    import runner_tools.run_pipeline as runner
+
+    monkeypatch.setattr(runner, "load_cascade_context",
+                        lambda run_dir: pytest.fail("no matrix: the catalog must not be loaded"))
+    runner.refuse_invalid_class_targets(tmp_path)
+
+@pytest.mark.parametrize("state,matrix", [
+    ({}, {"mappings": []}),                                     # no inputs at all
+    ({"inputs": {}}, {"mappings": []}),                         # no target ontology
+    ({"inputs": {"target_ontology": "acme", "target_version": "9.9"}}, {"mappings": []}),
+    ({"inputs": {"target_ontology": "niem", "target_version": "6.0"}}, {"mappings": [None]}),
+])
+def test_stage_6_reports_an_unprovable_matrix_as_a_stage_failure(tmp_path, state, matrix):
+    """A catalog that will not load, or a matrix that will not read, is not the
+    same as a valid one: the web gate makes it a blocker and the stage fails
+    here rather than escaping as a raw traceback the driver does not catch."""
+    import json as _json
+    import runner_tools.run_pipeline as runner
+
+    (tmp_path / ".mapper-state.json").write_text(_json.dumps(state), encoding="utf-8")
+    (tmp_path / "mapping-matrix.json").write_text(_json.dumps(matrix), encoding="utf-8")
+    with pytest.raises(StageError, match="validat"):
+        runner.refuse_invalid_class_targets(tmp_path)
+
+
+def test_change_target_reaches_an_entry_that_is_not_pending():
+    """An entry the class policy blocks is accepted, not pending, and
+    changing its target is the repair: a resolver that sees pending items
+    only leaves the reviewer no way to clear the blocker from the CLI."""
+    import json as _json
+    from pathlib import Path
+    from ontology_mapper.run_dir_utils import resolve_specs_dir
+    from runner_tools.run_pipeline import _dispatch_review_action
+
+    catalog = _json.loads((resolve_specs_dir() / "niem_reference_catalog_6.0.json")
+                          .read_text(encoding="utf-8"))
+    entry = {"sourceConcept": "src:A", "action": "extend",
+             "targetType": "nc:PersonType", "baseType": "niem-xs:token",
+             "reviewStatus": "accepted", "propertyMappings": []}
+    matrix = {"mappings": [entry]}
+    message, applied, _ = _dispatch_review_action(
+        {"action": "change_target", "concept": "src:A",
+         "new_target_type": "nc:PersonType"},
+        Path("."), matrix, {"decisions": []}, [], ("niem", catalog))
+    assert "not found" not in message
+    assert matrix["mappings"][0].get("baseType") != "niem-xs:token"
+    assert len(applied) == 1
+
+
+def test_stage_6_reports_an_unparseable_matrix_as_a_stage_failure(tmp_path):
+    """A truncated matrix is the same class of input as a malformed one:
+    the stage fails with it named, not a raw JSON traceback."""
+    import json as _json
+    import runner_tools.run_pipeline as runner
+
+    (tmp_path / ".mapper-state.json").write_text(_json.dumps(
+        {"inputs": {"target_ontology": "niem", "target_version": "6.0"}}),
+        encoding="utf-8")
+    (tmp_path / "mapping-matrix.json").write_text('{"mappings": [', encoding="utf-8")
+    with pytest.raises(StageError, match="not readable for validation"):
+        runner.refuse_invalid_class_targets(tmp_path)

@@ -32,6 +32,7 @@ from pathlib import Path
 
 from ontology_mapper.run_dir_utils import resolve_specs_dir
 from ontology_mapper.vector_index import OntologyEntry
+from ontology_mapper.ontology_specific import class_target_filter
 
 
 def _find_catalog(name: str, version: str) -> Path:
@@ -57,6 +58,7 @@ def extract_types(name: str, version: str) -> list[OntologyEntry]:
     pattern, inheritance path, and top properties for richer semantic signal.
     """
     catalog = json.loads(_find_catalog(name, version).read_text(encoding="utf-8"))
+    eligible = class_target_filter(name, catalog, version)
 
     # Build a label lookup so context strings use labels instead of opaque IDs.
     # Falls back to qname when no label is available (e.g., NIEM types).
@@ -81,7 +83,7 @@ def extract_types(name: str, version: str) -> list[OntologyEntry]:
     for t in catalog.get("types", []):
         qname = t.get("qname", "")
         pattern = t.get("pattern", "")
-        if pattern == "augmentation":
+        if pattern == "augmentation" or not eligible(qname):
             continue
 
         label = t.get("label", "")

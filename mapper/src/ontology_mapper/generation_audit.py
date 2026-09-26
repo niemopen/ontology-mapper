@@ -17,7 +17,8 @@ operator can trace downstream effects to upstream choices.
 
 import json
 from pathlib import Path
-from datetime import datetime, timezone
+from ontology_mapper.run_dir_utils import utc_stamp
+from ontology_mapper.generation_utils import infer_domains_from_shapes
 
 
 def load_inputs(run_dir_arg=None):
@@ -55,10 +56,10 @@ def audit_generation(inv, matrix):
         for dom in prop.get("domain", []):
             if dom in source_prop_counts:
                 source_prop_counts[dom] += 1
-    for shape in inv.get("shaclShapes", []):
-        target = shape.get("targetClass", "")
-        if target in source_prop_counts:
-            source_prop_counts[target] += len(shape.get("properties", []))
+    for targets in infer_domains_from_shapes([], inv.get("shaclShapes", [])).values():
+        for target in targets:
+            if target in source_prop_counts:
+                source_prop_counts[target] += 1
 
     # --- GA-001: Active class with zero source properties ---
     for concept, count in source_prop_counts.items():
@@ -282,7 +283,7 @@ def main():
     # Save audit report
     report = {
         "stage": "4-audit",
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "generatedAt": utc_stamp(),
         "findingCount": len(findings),
         "findings": findings,
     }

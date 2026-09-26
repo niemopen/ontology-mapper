@@ -14,7 +14,7 @@
 
 Available actions during review:
 - `approve` — accept a single concept's recommendation
-- `approve_all` — accept all pending (blocked if human-must-decide properties exist)
+- `approve_all` — accept all pending (blocked while pending concepts have undecided properties; `approve_all_blockers`)
 - `detail` — show full rationale and property mappings for a concept
 - `change_target` — change target type, triggering reclassification cascade
 - `resolve_property` — resolve a single property (especially human-must-decide)
@@ -45,9 +45,58 @@ python runner_tools/_present_and_apply_human_review.py --run-dir {run_dir} detai
 # Approve a single concept
 python runner_tools/_present_and_apply_human_review.py --run-dir {run_dir} approve {concept}
 
-# Approve all (blocked if human-must-decide properties exist)
+# Approve all (blocked while pending concepts have undecided properties)
 python runner_tools/_present_and_apply_human_review.py --run-dir {run_dir} approve-all
 
 # Search target catalog
 python runner_tools/_present_and_apply_human_review.py --run-dir {run_dir} search {query}
 ```
+
+## Exit criteria
+
+Review may close when nothing is pending, no property still needs a human
+decision, and every accepted class target passes the target ontology's class
+policy (`ontology_specific.invalid_class_targets`). The third applies to
+decisions saved before the policy existed: they make no selection for the
+interactive check to catch, so the exit check and the Stage 6 entry are the
+seams that see them. "Still needs a human decision" is
+`property_undecided`: a property is decided only by the two decisions review
+can make (`PROPERTY_DECISION_ACTIONS`), `create-property`, or `reuse-property`
+with a real target (not absent or `[undecided]`; the target the emitters
+reuse, `generation_utils.accepted_reuse_target`). Everything else is
+undecided whatever its status: `human-must-decide`, a reuse without a target,
+any other action string. Every count and view of blocking properties, CLI
+and web (the web page reads each property's `undecided` flag), bulk accept
+included, asks the same function. Approve-all asks it of the pending concepts
+it would approve (`approve_all_blockers`, one home for the route, the page's
+button and the CLI); its refusal gives the count (the web route's 409 also
+lists them as `mustDecide`). The exit gate asks it of every concept, and its
+blocker names each one. `check_stage_5_exit(matrix, cascade)` takes the run's
+`(target_ontology, catalog)`; when that cannot be loaded the targets cannot
+be proven valid and that is itself a blocker. A reused property target the
+catalog does not list is refused when chosen (`apply_property_decision`
+raises `generation_utils.PropertyTargetError`; the web route answers 400,
+the CLI prints it) and, when saved earlier or edited in, blocks exit; both
+ask `generation_utils.missing_reuse_target`. Stage 7 Check 12 selects rows
+with the same `reuse_decision_target` (`reuse-property` rows only; a
+`create-property` row reuses nothing), further limited to rows that are
+accepted or fingerprinted, which past review is every such row, and looks
+them up by the same `catalog_property_key`. The web
+route answers 404 for a property the concept does not have, as the CLI
+refuses it.
+
+Each driver meets that check at a different point. The web asks it through
+`routes/review.stage_5_gate` before it offers to close review; the CLI loop
+(`run_stage_5_loop`) keeps prompting until the same check passes, so a
+blocker on an entry that is not pending still gets a `Review>` prompt; and
+`complete_stage_5` — the step that marks the stage complete for both — runs
+the check itself and returns the blockers instead of completing. The
+blocker names every field holding the rejected class, because the reviewer
+selects a class and stored `baseType`/`augmentsType` is not one:
+re-accepting the same class rebuilds scaffolding the policy rejects, so the
+message names something the reviewer can act on. A blocked entry is
+accepted rather than pending, so the CLI resolves a named concept over
+every mapping, not the pending list alone; otherwise the repair the
+blocker asks for could not be typed. The Stage 6 entry answers the
+same way: an unreadable catalog or matrix shape fails the stage
+(`StageError`), never escaping as a traceback the driver does not present.

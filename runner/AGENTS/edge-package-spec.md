@@ -26,8 +26,9 @@ This specification defines the standard structure for an edge ontology package p
 ├── README.md                          # Package manifest and usage guide
 ├── package-manifest.json              # Machine-readable package metadata
 │
-├── cmf/                               # Canonical Model Format
-│   ├── {source}-model.cmf.xml         # CMF model file
+├── cmf/                               # CMF model (targets with a CMF reference model;
+│   │                                  #   otherwise absent, reason under omittedArtifacts)
+│   ├── {source}-model.cmf             # CMF model file (XML)
 │   └── {source}-model.cmf.json        # CMF model in JSON representation
 │
 ├── ontology/                          # Target-aligned OWL/RDF ontology modules
@@ -332,7 +333,7 @@ An edge package is considered complete when:
 1. Every class in the source ontology has an entry in `mapping-matrix.json`
 2. Every extend entry has a class definition in `ontology/{source}-edge-extensions.ttl`; every augment entry has property declarations in the same file (no class — NIEM augmentation is transparent in OWL). Both have justifications in `extension-justifications.md`
 3. Every entry whose action maps to an existing target type references a valid target ontology IRI
-4. `cmf/` contains a valid CMF model (NIEM targets only; otherwise deferred with a note in `package-manifest.json`)
+4. `cmf/` contains a valid CMF model (targets with a CMF reference model, today NIEM 6.0; otherwise omitted, with the reason under `omittedArtifacts` in `package-manifest.json`)
 5. At least one graph platform directory under `kg/` contains working schema and seed scripts
 6. `shapes/` contains SHACL shapes that validate edge ontology instances
 7. `contracts/` contains at least `entity-catalog.json` and `relation-catalog.json`

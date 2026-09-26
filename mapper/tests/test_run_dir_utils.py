@@ -1,7 +1,31 @@
 """Tests for run_dir_utils — run directory resolution and org detection."""
 
+import pathlib
 import json
 import pytest
+from datetime import datetime
+
+
+def test_timestamp_writer_and_legacy_parser(monkeypatch):
+    import ontology_mapper.run_dir_utils as utils
+
+    stamp = utils.utc_stamp()
+    assert stamp.endswith("Z") and "+00:00" not in stamp
+    expected = utils.parse_stamp("2026-09-14T12:00:00Z")
+    for value in ("2026-09-14T12:00:00+00:00", "2026-09-14T05:00:00-07:00", "2026-09-14T12:00:00"):
+        assert utils.parse_stamp(value) == expected
+    for value in (None, "", "invalid", 1):
+        assert utils.parse_stamp(value) is None
+
+    class LegacyDatetime:
+        @staticmethod
+        def fromisoformat(value):
+            # Python 3.10's parser does not accept Z.
+            assert not value.endswith("Z")
+            return datetime.fromisoformat(value)
+
+    monkeypatch.setattr(utils, "datetime", LegacyDatetime)
+    assert utils.parse_stamp("2026-09-14T12:00:00Z") == expected
 from pathlib import Path
 
 from ontology_mapper.run_dir_utils import (
@@ -143,3 +167,29 @@ class TestStatePathFor:
     def test_returns_correct_path(self, tmp_path):
         result = state_path_for(tmp_path)
         assert result == tmp_path / STATE_FILENAME
+
+def test_no_module_parses_a_shared_timestamp_with_the_stdlib_parser():
+    """`utc_stamp` writes a trailing Z, which `datetime.fromisoformat` rejects
+    before Python 3.11 — and both pyproject files declare `requires-python =
+    ">=3.10"`. Every reader goes through `parse_stamp`, which is proven
+    Z-tolerant above; a direct call would pass on this interpreter and fail
+    on the oldest supported one, where no suite here runs."""
+    import re
+
+    root = pathlib.Path(__file__).resolve().parents[2]
+    allowed = {
+        root / "mapper" / "src" / "ontology_mapper" / "run_dir_utils.py",   # parse_stamp itself
+        root / "mapper" / "tests" / "test_run_dir_utils.py",                # and its own test
+    }
+    offenders = []
+    for folder in ("mapper/src", "mapper/tests", "runner", "web/backend"):
+        for path in (root / folder).rglob("*.py"):
+            # A virtualenv under either tree is a developer's, not this
+            # repo's: pydantic and pytest both call `fromisoformat`.
+            skipped = {"build", "node_modules", "site-packages", ".venv", "venv"}
+            if path in allowed or skipped & set(path.parts):
+                continue
+            if re.search(r"\bfromisoformat\s*\(", path.read_text(encoding="utf-8")):
+                offenders.append(str(path.relative_to(root)))
+    assert offenders == [], f"use run_dir_utils.parse_stamp instead: {offenders}"
+

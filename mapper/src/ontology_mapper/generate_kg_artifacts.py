@@ -21,27 +21,21 @@ Usage:
 
 import json
 import re
+import shutil
 import sys
 from pathlib import Path
-from datetime import datetime, timezone
+from ontology_mapper.run_dir_utils import utc_stamp
 
 from ontology_mapper.pipeline_context import load_context
-from ontology_mapper.generation_utils import local_name, XSD
+from ontology_mapper.generation_utils import (
+    graph_name,
+    graph_property_keys,
+    local_name,
+    relationship_type,
+    XSD,
+)
 
 SKOS_CONCEPT = "http://www.w3.org/2004/02/skos/core#Concept"
-
-
-def graph_label(qname):
-    """Convert source qname to Neo4j node label (e.g. dbpi:PermitApplication -> PermitApplication)."""
-    return local_name(qname)
-
-
-def relationship_type(prop_qname):
-    """Convert object property qname to Neo4j relationship type in SCREAMING_SNAKE_CASE."""
-    name = local_name(prop_qname)
-    # Insert underscore before uppercase letters (camelCase -> SCREAMING_SNAKE)
-    snake = re.sub(r"(?<=[a-z0-9])([A-Z])", r"_\1", name)
-    return snake.upper()
 
 
 def xsd_to_cypher_type(xsd_iri):
@@ -69,23 +63,34 @@ def build_active_classes(inv, matrix):
     """Build the list of active classes (reuse + extend + augment) with their properties.
 
     Returns a list of dicts with keys:
-        sourceQname, label, comment, action, targetType,
-        datatypeProps (list of {qname, label, range}),
-        objectProps (list of {qname, label, rangeQname, rangeLabel})
+        sourceQname, iri, label, comment, action, targetType,
+        datatypeProps (list of {qname, iri, label, range}),
+        objectProps (list of {qname, iri, label, rangeQname, rangeLabel})
+
+    ``iri`` is the identity the inventory recorded for the class or property;
+    seed instances are matched on it, whatever namespace the QName belongs to.
     """
     from ontology_mapper.generation_utils import (
+        emitted_class_action,
+        emitted_graph_labels,
+        graph_property_names,
         infer_domains_from_shapes,
+        range_class_for,
         assign_properties_to_classes,
+        shape_only_property_shapes,
+        source_namespaces,
+        source_term_iri,
+        source_prefix as primary_source_prefix,
     )
 
     mapping_by_concept = {m["sourceConcept"]: m for m in matrix["mappings"]}
+    class_by_qname = {c["qname"]: c for c in inv["classes"]}
 
-    # Determine active classes
-    active_qnames = set()
-    for cls in inv["classes"]:
-        m = mapping_by_concept.get(cls["qname"])
-        if m and m["action"] in ("reuse", "extend", "augment"):
-            active_qnames.add(cls["qname"])
+    labels = emitted_graph_labels(inv, matrix["mappings"])
+    prop_names = graph_property_names(inv)
+    shape_only = shape_only_property_shapes(inv)
+    namespaces = source_namespaces(inv)
+    active_qnames = set(labels)
 
     # Assign properties using the same logic as generate_edge_ontology
     shape_domains = infer_domains_from_shapes(
@@ -100,8 +105,8 @@ def build_active_classes(inv, matrix):
     )
 
     # Also pick up properties with explicit domains
-    _sample = inv["classes"][0] if inv["classes"] else None
-    source_prefix = (_sample["qname"].split(":")[0] + ":") if _sample else ""
+    _primary = primary_source_prefix(inv)
+    source_prefix = f"{_primary}:" if _primary else ""
     for prop in inv["datatypeProperties"]:
         if not prop["qname"].startswith(source_prefix) and prop["domain"]:
             active = [d for d in prop["domain"] if d in active_qnames]
@@ -132,6 +137,20 @@ def build_active_classes(inv, matrix):
         for p in inv["datatypeProperties"]:
             if cls_qname in p["domain"] and p["qname"] not in seen_dt:
                 dt.append(p)
+        # A property only this class's shape names, which the OWL, SHACL
+        # and CMF carry; its IRI from the source namespaces, so seed
+        # triples find it, and its range from the shape.
+        for path, spec in shape_only.get(cls_qname, {}).items():
+            p = {"qname": path, "iri": source_term_iri(namespaces, path)}
+            # Where it sits is this class's shape (a value here, a
+            # relationship where a shape gives it an sh:class); its name is
+            # decided once for the property (`graph_property_names`). Placing
+            # it by the property's kind dropped it from a class whose shape
+            # makes it a value.
+            if spec["class"]:
+                obj.append({**p, "range": [spec["class"]]})
+            else:
+                dt.append({**p, "range": [spec["datatype"]] if spec["datatype"] else []})
         return (
             sorted(obj, key=lambda p: p["qname"]),
             sorted(dt, key=lambda p: p["qname"]),
@@ -141,7 +160,8 @@ def build_active_classes(inv, matrix):
     for cls in inv["classes"]:
         qname = cls["qname"]
         m = mapping_by_concept.get(qname)
-        if not m or m["action"] not in ("reuse", "extend", "augment"):
+        action = emitted_class_action(m)
+        if action not in ("reuse", "extend", "augment"):
             continue
 
         obj_props, dt_props = props_for_class(qname)
@@ -152,7 +172,13 @@ def build_active_classes(inv, matrix):
             ranges = p.get("range", [])
             datatype_props.append({
                 "qname": p["qname"],
-                "label": local_name(p["qname"]),
+                # The inventory's own IRI for the predicate, which the
+                # seed generator needs to recover a qname from a triple.
+                # A CSV source mints `{ns}#{Class}.{prop}`, so tailing
+                # the IRI by hand gives a key with a dot in it, which
+                # Neo4j rejects.
+                "iri": p.get("iri"),
+                "label": prop_names[p["qname"]],
                 "range": ranges[0] if ranges else XSD + "string",
             })
 
@@ -161,25 +187,36 @@ def build_active_classes(inv, matrix):
             ranges = p.get("range", [])
             if not ranges:
                 continue
-            range_qname = ranges[0]
-            # Only include if range is an active class
-            if range_qname.startswith(source_prefix) and range_qname not in active_qnames:
+            # An excluded range class stands for its nearest emitted
+            # ancestor, the class the OWL/SHACL and CMF ranges name
+            # (range_class_for, their shared redirect); dropping the
+            # relationship left the graph without an edge both models have.
+            range_qname = range_class_for(ranges[0], mapping_by_concept, class_by_qname) or ranges[0]
+            # Only include if the range is an active class. Not "primary
+            # AND inactive": an augmenting namespace is first-class here,
+            # and an excluded class is excluded whatever namespace it
+            # lives in — otherwise the graph carries a relationship, and
+            # the transform rules a target node type, for a class the
+            # package never declares.
+            if range_qname not in active_qnames:
                 continue
             # Skip SKOS Concept ranges (codelist references, not graph edges)
             if range_qname == SKOS_CONCEPT:
                 continue
             object_props.append({
                 "qname": p["qname"],
-                "label": local_name(p["qname"]),
+                "iri": p.get("iri"),
+                "label": prop_names[p["qname"]],
                 "rangeQname": range_qname,
-                "rangeLabel": graph_label(range_qname),
+                "rangeLabel": labels[range_qname],
             })
 
         result.append({
             "sourceQname": qname,
-            "label": graph_label(qname),
+            "iri": cls["iri"],
+            "label": labels[qname],
             "comment": cls.get("comment", ""),
-            "action": m["action"],
+            "action": action,
             "targetType": m.get("targetType"),
             "datatypeProps": datatype_props,
             "objectProps": object_props,
@@ -197,7 +234,7 @@ def build_relationships(active_classes):
     rels = []
     for cls in active_classes:
         for op in cls["objectProps"]:
-            key = (relationship_type(op["qname"]), cls["label"], op["rangeLabel"])
+            key = (relationship_type(op["label"]), cls["label"], op["rangeLabel"])
             if key not in seen:
                 seen.add(key)
                 rels.append({
@@ -215,7 +252,7 @@ def build_relationships(active_classes):
 # ---------------------------------------------------------------------------
 def generate_schema_cypher(active_classes, relationships, source):
     """Generate kg/neo4j/schema.cypher — constraints, indexes, relationship docs."""
-    now = datetime.now(timezone.utc).isoformat()
+    now = utc_stamp()
     lines = [
         f"// {'=' * 65}",
         f"// {source.upper()} Edge Ontology — Neo4j Schema DDL",
@@ -277,9 +314,19 @@ def generate_schema_cypher(active_classes, relationships, source):
     return "\n".join(lines)
 
 
-def generate_seed_cypher(active_classes, relationships, seed_data_path, source):
-    """Generate kg/neo4j/seed.cypher — sample data from source seed TTL."""
-    now = datetime.now(timezone.utc).isoformat()
+def generate_seed_cypher(active_classes, relationships, seed_data_path, source, property_keys):
+    """Generate kg/neo4j/seed.cypher — sample data from source seed TTL.
+
+    Seed instances are matched on the ``iri`` each active class and object
+    property carries from the inventory, so classes from augmenting or other
+    non-primary source namespaces are seeded alongside the primary ones. The
+    seed file's own prefix declarations are not consulted. A literal's key
+    is its predicate's graph name (``property_keys``, a
+    `GraphPropertyKeys`), whichever class owns the property; a node value
+    is an edge only for an object property, and is a node key instead on an
+    instance whose class holds the property as a value (see OM__GENERATORS).
+    """
+    now = utc_stamp()
 
     header = [
         f"// {'=' * 65}",
@@ -295,44 +342,31 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source):
         return "\n".join(header)
 
     try:
-        from rdflib import Graph as RdfGraph, Namespace, RDF, RDFS, XSD as RDF_XSD
+        from rdflib import Graph as RdfGraph, BNode, Literal, URIRef, RDF
     except ImportError:
         header.append("// rdflib not available — seed data generation skipped.")
         return "\n".join(header)
 
     g = RdfGraph()
     g.parse(str(seed_data_path), format="turtle")
+    if any(isinstance(term, BNode) for triple in g for term in triple):
+        g = _name_blank_nodes(g)
 
     # Build class IRI -> label mapping from active classes
-    # Detect the source namespace from the first class qname
-    sample = active_classes[0] if active_classes else None
-    if not sample:
+    if not active_classes:
         header.append("// No active classes — nothing to seed.")
         return "\n".join(header)
 
-    prefix = sample["sourceQname"].split(":")[0]
-    # Find namespace URI from the parsed graph
-    ns_uri = None
-    for pfx, uri in g.namespaces():
-        if pfx == prefix:
-            ns_uri = str(uri)
-            break
-
-    if not ns_uri:
-        header.append(f"// Could not resolve namespace for prefix '{prefix}'.")
-        return "\n".join(header)
-
-    NS = Namespace(ns_uri)
-    active_labels = {}
-    for cls in active_classes:
-        name = local_name(cls["sourceQname"])
-        active_labels[NS[name]] = cls
-
-    # Collect datatype property label lookups
-    dt_prop_labels = {}
-    for cls in active_classes:
-        for dp in cls["datatypeProps"]:
-            dt_prop_labels[dp["qname"]] = dp["label"]
+    active_labels = {URIRef(cls["iri"]): cls for cls in active_classes}
+    seeded_types = {t for _, _, t in g.triples((None, RDF.type, None))}
+    if not seeded_types & set(active_labels):
+        # Silence here reads as "no seed data to load". Name one of each
+        # so the mismatch (a trailing slash, http vs https) is visible.
+        example_active = sorted(str(iri) for iri in active_labels)[0]
+        example_seed = sorted(str(t) for t in seeded_types)[0] if seeded_types else "(none)"
+        header.append("// No seed instance matches an active class. The seed "
+                      "file types instances as " + example_seed + "; this run's "
+                      "inventory records " + example_active + ".")
 
     # Phase 1: Create nodes
     node_lines = [
@@ -342,10 +376,21 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source):
 
     # Track created node identifiers for relationship creation
     node_identifiers = {}  # subject IRI -> (label, identifier_value)
+    # The properties each class holds as values (`build_active_classes`
+    # places a shape-only property per class): a node value on one of them
+    # is a node key here, as in the class's transform, not an edge. One the
+    # class also holds as a relationship (a property declared both ways)
+    # keeps its edge, as its objectProps and schema.cypher document.
+    values_by_label = {cls["label"]: {p.get("iri") for p in cls["datatypeProps"]}
+                       - {p.get("iri") for p in cls["objectProps"]}
+                       for cls in active_classes}
 
     for subj in sorted(set(g.subjects(RDF.type, None))):
         # Find which active class this instance belongs to
-        types = list(g.objects(subj, RDF.type))
+        # In IRI order: an instance of two active classes took whichever
+        # the graph listed first, which changed with the hash seed, and with
+        # it the instance's label and edges.
+        types = sorted(g.objects(subj, RDF.type))
         matched_cls = None
         for t in types:
             if t in active_labels:
@@ -356,47 +401,61 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source):
 
         label = matched_cls["label"]
         props = {}
+        literal_keys = set()
 
-        # Collect datatype property values
-        for pred, obj in g.predicate_objects(subj):
+        # Collect datatype property values, in sorted order: one key keeps
+        # one value, and the graph's own order followed the hash seed.
+        for pred, obj in sorted(g.predicate_objects(subj)):
             if pred == RDF.type:
                 continue
             pred_str = str(pred)
-            # Only include literal (datatype) values for node creation
-            if hasattr(obj, "datatype") or hasattr(obj, "language") or not hasattr(obj, "n3"):
-                # It's a literal
-                prop_local = pred_str.rsplit("/", 1)[-1] if "/" in pred_str else pred_str.rsplit("#", 1)[-1]
-                val = str(obj)
-                # Detect type for proper Cypher literal formatting
-                if hasattr(obj, "datatype") and obj.datatype:
-                    dt = str(obj.datatype)
-                    if "integer" in dt or "int" in dt:
-                        props[prop_local] = val  # numeric, no quotes
-                    elif "decimal" in dt or "float" in dt or "double" in dt:
-                        props[prop_local] = val
-                    elif "boolean" in dt:
-                        props[prop_local] = val.lower()
-                    elif "date" in dt.lower():
-                        props[prop_local] = f'"{val}"'
-                    else:
-                        props[prop_local] = f'"{_cypher_escape(val)}"'
+            # Literal values are node properties, and so is a node value
+            # of a property this class holds as a value (its IRI, or a
+            # blank node's label): skipped as an edge, it was lost.
+            if isinstance(obj, Literal) or pred_str in values_by_label[matched_cls["label"]]:
+                # The key schema.cypher and the transforms name
+                # (graph_property_names); a local name of its own merged
+                # two namespaces' properties into one key. A predicate the
+                # inventory does not declare is named as the full IRI it is
+                # (`graph_name`): its bare local name overwrote a declared
+                # property's value (`x:name` over `src:name`), and was not
+                # always a key Neo4j accepts (`Class.prop`, `2ndLine`).
+                prop_local = property_keys.values.get(pred_str) or graph_name(pred_str, None)
+                props[prop_local] = (_cypher_literal(obj) if isinstance(obj, Literal) else
+                                     f'"{_cypher_escape(("_:" if isinstance(obj, BNode) else "") + str(obj))}"')
+                if isinstance(obj, Literal):
+                    literal_keys.add(prop_local)
                 else:
-                    props[prop_local] = f'"{_cypher_escape(val)}"'
+                    literal_keys.discard(prop_local)
 
-        if not props:
-            continue
-
-        # Track for relationships — find an identifier property generically
-        identifier = props.get("identifier")
+        # A node with only relationships is still created: every
+        # relationship pointing at it was dropped when it was skipped.
+        # Track for relationships — find an identifier property generically,
+        # among literal values only: a node value (another node's IRI) is
+        # shared by every instance that refers to it, and as an identifier
+        # it made one MATCH bind them all.
+        identifier = props.get("identifier") if "identifier" in literal_keys else None
         if not identifier:
-            for k in sorted(props):
+            for k in sorted(literal_keys):
                 if k.endswith("Number") or k.endswith("Id"):
                     identifier = props[k]
                     break
-        if identifier:
-            # Strip quotes if present
-            id_val = identifier.strip('"')
-            node_identifiers[str(subj)] = (label, id_val)
+        if not identifier:
+            # A node with no id-like property still has its instance IRI;
+            # without one its relationships were dropped from the seed. A
+            # blank node has none: it is named by its canonical label
+            # (see the parse above).
+            identifier = f'"{_cypher_escape(str(subj) if not isinstance(subj, BNode) else "_:" + str(subj))}"'
+        # The Cypher literal itself, so a relationship MATCHes the value the
+        # node was created with: an integer `feeNumber 1001` quoted as
+        # "1001" in the MATCH equalled nothing.
+        node_identifiers[str(subj)] = (label, identifier)
+        # Relationships MATCH on `identifier` and schema.cypher constrains
+        # it; a node whose identifier came from `feeNumber` never carried
+        # one, so every seeded relationship matched nothing when loaded.
+        # It is the node's own even over a node-valued `identifier` key,
+        # which would otherwise hold the value MATCH does not use.
+        props["identifier"] = identifier
 
         prop_str = ", ".join(f"{k}: {v}" for k, v in sorted(props.items()))
         node_lines.append(f"CREATE (:{label} {{{prop_str}}});")
@@ -409,12 +468,11 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source):
         "",
     ]
 
-    # Build a set of known relationship property IRIs
-    rel_prop_iris = set()
-    for cls in active_classes:
-        for op in cls["objectProps"]:
-            prop_name = local_name(op["qname"])
-            rel_prop_iris.add(ns_uri + prop_name)
+    # Known relationship properties by IRI. The relationship type comes from
+    # the property's QName, the same derivation schema.cypher and the import
+    # transform use, not from the predicate string: a CSV-shaped property IRI
+    # (`{ns}#{Class}.{prop}`) would otherwise yield `[:CLASS.PROP]`.
+    rel_props = {op["iri"]: op for cls in active_classes for op in cls["objectProps"]}
 
     for subj, pred, obj in sorted(g):
         if pred == RDF.type:
@@ -423,40 +481,116 @@ def generate_seed_cypher(active_classes, relationships, seed_data_path, source):
         subj_str = str(subj)
         obj_str = str(obj)
 
-        # Only process object properties (obj must be a URI, not a literal)
-        if hasattr(obj, "datatype") or hasattr(obj, "language"):
-            continue
-        if not obj_str.startswith("http"):
+        # Only process object properties: a node, whatever its IRI scheme
+        # (a `urn:` instance was created, and every edge to it dropped).
+        if isinstance(obj, Literal):
             continue
 
         # Both subject and object must be known nodes
         if subj_str not in node_identifiers or obj_str not in node_identifiers:
             continue
 
-        # Must be a known relationship property
-        if pred_str not in rel_prop_iris:
+        # A declared property: one an active class owns, or one declared
+        # with no owner (no domain), which the OWL declares globally and
+        # whose edges were dropped here (hasFee, assignedToUnit).
+        src_label, src_id = node_identifiers[subj_str]
+        # A property this subject's class holds as a value was written as a
+        # node key above; keyed by property alone, it became an edge the
+        # class's transform and schema.cypher do not document.
+        if pred_str in values_by_label[src_label]:
+            continue
+        if pred_str in rel_props:
+            rel_name = relationship_type(rel_props[pred_str]["label"])
+        elif pred_str in property_keys.relationships:
+            rel_name = relationship_type(property_keys.relationships[pred_str])
+        else:
             continue
 
-        src_label, src_id = node_identifiers[subj_str]
         tgt_label, tgt_id = node_identifiers[obj_str]
-        rel_name = relationship_type(pred_str.rsplit("/", 1)[-1] if "/" in pred_str else pred_str.rsplit("#", 1)[-1])
 
-        rel_lines.append(f"MATCH (a:{src_label} {{identifier: \"{src_id}\"}})")
-        rel_lines.append(f"MATCH (b:{tgt_label} {{identifier: \"{tgt_id}\"}})")
+        rel_lines.append(f"MATCH (a:{src_label} {{identifier: {src_id}}})")
+        rel_lines.append(f"MATCH (b:{tgt_label} {{identifier: {tgt_id}}})")
         rel_lines.append(f"CREATE (a)-[:{rel_name}]->(b);")
         rel_lines.append("")
 
     return "\n".join(header + node_lines + rel_lines)
 
 
+def _name_blank_nodes(g):
+    """A copy of ``g`` whose blank nodes carry labels that are the same on
+    every parse (rdflib's own labels are not) and distinct for distinct
+    nodes (a hash of a node's own statements alone gave two identical or
+    nested anonymous values one identifier, and the seed broke
+    schema.cypher's uniqueness constraint).
+
+    A node's label is ``<digest of its own statements>.<k>``: the digest
+    covers its outgoing and incoming statements, a blank neighbour written
+    as ``_``, and ``k`` numbers nodes sharing a digest in the order the
+    parser created them (the counter ending rdflib's blank-node ids), which
+    follows the seed file. The cost is linear in the triples; canonicalizing
+    with rdflib (whole graph, or per linked group) grew faster than the
+    square of the blank nodes in one group (a 1,000-item list took 13 s).
+    Should rdflib's ids stop ending in that counter, ties fall back to the
+    ids themselves: labels stay distinct but may differ between parses.
+    """
+    import hashlib
+    import re
+    from collections import defaultdict
+    from rdflib import Graph as RdfGraph, BNode
+
+    def term(t):
+        return "_" if isinstance(t, BNode) else t.n3()
+
+    outgoing, incoming = defaultdict(list), defaultdict(list)
+    for s, p, o in g:
+        if isinstance(s, BNode):
+            outgoing[s].append((p.n3(), term(o)))
+        if isinstance(o, BNode):
+            incoming[o].append((term(s), p.n3()))
+
+    def created(node):
+        m = re.search(r"(\d+)$", str(node))
+        return (int(m.group(1)) if m else -1, str(node))
+
+    by_digest = defaultdict(list)
+    for node in set(outgoing) | set(incoming):
+        signature = repr((sorted(outgoing[node]), sorted(incoming[node])))
+        by_digest[hashlib.sha256(signature.encode("utf-8")).hexdigest()[:16]].append(node)
+    label = {}
+    for digest, nodes in by_digest.items():
+        for k, node in enumerate(sorted(nodes, key=created)):
+            label[node] = BNode(f"{digest}.{k}")
+
+    named = RdfGraph()
+    for s, p, o in g:
+        named.add((label.get(s, s), p, label.get(o, o)))
+    return named
+
 def _cypher_escape(s):
     """Escape a string for use in Cypher string literals."""
-    return s.replace("\\", "\\\\").replace('"', '\\"').replace("'", "\\'")
+    return (s.replace("\\", "\\\\").replace('"', '\\"').replace("'", "\\'")
+            .replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t"))
+
+
+def _cypher_literal(literal):
+    """A seed literal as a Cypher literal: a number or boolean unquoted only
+    when its datatype (`xsd_to_cypher_type`) says so and its lexical form is
+    one, everything else a quoted, escaped string. A date was quoted but not
+    escaped, and a malformed number written bare, both broken Cypher."""
+    val = str(literal)
+    kind = xsd_to_cypher_type(str(literal.datatype)) if literal.datatype else "STRING"
+    if kind == "INTEGER" and re.fullmatch(r"[+-]?\d+", val.strip()):
+        return str(int(val))
+    if kind == "FLOAT" and re.fullmatch(r"[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?", val.strip()):
+        return val.strip()
+    if kind == "BOOLEAN" and val.strip().lower() in ("true", "false", "1", "0"):
+        return "true" if val.strip().lower() in ("true", "1") else "false"
+    return f'"{_cypher_escape(val)}"'
 
 
 def generate_query_templates(active_classes, relationships, source):
     """Generate reusable Cypher query templates. Returns {name: content}."""
-    now = datetime.now(timezone.utc).isoformat()
+    now = utc_stamp()
     templates = {}
 
     # 1. find-by-identifier — generic
@@ -538,7 +672,7 @@ def _kebab(name):
 # ---------------------------------------------------------------------------
 def generate_trig(ctx):
     """Generate kg/rdf/{source}-edge.trig — named graph wrapping the edge ontology."""
-    now = datetime.now(timezone.utc).isoformat()
+    now = utc_stamp()
     edge_ns = ctx.edge_ns_hash
 
     # Read the core and extensions TTL
@@ -596,7 +730,7 @@ def generate_trig(ctx):
 
 def generate_sparql_templates(ctx):
     """Generate SPARQL query templates. Returns {name: content}."""
-    now = datetime.now(timezone.utc).isoformat()
+    now = utc_stamp()
     edge_ns = ctx.edge_ns_hash
     templates = {}
 
@@ -693,9 +827,7 @@ def generate_internal_to_edge_transform(active_classes):
             range_iri = dp["range"]
             if range_iri in (XSD + "date", XSD + "dateTime", "xsd:date", "xsd:dateTime"):
                 transform = "xsd:date-to-iso8601"
-            # Detect codelist resolves (status/type/code/result properties)
-            if any(kw in prop_name.lower() for kw in ("status", "type", "code", "result")):
-                transform = "codelist-resolve"
+            # A property name alone does not establish a code-list conversion.
             prop_mappings.append({
                 "source": dp["qname"],
                 "target": prop_name,
@@ -706,7 +838,7 @@ def generate_internal_to_edge_transform(active_classes):
         for op in cls["objectProps"]:
             rel_mappings.append({
                 "source": op["qname"],
-                "target": relationship_type(op["qname"]),
+                "target": relationship_type(op["label"]),
                 "targetNodeType": op["rangeLabel"],
             })
 
@@ -768,6 +900,18 @@ def main():
     active_classes = build_active_classes(inv, matrix)
     relationships = build_relationships(active_classes)
 
+    # Every kg/ file is this stage's output. Query files are named after
+    # labels, so one written for an earlier run's labels survived a
+    # regeneration and was validated and listed in lineage as part of this
+    # package; a removal that fails stops the stage rather than ship it.
+    kg_root = pkg / "kg"
+    if kg_root.exists():
+        try:
+            shutil.rmtree(kg_root)
+        except OSError as exc:
+            sys.exit(f"ERROR: could not remove the earlier run's {kg_root}: {exc}. "
+                     "Remove it and re-run Stage 6.")
+
     # Create directories
     neo4j_dir = pkg / "kg" / "neo4j"
     queries_dir = neo4j_dir / "queries"
@@ -793,7 +937,8 @@ def main():
     seed_path = Path(ctx.input_package_path) / "seed-data" / f"{ctx.source}-seed-data.ttl"
     write_artifact(
         neo4j_dir / "seed.cypher",
-        generate_seed_cypher(active_classes, relationships, seed_path, ctx.source),
+        generate_seed_cypher(active_classes, relationships, seed_path, ctx.source,
+                             graph_property_keys(inv)),
     )
 
     for name, content in generate_query_templates(active_classes, relationships, ctx.source).items():

@@ -12,6 +12,15 @@ from unittest.mock import patch
 from ontology_mapper.vector_index import OntologyEntry
 
 
+def test_indexing_uses_native_class_identity_and_preserves_properties(native_class_catalog):
+    from ontology_mapper.adapters.catalog_adapter import extract_types, extract_properties
+
+    entries = extract_types("example", "1.0")
+    assert {entry.id for entry in entries} == {
+        "alias:Record", "alias:ActualSimpleType", "alias:Literal", "alias:InheritedLiteral"}
+    assert [entry.id for entry in extract_properties("example", "1.0")] == ["alias:value"]
+
+
 # ---------------------------------------------------------------------------
 # Synthetic catalog fixture
 # ---------------------------------------------------------------------------

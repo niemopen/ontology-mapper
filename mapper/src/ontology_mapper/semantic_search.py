@@ -31,6 +31,35 @@ Usage:
 from ontology_mapper.vector_index import OntologyEntry, query_index
 
 
+def class_filter_for_index(index_name):
+    """The native class predicate for an index, or None when no policy applies.
+
+    None means the search keeps its bounded top-k retrieval; only a native
+    policy justifies ranking the whole index before filtering.
+    """
+    import json
+    from ontology_mapper.adapters.catalog_adapter import _find_catalog
+    from ontology_mapper.ontology_specific import _any_class_target, class_target_filter
+
+    name, separator, version = index_name.rpartition("-")
+    if not separator:
+        return None
+    try:
+        catalog_path = _find_catalog(name, version)
+    except FileNotFoundError:
+        return None  # Source/custom indexes may have no catalog.
+    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    predicate = class_target_filter(name, catalog, version)
+    return None if predicate is _any_class_target else predicate
+
+
+def match_predicate(eligible):
+    """Lift a target-name predicate to the match dicts ``query_index`` ranks."""
+    if eligible is None:
+        return None
+    return lambda match: eligible(match["qname"])
+
+
 def search_type(
     source_concept: str,
     source_definition: str,
@@ -58,7 +87,8 @@ def search_type(
         kind="type",
         context=source_context,
     )
-    results = query_index([entry], target_ontology, "types", top_k=top_k)
+    results = query_index([entry], target_ontology, "types", top_k=top_k,
+                          eligible=match_predicate(class_filter_for_index(target_ontology)))
     return results[0]["matches"] if results else []
 
 

@@ -20,13 +20,14 @@ import os
 import sys
 import tempfile
 from pathlib import Path
-from datetime import datetime, timezone
 from collections import defaultdict
 
 # ─── Configuration ────────────────────────────────────────────────────────
 
 from ontology_mapper.pipeline_context import load_context
-from ontology_mapper.run_dir_utils import resolve_specs_dir
+from ontology_mapper.run_dir_utils import resolve_specs_dir, utc_stamp
+from ontology_mapper.generation_utils import shape_target_classes, shape_property_is_evaluated
+
 SPECS_DIR = resolve_specs_dir()
 
 
@@ -64,64 +65,61 @@ def load_stage_data(ctx, catalog_path=None):
 
 
 def build_class_properties(inv):
-    """Build mapping from class qname -> set of property local names.
+    """Build mapping from class qname -> set of property QNAMES.
 
-    Uses both explicit rdfs:domain and SHACL shape paths.
+    Uses both explicit rdfs:domain and SHACL shape paths (a shape path is
+    itself a property qname). The qname, not the local name, is the
+    property's identity: a source package may own a class in one namespace
+    and a property of that class in another (an augmenting namespace such
+    as `fin:` or `gis:`), and reducing the property to a local name here is
+    what let `batch_search` re-qualify it under the parent concept's prefix
+    and misname it for the rest of the pipeline.
     """
     class_props = defaultdict(set)
 
     # From explicit domains in object properties
     for prop in inv.get("objectProperties", []):
-        local = strip_prefix(prop["qname"])
         for dom in prop.get("domain", []):
-            class_props[dom].add(local)
+            class_props[dom].add(prop["qname"])
 
     # From explicit domains in datatype properties
     for prop in inv.get("datatypeProperties", []):
-        local = strip_prefix(prop["qname"])
         for dom in prop.get("domain", []):
-            class_props[dom].add(local)
+            class_props[dom].add(prop["qname"])
 
     # From SHACL shapes (properties constrained on a target class)
     for shape in inv.get("shaclShapes", []):
-        target = shape.get("targetClass", "")
-        for sp in shape.get("properties", []):
-            path = sp.get("path", "")
-            if path:
-                local = strip_prefix(path)
-                class_props[target].add(local)
+        if not shape_property_is_evaluated(shape):
+            continue
+        for target in shape_target_classes(shape):
+            for sp in shape.get("properties", []):
+                path = sp.get("path", "")
+                if path and shape_property_is_evaluated(sp):
+                    class_props[target].add(path)
 
     return dict(class_props)
 
 
 def build_source_property_defs(inv, class_properties):
-    """Build lookup: {class_qname: {prop_local_name: {definition, range}}}.
+    """Build lookup: {class_qname: {prop_qname: {definition, range}}}.
 
-    Combines property data from objectProperties, datatypeProperties,
-    and shaclShapes to create a per-class, per-property definition map.
+    Combines property data from objectProperties and datatypeProperties.
+    Keyed by qname to match ``build_class_properties`` — two properties in
+    different namespaces may share a local name.
     """
-    # Build global property lookup by local name
-    prop_lookup = {}  # local_name -> {definition, range}
-    for prop in inv.get("objectProperties", []):
-        local = strip_prefix(prop.get("qname", ""))
-        prop_lookup[local] = {
-            "definition": prop.get("comment", ""),
-            "range": prop.get("range", []),
-        }
-    for prop in inv.get("datatypeProperties", []):
-        local = strip_prefix(prop.get("qname", ""))
-        prop_lookup[local] = {
-            "definition": prop.get("comment", ""),
-            "range": prop.get("range", []),
-        }
+    prop_lookup = {}  # qname -> {definition, range}
+    for prop in inv.get("objectProperties", []) + inv.get("datatypeProperties", []):
+        qname = prop.get("qname", "")
+        if qname:
+            prop_lookup[qname] = {
+                "definition": prop.get("comment", ""),
+                "range": prop.get("range", []),
+            }
 
     # Map each class's properties to their definitions
     result = {}
-    for class_qname, prop_names in class_properties.items():
-        class_defs = {}
-        for pname in prop_names:
-            if pname in prop_lookup:
-                class_defs[pname] = prop_lookup[pname]
+    for class_qname, prop_qnames in class_properties.items():
+        class_defs = {q: prop_lookup[q] for q in prop_qnames if q in prop_lookup}
         if class_defs:
             result[class_qname] = class_defs
     return result
@@ -145,14 +143,17 @@ def build_source_concept_summary(inv):
         local_name = strip_prefix(qname)
         definition = cls.get("comment", "") or cls.get("definition", "") or ""
 
-        # Build property list with definitions
+        # Build property list with definitions. `qname` is the property's
+        # identity downstream (batch_search, the evaluator, the matrix);
+        # `name` stays the local name the evaluator prompt reads.
         properties = []
-        prop_names = sorted(class_props.get(qname, set()))
+        prop_qnames = sorted(class_props.get(qname, set()))
         class_defs = prop_defs.get(qname, {})
-        for pname in prop_names:
-            pd = class_defs.get(pname, {})
+        for pqname in prop_qnames:
+            pd = class_defs.get(pqname, {})
             properties.append({
-                "name": pname,
+                "name": strip_prefix(pqname),
+                "qname": pqname,
                 "definition": pd.get("definition", ""),
                 "range": pd.get("range", []),
             })
@@ -197,7 +198,7 @@ def generate_catalog_summary_from_catalog(catalog, target_ontology, target_versi
             f"{target_ontology} {target_version} type summary for semantic processing. "
             f"Auto-generated from reference catalog."
         ),
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "generatedAt": utc_stamp(),
         "stats": {
             "namespaces": len(summary),
             "totalTypes": total_types,
@@ -249,7 +250,7 @@ def save_alignment_report(run_dir, entries, target_ontology, target_version, act
 
     report = {
         "stage": "3",
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "generatedAt": utc_stamp(),
         "targetOntology": target_ontology,
         "targetVersion": target_version,
         "matchingMethod": "pending-evaluation",
@@ -311,7 +312,7 @@ def main():
     source_concepts = build_source_concept_summary(inv)
     source_path = run_dir / "source-concepts.json"
     source_doc = {
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "generatedAt": utc_stamp(),
         "totalConcepts": len(source_concepts),
         "concepts": source_concepts,
     }

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Stage 8: Finalize — stamp the edge package with version, lineage, and validation metadata.
 
-Runs after Stage 7 validation. Writes:
+Runs after Stage 7 validation, and refuses (exit 1) unless this run's
+validation report exists, covers the package's current content and passed.
+Writes:
 
   - governance/version-manifest.json  (version history and generation context)
   - governance/lineage-manifest.json  (provenance from sources to artifacts)
@@ -19,9 +21,11 @@ Usage:
 import json
 import sys
 from pathlib import Path
-from datetime import datetime, timezone
 
 from ontology_mapper.pipeline_context import load_context
+from ontology_mapper.run_dir_utils import parse_stamp, utc_stamp
+from ontology_mapper.validate_edge_package import (
+    FINAL_VERSION, report_not_passed, stale_against_package)
 
 
 def _count_actions(mappings):
@@ -42,14 +46,14 @@ def _load_stage_timings(state):
         started = entry.get("started_at")
         completed = entry.get("completed_at")
         duration = None
-        if started and completed:
-            try:
-                from datetime import datetime as dt
-                t0 = dt.fromisoformat(started)
-                t1 = dt.fromisoformat(completed)
-                duration = round((t1 - t0).total_seconds(), 1)
-            except (ValueError, TypeError):
-                pass
+        t0 = parse_stamp(started)
+        t1 = parse_stamp(completed)
+        if t0 and t1:
+            elapsed = (t1 - t0).total_seconds()
+            # A negative elapsed time means the two stamps disagree rather
+            # than that the stage ran backwards; report it as unknown and
+            # leave the raw stamps below for whoever reconciles them.
+            duration = round(elapsed, 1) if elapsed >= 0 else None
         timings.append({
             "stage": stage_num,
             "name": entry.get("notes", ""),
@@ -67,13 +71,12 @@ def _total_duration(timings):
     ends = [t["completedAt"] for t in timings if t["completedAt"]]
     if not starts or not ends:
         return None
-    try:
-        from datetime import datetime as dt
-        first = min(dt.fromisoformat(s) for s in starts)
-        last = max(dt.fromisoformat(e) for e in ends)
-        return round((last - first).total_seconds(), 1)
-    except (ValueError, TypeError):
+    parsed_starts = [parse_stamp(s) for s in starts]
+    parsed_ends = [parse_stamp(e) for e in ends]
+    if None in parsed_starts or None in parsed_ends:
         return None
+    total = (max(parsed_ends) - min(parsed_starts)).total_seconds()
+    return round(total, 1) if total >= 0 else None
 
 
 def build_version_manifest(ctx, matrix, state=None):
@@ -81,17 +84,17 @@ def build_version_manifest(ctx, matrix, state=None):
     mappings = matrix.get("mappings", [])
     action_counts = _count_actions(mappings)
     source_name = ctx.agency_package_name
-    now = datetime.now(timezone.utc).isoformat()
+    now = utc_stamp()
 
     manifest = {
-        "currentVersion": "1.0.0",
+        "currentVersion": FINAL_VERSION,
         "targetOntology": ctx.target_ontology,
         "targetVersion": ctx.target_version,
         "mapperVersion": "ontology-mapper-1.0",
         "sourcePackageVersion": f"{source_name}@1.0",
         "generationHistory": [
             {
-                "version": "1.0.0",
+                "version": FINAL_VERSION,
                 "generatedAt": now,
                 "targetOntology": ctx.target_ontology,
                 "targetVersion": ctx.target_version,
@@ -117,7 +120,7 @@ def build_version_manifest(ctx, matrix, state=None):
 def build_lineage_manifest(ctx, matrix):
     """Build governance/lineage-manifest.json tracking provenance."""
     artifacts = []
-    now = datetime.now(timezone.utc).isoformat()
+    now = utc_stamp()
 
     # Collect target ontology references from the mapping matrix
     target_refs = set()
@@ -206,7 +209,7 @@ def build_change_impact(matrix, validation_report, generation_audit):
     lines = [
         "# Change Impact Analysis",
         "",
-        f"Generated: {datetime.now(timezone.utc).isoformat()}",
+        f"Generated: {utc_stamp()}",
         "",
         "## Summary",
         "",
@@ -295,8 +298,8 @@ def reconcile_manifest(pkg, matrix):
         "totalConcepts": len(mappings),
         "actionCounts": action_counts,
     }
-    manifest["version"] = "1.0.0"
-    manifest["finalizedAt"] = datetime.now(timezone.utc).isoformat()
+    manifest["version"] = FINAL_VERSION
+    manifest["finalizedAt"] = utc_stamp()
 
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return True
@@ -316,21 +319,52 @@ def main():
     print(f"  Edge package:  {ctx.pkg_dir}")
     print()
 
-    # Load required artifacts
-    matrix_path = ctx.run_dir / "mapping-matrix.json"
-    if not matrix_path.exists():
-        # Try edge package copy
-        matrix_path = ctx.pkg_dir / "mappings" / "mapping-matrix.json"
-    if not matrix_path.exists():
-        print(f"  ERROR: mapping-matrix.json not found")
-        sys.exit(1)
-    matrix = json.loads(matrix_path.read_text(encoding="utf-8"))
-
     # Load optional artifacts
+    # Stage 8 publishes only a package its current validation passed.
+    # `--from-stage 8` reaches here without Stage 7, and a published package
+    # carries a finalization stamp whatever the report inside it says.
     val_path = ctx.run_dir / "validation-report.json"
     validation_report = json.loads(val_path.read_text(encoding="utf-8")) if val_path.exists() else None
+    if validation_report is None:
+        print("  [!] validation-report.json not found: Stage 7 has not "
+              "validated this package; run Stage 7 before finalizing.")
+        sys.exit(1)
+    stale = stale_against_package(val_path, ctx.pkg_dir, validation_report)
+    if stale:
+        # The same wording as the runner's freshness check: `stale` names a
+        # changed, added or removed file, or a package directory that is gone.
+        print(f"  [!] validation-report.json does not cover {stale}")
+        print("      Stage 7 validated a different package than the one here; "
+              "re-run validation before finalizing.")
+        sys.exit(1)
+    not_passed = report_not_passed(validation_report)
+    if not_passed:
+        print(f"  [!] validation-report.json certifies no pass: {not_passed}")
+        print("      Fix the package and re-run Stage 7 before finalizing; "
+              "feedback-report.json maps the failures to source decisions.")
+        sys.exit(1)
 
-    audit_path = ctx.run_dir / "generation-audit.json"
+    # The package copy only, read once the package is known to be the one
+    # Stage 7 validated: it is the matrix that validation digested. The run
+    # directory's copy is outside the digest, so falling back to it let an
+    # edit made after validation reach the published statistics unrefused.
+    # Stage 6b always writes the package copy; its absence means the package
+    # is incomplete.
+    matrix_path = ctx.pkg_dir / "mappings" / "mapping-matrix.json"
+    if not matrix_path.exists():
+        print(f"  ERROR: {matrix_path} not found: the package lacks the matrix "
+              f"Stage 7 validates; re-run from Stage 6.")
+        sys.exit(1)
+    matrix = json.loads(matrix_path.read_text(encoding="utf-8"))
+    if not (ctx.pkg_dir / "package-manifest.json").exists():
+        # Stage 6b always writes it; publishing without it reported a
+        # finalized package whose manifest carried no stamp at all.
+        print("  ERROR: the package has no package-manifest.json; re-run from Stage 6.")
+        sys.exit(1)
+
+    # The package copy Stage 7 digested, not the run directory's, which an
+    # edit after validation could change unrefused.
+    audit_path = ctx.pkg_dir / "governance" / "generation-audit.json"
     generation_audit = json.loads(audit_path.read_text(encoding="utf-8")) if audit_path.exists() else None
 
     # Load pipeline state for timing data
@@ -358,13 +392,10 @@ def main():
     artifacts_written += 1
 
     # ── 3. Validation report copy ─────────────────────────────────────────
-    if validation_report:
-        vr_path = gov_dir / "validation-report.json"
-        vr_path.write_text(json.dumps(validation_report, indent=2) + "\n", encoding="utf-8")
-        print(f"  [+] validation-report.json (passed: {validation_report.get('allPassed', 'unknown')})")
-        artifacts_written += 1
-    else:
-        print(f"  [-] validation-report.json: not found in run directory")
+    vr_path = gov_dir / "validation-report.json"
+    vr_path.write_text(json.dumps(validation_report, indent=2) + "\n", encoding="utf-8")
+    print(f"  [+] validation-report.json (passed: {validation_report['allPassed']})")
+    artifacts_written += 1
 
     # ── 4. Change impact analysis ─────────────────────────────────────────
     change_impact = build_change_impact(matrix, validation_report, generation_audit)
@@ -381,18 +412,10 @@ def main():
         print(f"  [-] package-manifest.json: not found, skipping reconciliation")
 
     # ── Summary ───────────────────────────────────────────────────────────
-    all_passed = validation_report.get("allPassed", False) if validation_report else False
-    status = "READY" if all_passed else "REVIEW NEEDED"
-
     print(f"\n  Done: {artifacts_written} artifacts written")
-    print(f"  Package status: {status}")
+    print(f"  Package status: READY")
     print(f"  Package location: {pkg}")
-
-    if not all_passed and validation_report:
-        fail_count = validation_report.get("failCount", 0)
-        print(f"  Warning: {fail_count} validation check(s) failed - review change-impact.md")
-
-    return 0  # Always succeed — validation failures are advisory
+    return 0
 
 
 if __name__ == "__main__":

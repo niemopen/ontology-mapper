@@ -495,3 +495,118 @@ class TestEdgeCasesBuildNsMap:
         }
         ns_map = build_ns_map(manifest)
         assert len(ns_map) == 1
+
+
+class TestShaclReadingFidelity:
+    """The shapes reader must not change what the source said.
+
+    Each case here was a real defect: a zero count read as absent, a
+    property-path expression read as a property, a second target class
+    dropped, and an advisory or switched-off constraint read as a hard
+    bound.
+    """
+
+    TTL = """
+        @prefix sh:   <http://www.w3.org/ns/shacl#> .
+        @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+        @prefix test: <http://example.org/test#> .
+
+        test:PersonShape a sh:NodeShape ;
+            sh:targetClass test:Person, test:Agent ;
+            sh:property [ sh:path test:forbidden ; sh:maxCount 0 ] ;
+            sh:property [ sh:path test:optional  ; sh:minCount 0 ; sh:maxCount 1 ] ;
+            sh:property [ sh:path test:advisory  ; sh:minCount 1 ;
+                          sh:severity sh:Warning ] ;
+            sh:property [ sh:path test:switched  ; sh:minCount 1 ;
+                          sh:deactivated true ] ;
+            sh:property [ sh:path ( test:a test:b ) ; sh:minCount 1 ] ;
+            sh:property [ sh:path test:required  ; sh:minCount 1 ;
+                          sh:datatype xsd:string ] .
+
+        test:OffShape a sh:NodeShape ;
+            sh:targetClass test:Ignored ;
+            sh:deactivated true ;
+            sh:property [ sh:path test:anything ; sh:minCount 1 ] .
+    """
+
+    @pytest.fixture(scope="class")
+    @staticmethod
+    def shapes():
+        from rdflib import Graph
+        from ontology_mapper.extract_concepts import extract_shacl_shapes
+
+        graph = Graph()
+        graph.parse(data=TestShaclReadingFidelity.TTL, format="turtle")
+
+        def to_qname(term):
+            text = str(term)
+            return "test:" + text.split("#", 1)[1] if "#" in text else text
+
+        return {shape["iri"]: shape
+                for shape in extract_shacl_shapes(graph, to_qname)}
+
+    @staticmethod
+    def _prop(shape, local):
+        for entry in shape["properties"]:
+            if entry["path"] == f"test:{local}":
+                return entry
+        return None
+
+    def test_max_count_zero_is_kept(self, shapes):
+        """`sh:maxCount 0` forbids the property; None means unbounded.
+
+        `int(v) if v else None` discarded the literal zero and inverted
+        the constraint into its opposite.
+        """
+        shape = shapes["http://example.org/test#PersonShape"]
+        assert self._prop(shape, "forbidden")["maxCount"] == 0
+
+    def test_min_count_zero_is_kept(self, shapes):
+        shape = shapes["http://example.org/test#PersonShape"]
+        assert self._prop(shape, "optional")["minCount"] == 0
+
+    def test_every_target_class_is_kept(self, shapes):
+        shape = shapes["http://example.org/test#PersonShape"]
+        assert shape["targetClasses"] == ["test:Agent", "test:Person"]
+        assert shape["targetClass"] in shape["targetClasses"]
+
+    def test_path_expression_is_not_named_as_a_property(self, shapes):
+        """A blank-node `sh:path` is a traversal, not a property. It used
+        to be rendered as its bnode id, which downstream read as a real
+        property name no ontology declares."""
+        shape = shapes["http://example.org/test#PersonShape"]
+        expressions = [e for e in shape["properties"]
+                       if e["pathKind"] == "expression"]
+        assert len(expressions) == 1
+        assert expressions[0]["path"] is None
+        assert not any(e["path"] and e["path"].startswith("N")
+                       for e in shape["properties"])
+
+    def test_severity_is_recorded(self, shapes):
+        shape = shapes["http://example.org/test#PersonShape"]
+        assert self._prop(shape, "advisory")["severity"] == "Warning"
+        assert self._prop(shape, "required")["severity"] == "Violation"
+
+    def test_deactivated_is_recorded(self, shapes):
+        shape = shapes["http://example.org/test#PersonShape"]
+        assert self._prop(shape, "switched")["deactivated"] is True
+        assert self._prop(shape, "required")["deactivated"] is False
+
+    def test_a_deactivated_shape_marks_all_its_properties(self, shapes):
+        shape = shapes["http://example.org/test#OffShape"]
+        assert shape["deactivated"] is True
+        assert all(e["deactivated"] for e in shape["properties"])
+
+    def test_invalid_target_is_not_a_class_and_custom_severity_keeps_its_iri(self):
+        from rdflib import Graph
+
+        graph = Graph().parse(data='''
+            @prefix sh: <http://www.w3.org/ns/shacl#> .
+            @prefix ex: <https://example.org/> .
+            ex:S a sh:NodeShape ; sh:targetClass (ex:A ex:B) ;
+                sh:property [sh:minCount 1; sh:severity <https://example.org/#Custom>] .
+        ''', format="turtle")
+        [shape] = extract_shacl_shapes(graph, str)
+        assert shape["targetClasses"] == []
+        assert shape["properties"][0]["path"] is None
+        assert shape["properties"][0]["severity"] == "https://example.org/#Custom"

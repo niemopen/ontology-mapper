@@ -6,7 +6,7 @@ Three sub-stages that produce the edge package.
 
 ## Stage 6a: Generate OWL/TTL
 
-**Artifacts** (in `edge-package/`): `ontology/{source}-edge-*.ttl` (4 files), `cmf/{source}-model.cmf`, `cmf/{source}-model.cmf.json`
+**Artifacts** (in `edge-package/`): `ontology/{source}-edge-*.ttl` (4 files), `cmf/{source}-model.cmf`, `cmf/{source}-model.cmf.json` (the CMF only for a target with a CMF reference model; see [REFERENCE_MODELS.md](../../mapper/src/ontology_mapper/specs/REFERENCE_MODELS.md))
 
 ```
 Action:  om-pipeline rerun --stage 6 --run-dir {run_dir}
@@ -14,7 +14,7 @@ Action:  om-pipeline rerun --stage 6 --run-dir {run_dir}
          -> Does NOT run generation — only creates the output directory layout.
 
 Action:  om-generate-ontology --run-dir {run_dir}
-         -> Generates 4 TTL files + 2 CMF files in edge-package/
+         -> Generates 4 TTL files, and 2 CMF files when the target has a CMF reference model
 
 Verify:  python runner_tools/verify_stage_outputs.py --run-dir {run_dir} --stage 6a
 ```

@@ -3,11 +3,12 @@
 
 import json
 import pytest
+from ontology_mapper.generation_utils import graph_labels, graph_property_keys
+from ontology_mapper.generate_kg_artifacts import relationship_type
 from pathlib import Path
 from ontology_mapper.pipeline_context import PipelineContext
 from ontology_mapper.generate_kg_artifacts import (
     local_name,
-    graph_label,
     relationship_type,
     xsd_to_cypher_type,
     build_active_classes,
@@ -113,13 +114,139 @@ class TestLocalName:
         assert local_name("https://example.org/ontology/Permit") == "Permit"
 
 
-class TestGraphLabel:
-    def test_basic(self):
-        assert graph_label("dbpi:PermitApplication") == "PermitApplication"
+class TestGraphLabels:
+    def test_a_primary_term_keeps_its_local_name(self):
+        assert graph_labels(["dbpi:PermitApplication", "dbpi:Address"], "dbpi") == {
+            "dbpi:PermitApplication": "PermitApplication", "dbpi:Address": "Address"}
 
-    def test_simple(self):
-        assert graph_label("dbpi:Address") == "Address"
+    def test_a_term_of_another_namespace_is_always_qualified(self):
+        """Decided by the term's namespace, not by what else is present."""
+        assert graph_labels(["src:Other", "aug:Thing"], "src") == {
+            "src:Other": "Other", "aug:Thing": "aug_Thing"}
 
+    def test_a_label_does_not_change_when_a_later_package_adds_a_namesake(self):
+        """Round twelve (open lens): adding aug:Thing renamed src:Thing from
+        Thing to src_Thing, so data loaded under the earlier package's
+        label stopped matching the new schema."""
+        before = graph_labels(["src:Thing", "src:Other"], "src")
+        after = graph_labels(["src:Thing", "src:Other", "aug:Thing", "http://x.org/y#Thing"], "src")
+        assert after["src:Thing"] == before["src:Thing"] == "Thing"
+        assert after["src:Other"] == before["src:Other"]
+
+    def test_names_that_still_meet_after_cleanup_are_suffixed(self):
+        cases = [
+            ["http://a.org/x#Thing", "http://b.org/y#Thing"],
+            ["a-b:Thing", "a_b:Thing"],
+            ["src:aug_Thing", "aug:Thing"],
+        ]
+        for qnames in cases:
+            labels = graph_labels(qnames, "src")
+            assert len(set(labels.values())) == len(qnames), labels
+
+    def test_every_label_is_a_cypher_identifier(self):
+        """A plain local name was written as is: `Thing-Type` is not an
+        unquoted Cypher label, and Check 8 reads labels as \\w+."""
+        import re
+        labels = graph_labels(["src:Thing-Type", "src:9Lives", "src:Ok"], "src")
+        assert labels == {"src:Thing-Type": "Thing_Type", "src:9Lives": "_9Lives", "src:Ok": "Ok"}
+        assert all(re.fullmatch(r"[A-Za-z_]\w*", l) for l in labels.values())
+
+    def test_labels_do_not_depend_on_input_order(self):
+        qnames = ["src:Thing", "aug:Thing", "src:aug_Thing", "a-b:X", "a_b:X"]
+        assert graph_labels(qnames, "src") == graph_labels(list(reversed(qnames)), "src")
+
+
+class TestGraphNameStability:
+    """Round thirteen: a collision suffix was a counter in sorted order, so a
+    later package's term renamed an existing label (src:aug_Thing became
+    aug_Thing_2 when aug:Thing arrived) and the old label named a
+    different class."""
+
+    def test_a_later_namesake_does_not_rename_a_primary_term(self):
+        before = graph_labels(["src:aug_Thing"], "src")
+        after = graph_labels(["src:aug_Thing", "aug:Thing"], "src")
+        assert after["src:aug_Thing"] == before["src:aug_Thing"] == "aug_Thing"
+        assert after["aug:Thing"] != "aug_Thing"
+
+    def test_a_suffix_does_not_depend_on_the_other_terms(self):
+        one = graph_labels(["src:aug_Thing", "aug:Thing"], "src")["aug:Thing"]
+        two = graph_labels(["src:aug_Thing", "aug:Thing", "a-b:X", "a_b:X", "src:Z"], "src")["aug:Thing"]
+        assert one == two
+
+    def test_full_iris_of_two_namespaces_never_meet(self):
+        before = graph_labels(["http://b.org/x#Thing"], "src")
+        after = graph_labels(["http://b.org/x#Thing", "http://a.org/y#Thing"], "src")
+        assert after["http://b.org/x#Thing"] == before["http://b.org/x#Thing"]
+        assert len(set(after.values())) == 2
+
+
+class TestGraphPropertyNames:
+    def test_properties_sharing_a_local_name_stay_distinct(self):
+        """Round twelve: src:subject and aug:subject became one relationship
+        type SUBJECT, and src:name / aug:name one node key `name`."""
+        from ontology_mapper.generation_utils import graph_property_names
+        inv = {"primaryNamespace": {"prefix": "src"},
+               "objectProperties": [{"qname": "src:subject"}, {"qname": "aug:subject"}],
+               "datatypeProperties": [{"qname": "src:name"}, {"qname": "aug:name"}]}
+        names = graph_property_names(inv)
+        assert names == {"src:subject": "subject", "aug:subject": "aug_subject",
+                         "src:name": "name", "aug:name": "aug_name"}
+        assert relationship_type(names["aug:subject"]) == "AUG_SUBJECT"
+
+    def test_relationship_types_are_distinct(self):
+        """Round thirteen: upper-casing made hasPart/has_part, partOf/PartOf
+        and aug:subject/src:augSubject one relationship type, and
+        build_relationships kept one of each pair."""
+        from ontology_mapper.generation_utils import graph_property_names
+        qnames = ["src:hasPart", "src:has_part", "src:partOf", "src:PartOf",
+                  "aug:subject", "src:augSubject"]
+        inv = {"primaryNamespace": {"prefix": "src"},
+               "objectProperties": [{"qname": q} for q in qnames], "datatypeProperties": []}
+        names = graph_property_names(inv)
+        assert len({relationship_type(names[q]) for q in qnames}) == len(qnames)
+        assert names["src:hasPart"] == "hasPart" and names["src:augSubject"] == "augSubject"
+
+    def test_node_keys_differing_in_case_stay_as_they_are(self):
+        """Node keys are case-sensitive; only relationship types fold."""
+        from ontology_mapper.generation_utils import graph_property_names
+        inv = {"primaryNamespace": {"prefix": "src"}, "objectProperties": [],
+               "datatypeProperties": [{"qname": "src:partOf"}, {"qname": "src:PartOf"}]}
+        assert graph_property_names(inv) == {"src:partOf": "partOf", "src:PartOf": "PartOf"}
+
+
+class TestShapeOnlyPropertiesInTheGraph:
+    """Round thirteen: a property only a shape names reached the OWL, SHACL
+    and CMF, and not the graph's node keys, relationships or transforms."""
+
+    def _inv(self):
+        inv = make_inv(
+            [make_class("src:Case"), make_class("src:Party")],
+            shapes=[{"targetClasses": ["src:Case"], "properties": [
+                {"path": "src:docketCode", "datatype": "http://www.w3.org/2001/XMLSchema#string"},
+                {"path": "src:filedBy", "class": "src:Party"},
+                {"path": "rdfs:label"},
+            ]}])
+        inv["primaryNamespace"] = {"prefix": "src"}
+        inv["namespaceMap"] = {"https://example.org/src#": "src"}
+        return inv
+
+    def test_shape_only_properties_reach_the_class(self):
+        matrix = make_matrix([make_mapping("src:Case", "extend"), make_mapping("src:Party", "extend")])
+        case = next(c for c in build_active_classes(self._inv(), matrix) if c["label"] == "Case")
+        assert {(p["qname"], p["label"], p["iri"]) for p in case["datatypeProps"]} == {
+            ("src:docketCode", "docketCode", "https://example.org/src#docketCode"),
+            ("rdfs:label", "rdfs_label", None)}
+        assert [(p["qname"], p["rangeLabel"]) for p in case["objectProps"]] == [("src:filedBy", "Party")]
+        transform = generate_internal_to_edge_transform(build_active_classes(self._inv(), matrix))
+        rule = next(t for t in transform["transforms"] if t["targetLabel"] == "Case")
+        assert {m["source"] for m in rule["propertyMappings"]} == {"src:docketCode", "rdfs:label"}
+        assert rule["relationMappings"] == [
+            {"source": "src:filedBy", "target": "FILED_BY", "targetNodeType": "Party"}]
+
+    def test_a_shape_only_range_that_is_not_emitted_is_no_relationship(self):
+        matrix = make_matrix([make_mapping("src:Case", "extend"), make_mapping("src:Party", "exclude")])
+        case = build_active_classes(self._inv(), matrix)[0]
+        assert case["objectProps"] == []
 
 class TestRelationshipType:
     def test_camel_case(self):
@@ -177,6 +304,34 @@ class TestKebab:
 # ═══════════════════════════════════════════════════════════════════════════
 
 class TestBuildActiveClasses:
+    @pytest.mark.parametrize("chain", [["ex:Minor"], ["ex:Minor", "ex:Middle"]])
+    def test_an_excluded_range_names_the_class_the_owl_and_cmf_name(self, chain):
+        """A range on an excluded class stands for its nearest emitted
+        ancestor in OWL, SHACL and CMF (range_class_for); the graph dropped
+        the relationship instead, through any number of exclusions."""
+        classes = [make_class("ex:Person"), make_class("ex:Case")]
+        parent = "ex:Person"
+        for qname in reversed(chain):
+            cls = make_class(qname)
+            cls["subClassOf"] = [parent]
+            classes.append(cls)
+            parent = qname
+        inv = make_inv(classes, obj_props=[
+            make_obj_prop("ex:subject", domain=["ex:Case"], range_val=[chain[0]])])
+        matrix = make_matrix([make_mapping("ex:Person", "reuse", "nc:PersonType"),
+                              make_mapping("ex:Case", "extend")]
+                             + [make_mapping(q, "exclude") for q in chain])
+        case = next(c for c in build_active_classes(inv, matrix) if c["sourceQname"] == "ex:Case")
+        assert [(p["qname"], p["rangeQname"]) for p in case["objectProps"]] == [("ex:subject", "ex:Person")]
+
+    def test_a_range_with_no_emitted_ancestor_is_still_dropped(self):
+        orphan = make_class("ex:Orphan")
+        inv = make_inv([make_class("ex:Case"), orphan], obj_props=[
+            make_obj_prop("ex:about", domain=["ex:Case"], range_val=["ex:Orphan"])])
+        matrix = make_matrix([make_mapping("ex:Case", "extend"), make_mapping("ex:Orphan", "exclude")])
+        case = next(c for c in build_active_classes(inv, matrix) if c["sourceQname"] == "ex:Case")
+        assert case["objectProps"] == []
+
     def test_filters_to_reuse_and_extend(self):
         inv = make_inv(
             classes=[
@@ -447,13 +602,17 @@ class TestGenerateTransformRules:
         assert result["transforms"][0]["sourceType"] == "ex:Permit"
         assert result["transforms"][0]["targetLabel"] == "Permit"
 
-    def test_date_transform_detected(self):
+    @pytest.mark.parametrize("name", ["issuedDate", "resultDate"])
+    @pytest.mark.parametrize("datatype", [
+        "http://www.w3.org/2001/XMLSchema#date",
+        "http://www.w3.org/2001/XMLSchema#dateTime", "xsd:date", "xsd:dateTime",
+    ])
+    def test_date_transform_detected(self, name, datatype):
         classes = [{
             "sourceQname": "ex:Permit", "label": "Permit", "comment": "",
             "action": "reuse", "targetType": None,
             "datatypeProps": [
-                {"qname": "ex:issuedDate", "label": "issuedDate",
-                 "range": "http://www.w3.org/2001/XMLSchema#date"},
+                {"qname": f"ex:{name}", "label": name, "range": datatype},
             ],
             "objectProps": [],
         }]
@@ -461,19 +620,20 @@ class TestGenerateTransformRules:
         pm = result["transforms"][0]["propertyMappings"]
         assert pm[0]["transform"] == "xsd:date-to-iso8601"
 
-    def test_codelist_transform_detected(self):
+    @pytest.mark.parametrize("name", ["hasApplicationStatus", "TypeDrugMeasurement", "localCode", "resultText"])
+    def test_property_name_does_not_establish_a_codelist_conversion(self, name):
         classes = [{
             "sourceQname": "ex:Permit", "label": "Permit", "comment": "",
             "action": "reuse", "targetType": None,
             "datatypeProps": [
-                {"qname": "ex:hasApplicationStatus", "label": "hasApplicationStatus",
+                {"qname": f"ex:{name}", "label": name,
                  "range": "http://www.w3.org/2001/XMLSchema#string"},
             ],
             "objectProps": [],
         }]
         result = generate_internal_to_edge_transform(classes)
         pm = result["transforms"][0]["propertyMappings"]
-        assert pm[0]["transform"] == "codelist-resolve"
+        assert pm[0]["transform"] is None
 
     def test_relation_mappings(self):
         classes = [{
@@ -525,3 +685,580 @@ class TestGenerateLoaderConfig:
         config = generate_loader_config("dbpi")
         assert config["sourceDataPaths"]["schemaScript"] == "kg/neo4j/schema.cypher"
         assert config["sourceDataPaths"]["seedData"] == "kg/neo4j/seed.cypher"
+
+
+class TestSeedDataIdentity:
+    """Seed instances match the inventory's recorded IRIs, not one namespace."""
+
+    DBPI = "https://example.test/dbpi/"
+    ABC = "https://example.test/abc/"
+
+    @staticmethod
+    def _with_iri(entry, namespace_uri):
+        entry["iri"] = namespace_uri + entry["qname"].split(":")[1]
+        return entry
+
+    def _two_namespace_domain(self):
+        inv = make_inv(
+            [self._with_iri(make_class("abc:Thing"), self.ABC),
+             self._with_iri(make_class("dbpi:Fee"), self.DBPI)],
+            obj_props=[self._with_iri(
+                make_obj_prop("abc:owns", domain=["abc:Thing"], range_val=["dbpi:Fee"]),
+                self.ABC)],
+            dt_props=[self._with_iri(make_dt_prop("dbpi:feeNumber", domain=["dbpi:Fee"]), self.DBPI),
+                      self._with_iri(make_dt_prop("abc:thingId", domain=["abc:Thing"]), self.ABC)],
+        )
+        inv["primaryNamespace"] = {"prefix": "dbpi", "uri": self.DBPI}
+        inv["namespaceMap"] = {self.DBPI: "dbpi:", self.ABC: "abc:"}
+        matrix = make_matrix([make_mapping("abc:Thing", "reuse", "nc:ThingType"),
+                              make_mapping("dbpi:Fee", "reuse", "nc:FeeType")])
+        return inv, matrix
+
+    def _generate(self, inv, matrix, seed_text, tmp_path):
+        from ontology_mapper.generate_kg_artifacts import generate_seed_cypher
+
+        active = build_active_classes(inv, matrix)
+        seed = tmp_path / "seed.ttl"
+        seed.write_text(seed_text, encoding="utf-8")
+        return generate_seed_cypher(active, build_relationships(active), seed, "dbpi",
+                                    graph_property_keys(inv))
+
+    def test_active_classes_carry_inventory_iris(self):
+        inv, matrix = self._two_namespace_domain()
+        active = {c["sourceQname"]: c for c in build_active_classes(inv, matrix)}
+        assert active["abc:Thing"]["iri"] == self.ABC + "Thing"
+        assert active["dbpi:Fee"]["iri"] == self.DBPI + "Fee"
+        assert active["abc:Thing"]["objectProps"][0]["iri"] == self.ABC + "owns"
+
+    def test_non_primary_namespace_instances_and_relationships_are_seeded(self, tmp_path):
+        inv, matrix = self._two_namespace_domain()
+        out = self._generate(inv, matrix, (
+            f"@prefix dbpi: <{self.DBPI}> .\n@prefix abc: <{self.ABC}> .\n"
+            '<https://data.test/fee1> a dbpi:Fee ; dbpi:feeNumber "F-1" .\n'
+            '<https://data.test/thing1> a abc:Thing ; abc:thingId "T-1" ;\n'
+            '    abc:owns <https://data.test/fee1> .\n'
+        ), tmp_path)
+
+        # abc is not the primary namespace: its class, property key and
+        # relationship type are qualified (graph_name). Every node carries
+        # the `identifier` its relationships MATCH on.
+        assert 'CREATE (:Fee {feeNumber: "F-1", identifier: "F-1"});' in out
+        assert 'CREATE (:abc_Thing {abc_thingId: "T-1", identifier: "T-1"});' in out
+        assert 'MATCH (a:abc_Thing {identifier: "T-1"})' in out
+        assert 'MATCH (b:Fee {identifier: "F-1"})' in out
+        assert "CREATE (a)-[:ABC_OWNS]->(b);" in out
+
+    def test_a_node_without_an_id_like_property_keeps_its_relationships(self, tmp_path):
+        """Relationships MATCH on `identifier`. A node carried one only when
+        a property was named `identifier` or ended in Number/Id, so a thing
+        with just a note got none and its relationship left the seed."""
+        inv, matrix = self._two_namespace_domain()
+        out = self._generate(inv, matrix, (
+            f"@prefix dbpi: <{self.DBPI}> .\n@prefix abc: <{self.ABC}> .\n"
+            '<https://data.test/fee1> a dbpi:Fee ; dbpi:feeNumber "F-1" .\n'
+            '<https://data.test/thing1> a abc:Thing ; abc:note "only a note" ;\n'
+            '    abc:owns <https://data.test/fee1> .\n'
+        ), tmp_path)
+
+        assert 'identifier: "https://data.test/thing1"' in out
+        assert 'note: "only a note"' in out
+        assert 'MATCH (a:abc_Thing {identifier: "https://data.test/thing1"})' in out
+        assert "CREATE (a)-[:ABC_OWNS]->(b);" in out
+
+    def test_seed_prefix_declarations_are_not_consulted(self, tmp_path):
+        """A seed file that binds no prefixes, or binds them differently, still matches."""
+        inv, matrix = self._two_namespace_domain()
+        out = self._generate(inv, matrix, (
+            "@prefix dbpi: <https://elsewhere.test/> .\n"
+            f'<urn:fee1> a <{self.DBPI}Fee> ; <{self.DBPI}feeNumber> "F-1" .\n'
+            f'<urn:thing1> a <{self.ABC}Thing> ; <{self.ABC}thingId> "T-1" .\n'
+        ), tmp_path)
+
+        assert 'CREATE (:Fee {feeNumber: "F-1", identifier: "F-1"});' in out
+        assert 'CREATE (:abc_Thing {abc_thingId: "T-1", identifier: "T-1"});' in out
+
+    def test_relationship_type_comes_from_the_property_qname_not_the_predicate_iri(self, tmp_path):
+        """CSV ingest records property IRIs as `{ns}#{Class}.{prop}`; the seeded
+        relationship type must match schema.cypher (`HAS_FEE`), not `ACCOUNT.HAS_FEE`."""
+        csv = "https://example.test/csv"
+        account = make_class("csv:Account"); account["iri"] = f"{csv}#Account"
+        fee = make_class("csv:Fee"); fee["iri"] = f"{csv}#Fee"
+        has_fee = make_obj_prop("csv:hasFee", domain=["csv:Account"], range_val=["csv:Fee"])
+        has_fee["iri"] = f"{csv}#Account.hasFee"
+        acct_id = make_dt_prop("csv:accountId", domain=["csv:Account"]); acct_id["iri"] = f"{csv}#Account.accountId"
+        fee_id = make_dt_prop("csv:feeId", domain=["csv:Fee"]); fee_id["iri"] = f"{csv}#Fee.feeId"
+        inv = make_inv([account, fee], obj_props=[has_fee], dt_props=[acct_id, fee_id])
+        inv["primaryNamespace"] = {"prefix": "csv", "uri": csv}
+        matrix = make_matrix([make_mapping("csv:Account", "extend"), make_mapping("csv:Fee", "extend")])
+        out = self._generate(inv, matrix, (
+            f'<https://data.test/a1> a <{csv}#Account> ; <{csv}#Account.accountId> "A-1" ;'
+            f' <{csv}#Account.hasFee> <https://data.test/f1> .\n'
+            f'<https://data.test/f1> a <{csv}#Fee> ; <{csv}#Fee.feeId> "F-1" .\n'
+        ), tmp_path)
+
+        assert "CREATE (a)-[:HAS_FEE]->(b);" in out
+        assert "ACCOUNT.HAS_FEE" not in out
+
+    def test_instances_of_other_iris_are_not_seeded(self, tmp_path):
+        inv, matrix = self._two_namespace_domain()
+        out = self._generate(inv, matrix, (
+            f'<urn:x> a <{self.DBPI}Thing> ; <{self.DBPI}thingId> "X-1" .\n'
+        ), tmp_path)
+
+        assert "CREATE (:" not in out
+
+
+def test_a_seed_file_matching_no_active_class_says_so(tmp_path):
+    """Silence reads as "no seed data to load": the operator ships and
+    deploys believing the sample data loaded."""
+    from ontology_mapper.generate_kg_artifacts import generate_seed_cypher
+
+    seed = tmp_path / "seed.ttl"
+    seed.write_text('<urn:one> a <https://sample.test/src/Record> .',
+                    encoding="utf-8")
+    active = [{"qname": "src:Record", "label": "Record",
+               "iri": "https://sample.test/src/Record/",  # trailing slash
+               "datatypeProps": [], "objectProps": []}]
+    cypher = generate_seed_cypher(active, [], seed, "sample", {})
+
+    assert "No seed instance matches an active class" in cypher
+    assert "https://sample.test/src/Record" in cypher
+
+
+def test_a_matching_seed_file_still_seeds_without_the_note(tmp_path):
+    """The legitimate flow: the note appears only when nothing matched."""
+    from ontology_mapper.generate_kg_artifacts import generate_seed_cypher
+
+    seed = tmp_path / "seed.ttl"
+    seed.write_text('<urn:one> a <https://sample.test/src/Record> .',
+                    encoding="utf-8")
+    active = [{"qname": "src:Record", "label": "Record",
+               "iri": "https://sample.test/src/Record",
+               "datatypeProps": [], "objectProps": []}]
+    cypher = generate_seed_cypher(active, [], seed, "sample", {})
+
+    # Only the note is under test here: an instance whose type the inventory
+    # records is a match, whatever the node emitter then writes for it.
+    assert "No seed instance matches an active class" not in cypher
+
+
+class TestSeedPropertyKeys:
+    """The seed's property key comes from the inventory QName, like the
+    schema's — the IRI tail does not survive Neo4j."""
+
+    _generate = TestSeedDataIdentity._generate
+
+    def test_a_csv_shaped_property_iri_does_not_become_a_dotted_key(self, tmp_path):
+        """CSV ingest records property IRIs as `{ns}#{Class}.{prop}`.
+        `SET n.Account.accountId` is not valid Cypher, and it does not match
+        the `accountId` the schema constrains."""
+        csv = "https://example.test/csv"
+        account = make_class("csv:Account"); account["iri"] = f"{csv}#Account"
+        acct_id = make_dt_prop("csv:accountId", domain=["csv:Account"])
+        acct_id["iri"] = f"{csv}#Account.accountId"
+        inv = make_inv([account], dt_props=[acct_id])
+        inv["primaryNamespace"] = {"prefix": "csv", "uri": csv}
+        matrix = make_matrix([make_mapping("csv:Account", "extend")])
+
+        out = self._generate(inv, matrix, (
+            f'<https://data.test/a1> a <{csv}#Account> ;'
+            f' <{csv}#Account.accountId> "A-1" .\n'), tmp_path)
+
+        assert "accountId:" in out or "accountId =" in out or "accountId" in out
+        assert "Account.accountId" not in out
+
+
+class TestSeedRound13:
+    """Round thirteen (emitters): seed identity and keys."""
+
+    SRC = "https://sample.test/src/"
+    AUG = "https://aug.test/ns#"
+    XSD = "http://www.w3.org/2001/XMLSchema#"
+
+    def _cypher(self, tmp_path):
+        from ontology_mapper.generate_kg_artifacts import generate_seed_cypher
+
+        def dt(qname, domain, iri, rng=None):
+            return {**make_dt_prop(qname, domain=domain, range_val=rng), "iri": iri}
+
+        def obj(qname, domain, rng, iri):
+            return {**make_obj_prop(qname, domain=domain, range_val=rng), "iri": iri}
+
+        classes = []
+        for name in ("Case", "Fee", "Note", "Gone"):
+            classes.append({**make_class(f"src:{name}"), "iri": self.SRC + name})
+        inv = make_inv(
+            classes,
+            obj_props=[obj("src:fee", ["src:Case"], ["src:Fee"], self.SRC + "fee"),
+                       obj("src:note", ["src:Case"], ["src:Note"], self.SRC + "note")],
+            dt_props=[dt("src:feeNumber", ["src:Fee"], self.SRC + "feeNumber", [self.XSD + "integer"]),
+                      dt("src:caseNumber", ["src:Case"], self.SRC + "caseNumber"),
+                      dt("src:name", ["src:Case"], self.SRC + "name"),
+                      # declared, but only on an excluded class
+                      dt("aug:name", ["src:Gone"], self.AUG + "name")])
+        inv["primaryNamespace"] = {"prefix": "src"}
+        inv["namespaceMap"] = {self.SRC: "src:", self.AUG: "aug:"}
+        matrix = make_matrix([make_mapping("src:Case", "extend"), make_mapping("src:Fee", "extend"),
+                              make_mapping("src:Note", "extend"), make_mapping("src:Gone", "exclude")])
+        seed = tmp_path / "seed.ttl"
+        seed.write_text(f"""
+@prefix src: <{self.SRC}> .
+@prefix aug: <{self.AUG}> .
+@prefix xsd: <{self.XSD}> .
+src:c1 a src:Case ; src:caseNumber "C-1" ; src:name "primary name" ; aug:name "augmenting name" ;
+   <http://other.test/x#2ndLine> "two" ; src:fee src:f1 ; src:note src:n1 .
+src:f1 a src:Fee ; src:feeNumber "1001"^^xsd:integer .
+src:n1 a src:Note .
+""", encoding="utf-8")
+        active = build_active_classes(inv, matrix)
+        return generate_seed_cypher(active, build_relationships(active), seed, "sample",
+                                    graph_property_keys(inv))
+
+    def test_an_integer_identifier_is_matched_as_an_integer(self, tmp_path):
+        """The node was written `identifier: 1001` and the MATCH looked for
+        "1001", which Neo4j never equals, so the relationship was lost."""
+        cypher = self._cypher(tmp_path)
+        assert "CREATE (:Fee {feeNumber: 1001, identifier: 1001});" in cypher
+        assert "MATCH (b:Fee {identifier: 1001})" in cypher
+
+    def test_an_unowned_property_keeps_its_own_key(self, tmp_path):
+        """aug:name, owned by no active class, took the bare key `name` and
+        overwrote src:name on the same node."""
+        cypher = self._cypher(tmp_path)
+        assert 'aug_name: "augmenting name"' in cypher
+        assert 'name: "primary name"' in cypher
+
+    def test_an_undeclared_key_is_a_cypher_identifier(self, tmp_path):
+        from ontology_mapper.generation_utils import graph_name
+        key = graph_name("http://other.test/x#2ndLine", None)
+        assert key.startswith("ns") and key.endswith("_2ndLine")
+        assert f'{key}: "two"' in self._cypher(tmp_path)
+
+    def test_a_node_with_only_relationships_is_created(self, tmp_path):
+        """src:n1 has no literal, so it was never created and the
+        relationship to it matched nothing."""
+        cypher = self._cypher(tmp_path)
+        iri = self.SRC + "n1"
+        assert f'CREATE (:Note {{identifier: "{iri}"}});' in cypher
+        assert f'MATCH (b:Note {{identifier: "{iri}"}})' in cypher
+
+
+class TestNamingRound14:
+    """Round fourteen: the naming guarantee, shape order and full-IRI paths."""
+
+    def test_a_primary_term_needing_cleanup_keeps_its_name(self):
+        for primary in ("src:aug-Thing", "src:aug.Thing"):
+            before = graph_labels([primary], "src")[primary]
+            after = graph_labels([primary, "aug:Thing"], "src")[primary]
+            assert before == after == "aug_Thing", primary
+
+    def test_a_primary_relationship_needing_cleanup_keeps_its_type(self):
+        from ontology_mapper.generation_utils import graph_property_names
+        inv = {"primaryNamespace": {"prefix": "src"}, "datatypeProperties": [],
+               "objectProperties": [{"qname": "src:aug-has-part"}, {"qname": "aug:hasPart"}]}
+        names = graph_property_names(inv)
+        assert relationship_type(names["src:aug-has-part"]) == "AUG_HAS_PART"
+        assert relationship_type(names["aug:hasPart"]) != "AUG_HAS_PART"
+
+    def _shape_inv(self, order):
+        shapes = [{"targetClasses": ["src:A"], "properties": [{"path": "src:has_part", "class": "src:B"}]},
+                  {"targetClasses": ["src:B"], "properties": [
+                      {"path": "src:has_part", "datatype": "http://www.w3.org/2001/XMLSchema#string"}]}]
+        inv = make_inv([make_class("src:A"), make_class("src:B")],
+                       obj_props=[make_obj_prop("src:hasPart", domain=["src:A"], range_val=["src:B"])],
+                       shapes=shapes if order else list(reversed(shapes)))
+        inv["primaryNamespace"] = {"prefix": "src"}
+        return inv
+
+    def test_a_shape_only_path_is_named_the_same_whatever_the_shape_order(self):
+        """A path that is a relationship on one class and a value on another
+        was named by whichever shape came last, and could share HAS_PART
+        with src:hasPart, which build_relationships then kept alone."""
+        from ontology_mapper.generation_utils import graph_property_names
+        matrix = make_matrix([make_mapping("src:A", "extend"), make_mapping("src:B", "extend")])
+        results = []
+        for order in (True, False):
+            inv = self._shape_inv(order)
+            names = graph_property_names(inv)
+            rels = build_relationships(build_active_classes(inv, matrix))
+            results.append((names, sorted((r["name"], r["propQname"]) for r in rels)))
+        assert results[0] == results[1]
+        names, rels = results[0]
+        assert relationship_type(names["src:has_part"]) != relationship_type(names["src:hasPart"])
+        assert {q for _, q in rels} == {"src:hasPart", "src:has_part"}
+
+    def test_a_full_iri_shape_path_has_its_own_iri_and_seed_key(self):
+        from ontology_mapper.generation_utils import graph_property_keys, graph_property_names
+        label = "http://www.w3.org/2000/01/rdf-schema#label"
+        inv = make_inv([make_class("src:A")], shapes=[
+            {"targetClasses": ["src:A"], "properties": [{"path": label}]}])
+        inv["primaryNamespace"] = {"prefix": "src"}
+        assert graph_property_keys(inv).values[label] == graph_property_names(inv)[label]
+        cls = build_active_classes(inv, make_matrix([make_mapping("src:A", "extend")]))[0]
+        assert [p["iri"] for p in cls["datatypeProps"]] == [label]
+
+
+class TestSeedRound14:
+    """Round fourteen: seed literals, undeclared keys, urn: and blank nodes."""
+
+    SRC = "https://sample.test/src/"
+
+    def _cypher(self, tmp_path, body):
+        from ontology_mapper.generate_kg_artifacts import generate_seed_cypher
+        classes = [{**make_class(f"src:{n}"), "iri": self.SRC + n} for n in ("Case", "Party")]
+        dt = [{**make_dt_prop(q, domain=["src:Case"], range_val=[r]), "iri": self.SRC + q.split(":")[1]}
+              for q, r in (("src:name", "http://www.w3.org/2001/XMLSchema#string"),
+                           ("src:filed", "http://www.w3.org/2001/XMLSchema#date"),
+                           ("src:count", "http://www.w3.org/2001/XMLSchema#integer"))]
+        op = [{**make_obj_prop("src:party", domain=["src:Case", "src:Party"], range_val=["src:Party"]),
+               "iri": self.SRC + "party"}]
+        inv = make_inv(classes, obj_props=op, dt_props=dt)
+        inv["primaryNamespace"] = {"prefix": "src"}
+        inv["namespaceMap"] = {self.SRC: "src:"}
+        matrix = make_matrix([make_mapping("src:Case", "extend"), make_mapping("src:Party", "extend")])
+        seed = tmp_path / "seed.ttl"
+        seed.write_text(f"@prefix src: <{self.SRC}> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n"
+                        + body, encoding="utf-8")
+        active = build_active_classes(inv, matrix)
+        return generate_seed_cypher(active, build_relationships(active), seed, "sample",
+                                    graph_property_keys(inv))
+
+    def test_an_undeclared_predicate_does_not_overwrite_a_declared_value(self, tmp_path):
+        cypher = self._cypher(tmp_path, 'src:c1 a src:Case ; src:name "primary" ; <http://x.test/v#name> "other" .')
+        assert 'name: "primary"' in cypher and '"other"' in cypher
+
+    def test_literals_are_valid_cypher(self, tmp_path):
+        cypher = self._cypher(tmp_path, 'src:c1 a src:Case ; src:filed "2020-01-01\\" oops"^^xsd:date ; '
+                                        'src:count "eight"^^xsd:integer ; src:name "a\\nb" .')
+        assert 'filed: "2020-01-01\\" oops"' in cypher
+        assert 'count: "eight"' in cypher
+        assert 'name: "a\\nb"' in cypher
+
+    def test_an_edge_to_a_urn_instance_is_seeded(self, tmp_path):
+        cypher = self._cypher(tmp_path, 'src:c1 a src:Case ; src:party <urn:uuid:1234> .\n'
+                                        '<urn:uuid:1234> a src:Party .')
+        assert 'MATCH (b:Party {identifier: "urn:uuid:1234"})' in cypher
+
+    def test_a_blank_node_seed_is_the_same_on_every_generation(self, tmp_path):
+        body = 'src:p1 a src:Party .\n[] a src:Party ; src:party src:p1 .'
+        first, second = self._cypher(tmp_path, body), self._cypher(tmp_path, body)
+        strip = lambda c: [l for l in c.splitlines() if not l.startswith("//")]
+        assert strip(first) == strip(second)
+        assert '(b:Party {identifier: "https://sample.test/src/p1"})' in first
+
+    def test_an_edge_of_a_property_no_class_owns_is_seeded(self, tmp_path):
+        """A declared object property with no domain (hasFee, assignedToUnit
+        in the demo package) is declared globally by the OWL; its seed edges
+        were dropped because no active class owned it."""
+        from ontology_mapper.generate_kg_artifacts import generate_seed_cypher
+        classes = [{**make_class(f"src:{n}"), "iri": self.SRC + n} for n in ("Case", "Party")]
+        op = [{**make_obj_prop("src:unowned", domain=[], range_val=["src:Party"]), "iri": self.SRC + "unowned"}]
+        inv = make_inv(classes, obj_props=op)
+        inv["primaryNamespace"] = {"prefix": "src"}
+        matrix = make_matrix([make_mapping("src:Case", "extend"), make_mapping("src:Party", "extend")])
+        seed = tmp_path / "seed.ttl"
+        seed.write_text(f"@prefix src: <{self.SRC}> .\nsrc:c1 a src:Case ; src:unowned src:p1 .\nsrc:p1 a src:Party .",
+                        encoding="utf-8")
+        active = build_active_classes(inv, matrix)
+        cypher = generate_seed_cypher(active, build_relationships(active), seed, "sample",
+                                      graph_property_keys(inv))
+        assert "CREATE (a)-[:UNOWNED]->(b);" in cypher
+
+
+class TestSeedRound15:
+    """Round fifteen: blank-node identity, edges only for object properties,
+    and a shape-only path that is a value on one class and an edge on another."""
+
+    SRC = "https://sample.test/src/"
+
+    def _cypher(self, tmp_path, body, dt=(), op=(), shapes=None):
+        from ontology_mapper.generate_kg_artifacts import generate_seed_cypher
+        classes = [{**make_class(f"src:{n}"), "iri": self.SRC + n} for n in ("Case", "Addr")]
+        inv = make_inv(classes,
+                       obj_props=[{**make_obj_prop(q, domain=d, range_val=r), "iri": self.SRC + q[4:]} for q, d, r in op],
+                       dt_props=[{**make_dt_prop(q, domain=d), "iri": self.SRC + q[4:]} for q, d in dt],
+                       shapes=shapes)
+        inv["primaryNamespace"] = {"prefix": "src"}
+        inv["namespaceMap"] = {self.SRC: "src:"}
+        matrix = make_matrix([make_mapping("src:Case", "extend"), make_mapping("src:Addr", "extend")])
+        seed = tmp_path / "seed.ttl"
+        seed.write_text(f"@prefix src: <{self.SRC}> .\n" + body, encoding="utf-8")
+        active = build_active_classes(inv, matrix)
+        return generate_seed_cypher(active, build_relationships(active), seed, "sample",
+                                    graph_property_keys(inv))
+
+    BLANKS = """src:c1 a src:Case ; src:addr [ a src:Addr ; src:city "Springfield" ] .
+src:c2 a src:Case ; src:addr [ a src:Addr ; src:city "Springfield" ] .
+src:c3 a src:Case ; src:addr _:x .
+_:x a src:Addr ; src:next _:y .
+_:y a src:Addr ; src:next _:x .
+"""
+
+    def test_distinct_blank_nodes_have_distinct_identifiers(self, tmp_path):
+        """A hash of a node's own statements gave two identical anonymous
+        values, and the two nodes of a cycle, one identifier; schema.cypher's
+        uniqueness constraint then stopped the seed load."""
+        import re
+        cypher = self._cypher(tmp_path, self.BLANKS,
+                              dt=[("src:city", ["src:Addr"])],
+                              op=[("src:addr", ["src:Case"], ["src:Addr"]),
+                                  ("src:next", ["src:Addr"], ["src:Addr"])])
+        ids = re.findall(r'^CREATE \(:Addr \{.*identifier: ("[^"]*")', cypher, re.M)
+        assert len(ids) == 4 and len(set(ids)) == 4, ids
+
+    def test_blank_node_identifiers_are_the_same_on_every_generation(self, tmp_path):
+        args = dict(dt=[("src:city", ["src:Addr"])],
+                    op=[("src:addr", ["src:Case"], ["src:Addr"]), ("src:next", ["src:Addr"], ["src:Addr"])])
+        strip = lambda c: [l for l in c.splitlines() if not l.startswith("//")]
+        assert strip(self._cypher(tmp_path, self.BLANKS, **args)) == strip(self._cypher(tmp_path, self.BLANKS, **args))
+
+    def test_a_datatype_property_with_a_node_value_is_no_edge(self, tmp_path):
+        """The unowned-edge branch accepted every declared property, so a
+        datatype property used with a node value became an edge whose type
+        met an object property's (part_of, partOf -> PART_OF)."""
+        cypher = self._cypher(tmp_path, "src:c1 a src:Case ; src:part_of src:a1 ; src:partOf src:a2 .\n"
+                                        "src:a1 a src:Addr .\nsrc:a2 a src:Addr .",
+                              dt=[("src:part_of", ["src:Case"])],
+                              op=[("src:partOf", ["src:Case"], ["src:Addr"])])
+        assert cypher.count("CREATE (a)-[:") == 1
+        assert '(b:Addr {identifier: "https://sample.test/src/a2"})' in cypher
+
+    def test_a_shape_only_value_stays_on_the_class_whose_shape_makes_it_a_value(self):
+        """Placed by the property's kind, the path became an edge with no
+        range on B and was dropped from B's transform, while the seed still
+        wrote its value there."""
+        shapes = [{"targetClasses": ["src:Case"], "properties": [{"path": "src:part", "class": "src:Addr"}]},
+                  {"targetClasses": ["src:Addr"], "properties": [
+                      {"path": "src:part", "datatype": "http://www.w3.org/2001/XMLSchema#string"}]}]
+        inv = make_inv([make_class("src:Case"), make_class("src:Addr")], shapes=shapes)
+        inv["primaryNamespace"] = {"prefix": "src"}
+        matrix = make_matrix([make_mapping("src:Case", "extend"), make_mapping("src:Addr", "extend")])
+        by_label = {c["label"]: c for c in build_active_classes(inv, matrix)}
+        assert [p["qname"] for p in by_label["Addr"]["datatypeProps"]] == ["src:part"]
+        assert [p["qname"] for p in by_label["Case"]["objectProps"]] == ["src:part"]
+        transform = generate_internal_to_edge_transform(list(by_label.values()))
+        rule = next(t for t in transform["transforms"] if t["targetLabel"] == "Addr")
+        assert [m["source"] for m in rule["propertyMappings"]] == ["src:part"]
+
+    def test_identical_anonymous_values_of_one_subject_have_distinct_identifiers(self, tmp_path):
+        """Groups of linked blank nodes are named apart; two identical ones
+        on the same subject still need two identifiers."""
+        import re
+        cypher = self._cypher(tmp_path, 'src:c1 a src:Case ; src:addr [ a src:Addr ; src:city "X" ] ,'
+                                        ' [ a src:Addr ; src:city "X" ] .\n',
+                              dt=[("src:city", ["src:Addr"])], op=[("src:addr", ["src:Case"], ["src:Addr"])])
+        ids = re.findall(r'^CREATE \(:Addr \{.*identifier: ("[^"]*")', cypher, re.M)
+        assert len(ids) == 2 and len(set(ids)) == 2, ids
+        assert cypher.count("CREATE (a)-[:") == 2
+
+    def test_blank_node_naming_cost_grows_with_the_data_not_its_square(self, tmp_path):
+        """Canonicalizing with rdflib grew faster than the square of the
+        blank nodes in one linked group (whole graph: 1,280 small groups took
+        27 s; per group: a 1,000-item list 13 s, 100 identical children of
+        one anonymous value 169 s). Many small groups, one long chain and one
+        hub of identical children must each take seconds."""
+        import time
+        op = [("src:addr", ["src:Case"], ["src:Addr"]), ("src:next", ["src:Addr"], ["src:Addr"])]
+        small = "\n".join(f'src:c{i} a src:Case ; src:addr [ a src:Addr ; src:city "City{i % 50}" ;'
+                          f' src:next [ a src:Addr ; src:city "{i % 7}" ] ] .' for i in range(3000))
+        chain = "src:k a src:Case ; src:addr _:n0 .\n" + "\n".join(
+            f'_:n{i} a src:Addr ; src:city "{i % 3}" ; src:next _:n{i + 1} .' for i in range(2999)) + \
+            '\n_:n2999 a src:Addr ; src:city "0" .'
+        hub = "[] a src:Addr ; src:next " + " , ".join('[ a src:Addr ; src:city "X" ]' for _ in range(200)) + " ."
+        for body, addrs in ((small, 6000), (chain, 3000), (hub, 201)):
+            start = time.perf_counter()
+            cypher = self._cypher(tmp_path, body + "\n", dt=[("src:city", ["src:Addr"])], op=op)
+            assert time.perf_counter() - start < 30
+            assert cypher.count("CREATE (:Addr ") == addrs
+
+    def test_a_node_value_of_a_property_this_class_holds_as_a_value_is_no_edge(self, tmp_path):
+        """A shape-only path that is an edge on Case and a value on Addr:
+        keyed by property alone, an Addr's node value became an edge
+        Addr's transform and schema.cypher do not have."""
+        shapes = [{"targetClasses": ["src:Case"], "properties": [{"path": "src:part", "class": "src:Addr"}]},
+                  {"targetClasses": ["src:Addr"], "properties": [
+                      {"path": "src:part", "datatype": "http://www.w3.org/2001/XMLSchema#string"}]}]
+        cypher = self._cypher(tmp_path, "src:c1 a src:Case ; src:part src:a1 .\n"
+                                        "src:a1 a src:Addr ; src:part src:c1 .\n", shapes=shapes)
+        assert cypher.count("CREATE (a)-[:") == 1
+        assert '(a:Case {identifier: "https://sample.test/src/c1"})' in cypher
+        # Not an edge on Addr, and not lost either: a node key, as Addr's
+        # transform lists it.
+        assert 'CREATE (:Addr {identifier: "https://sample.test/src/a1", part: "https://sample.test/src/c1"});' in cypher
+
+    def test_a_node_value_never_becomes_the_identifier(self, tmp_path):
+        """Two instances referring to one node shared its IRI as their
+        identifier, so each MATCH bound both and edges multiplied."""
+        cypher = self._cypher(tmp_path, "src:c1 a src:Case ; src:courtId src:k9 ; src:addr src:a1 .\n"
+                                        "src:c2 a src:Case ; src:courtId src:k9 ; src:addr src:a1 .\n"
+                                        "src:a1 a src:Addr .\n",
+                              dt=[("src:courtId", ["src:Case"])], op=[("src:addr", ["src:Case"], ["src:Addr"])])
+        assert '(a:Case {identifier: "https://sample.test/src/c1"})' in cypher
+        assert '(a:Case {identifier: "https://sample.test/src/c2"})' in cypher
+
+    def test_a_multi_valued_property_keeps_the_same_value_under_every_hash_seed(self, tmp_path):
+        """One key keeps one value; which one followed the graph's order,
+        and so the hash seed once blank nodes were renamed."""
+        import os
+        import subprocess
+        import sys
+        script = tmp_path / "multi.py"
+        script.write_text(f"import sys\nsys.path[:0] = {sys.path!r}\n" + r'''
+import pathlib, tempfile
+from tests.test_generate_kg_artifacts import TestSeedRound15
+body = "".join(f'src:c{i} a src:Case ; src:city "x{i}" , "y{i}" , src:k{i} , [ a src:Addr ] .\n' for i in range(6))
+out = TestSeedRound15()._cypher(pathlib.Path(tempfile.mkdtemp()), body, dt=[("src:city", ["src:Case"])])
+print("\n".join(l for l in out.splitlines() if not l.startswith("//")))
+''', encoding="utf-8")
+        outputs = set()
+        for seed in ("0", "1", "7", "99", "12345"):
+            run = subprocess.run([sys.executable, str(script)], capture_output=True, text=True,
+                                 env={**os.environ, "PYTHONHASHSEED": seed},
+                                 cwd=str(Path(__file__).parent.parent), timeout=120)
+            assert run.returncode == 0, run.stderr
+            outputs.add(run.stdout)
+        assert len(outputs) == 1
+
+    def test_a_property_a_class_holds_both_ways_keeps_its_edge(self, tmp_path):
+        """Declared both an object and a datatype property, it sits in the
+        class's objectProps and datatypeProps; the value skip dropped the
+        edge its objectProps and schema.cypher document."""
+        cypher = self._cypher(tmp_path, "src:c1 a src:Case ; src:addr src:a1 .\nsrc:a1 a src:Addr .\n",
+                              dt=[("src:addr", ["src:Case"])], op=[("src:addr", ["src:Case"], ["src:Addr"])])
+        assert cypher.count("CREATE (a)-[:") == 1
+
+    def test_an_instance_of_two_active_classes_is_seeded_the_same_under_every_hash_seed(self, tmp_path):
+        """Its class came from whichever rdf:type the graph listed first,
+        which followed the hash seed, and with it its label and edges."""
+        import os
+        import subprocess
+        import sys
+        script = tmp_path / "two_types.py"
+        script.write_text(f"import sys\nsys.path[:0] = {sys.path!r}\n" + r'''
+import pathlib, tempfile
+from tests.test_generate_kg_artifacts import TestSeedRound15
+shapes = [{"targetClasses": ["src:Case"], "properties": [{"path": "src:part", "class": "src:Addr"}]},
+          {"targetClasses": ["src:Addr"], "properties": [
+              {"path": "src:part", "datatype": "http://www.w3.org/2001/XMLSchema#string"}]}]
+body = """src:b0 a src:Addr .
+src:x1 a src:Addr , src:Case ; src:part src:b0 .
+src:x2 a src:Case , src:Addr ; src:part src:b0 .
+[ a src:Addr , src:Case ; src:part src:b0 ] .
+[ a src:Case , src:Addr ; src:part src:b0 ] .
+"""
+out = TestSeedRound15()._cypher(pathlib.Path(tempfile.mkdtemp()), body, shapes=shapes)
+print("\n".join(l for l in out.splitlines() if not l.startswith("//")))
+''', encoding="utf-8")
+        outputs = set()
+        for seed in ("0", "1", "4", "5", "7"):
+            env = {**os.environ, "PYTHONHASHSEED": seed}
+            run = subprocess.run([sys.executable, str(script)], capture_output=True, text=True,
+                                 env=env, cwd=str(Path(__file__).parent.parent), timeout=120)
+            assert run.returncode == 0, run.stderr
+            outputs.add(run.stdout)
+        assert len(outputs) == 1
+        # Whichever type the file writes first: every instance is an Addr
+        # (first by IRI), so none has Case's edge.
+        out = outputs.pop()
+        assert out.count("CREATE (:Addr ") == 5 and "CREATE (a)-[:" not in out
+

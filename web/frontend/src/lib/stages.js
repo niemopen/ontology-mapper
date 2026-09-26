@@ -34,7 +34,7 @@ export const STAGES = {
   6: {
     title: "Generate",
     description:
-      "Produces the edge ontology (OWL/TTL), CMF model, knowledge graph artifacts, and packages them.",
+      "Produces the edge ontology (OWL/TTL), the CMF model (targets with a CMF reference model), knowledge graph artifacts, and packages them.",
   },
   7: {
     title: "Validate",

@@ -18,9 +18,10 @@ As a module:
 import json
 import sys
 from pathlib import Path
-from datetime import datetime, timezone
 
+from ontology_mapper.cmf_reference import reference_cmf_installed
 from ontology_mapper.pipeline_context import PipelineContext
+from ontology_mapper.run_dir_utils import utc_stamp
 
 
 VALID_STAGES = ["1", "2", "3", "4", "5", "6a", "6b", "6c", "7", "8"]
@@ -290,8 +291,13 @@ def _verify_stage_5(run_dir, state):
     if mm:
         mappings = mm.get("mappings", [])
 
+        # `emitted_class_action`, not the raw status: an exclusion is
+        # never presented for review, so its status stays
+        # `pending-review` and reading it raw reports a decided
+        # exclusion as an unreviewed concept.
+        from ontology_mapper.generation_utils import emitted_class_action
         pending_class = [m["sourceConcept"] for m in mappings
-                         if m.get("reviewStatus") == "pending-review"]
+                         if emitted_class_action(m) is None]
         checks.append(_check("all_classes_accepted",
                              len(pending_class) == 0,
                              f"{len(pending_class)} classes still pending"
@@ -322,31 +328,34 @@ def _verify_stage_6a(run_dir, state):
 
     ont_dir = pkg / "ontology"
     cmf_dir = pkg / "cmf"
+    emits_cmf = reference_cmf_installed(ctx.target_ontology, ctx.target_version)
 
     if source:
         for suffix in ("core", "extensions", "all", "combined"):
             p = ont_dir / ctx.ontology_filename(suffix)
             checks.append(_file_check(f"ontology_{suffix}_exists", p))
 
-        cmf_path = cmf_dir / f"{ctx.cmf_model_stem}.cmf"
-        cmf_xml_path = cmf_dir / f"{ctx.cmf_model_stem}.cmf.xml"
-        cmf_exists = cmf_path.exists() or cmf_xml_path.exists()
-        checks.append(_check("cmf_exists", cmf_exists,
-                             f"{cmf_path.name}" if cmf_path.exists()
-                             else f"{cmf_xml_path.name}" if cmf_xml_path.exists()
-                             else "Neither .cmf nor .cmf.xml found"))
+        if emits_cmf:
+            cmf_path = cmf_dir / f"{ctx.cmf_model_stem}.cmf"
+            cmf_xml_path = cmf_dir / f"{ctx.cmf_model_stem}.cmf.xml"
+            cmf_exists = cmf_path.exists() or cmf_xml_path.exists()
+            checks.append(_check("cmf_exists", cmf_exists,
+                                 f"{cmf_path.name}" if cmf_path.exists()
+                                 else f"{cmf_xml_path.name}" if cmf_xml_path.exists()
+                                 else "Neither .cmf nor .cmf.xml found"))
 
-        cmf_json_path = cmf_dir / f"{ctx.cmf_model_stem}.cmf.json"
-        checks.append(_file_check("cmf_json_exists", cmf_json_path))
+            cmf_json_path = cmf_dir / f"{ctx.cmf_model_stem}.cmf.json"
+            checks.append(_file_check("cmf_json_exists", cmf_json_path))
     else:
         # Glob fallback
         ttl_files = list(ont_dir.glob("*-edge-*.ttl")) if ont_dir.exists() else []
         checks.append(_check("ontology_files_found", len(ttl_files) >= 4,
                              f"{len(ttl_files)} TTL files (expected 4)"))
 
-        cmf_files = list(cmf_dir.glob("*.cmf*")) if cmf_dir.exists() else []
-        checks.append(_check("cmf_files_found", len(cmf_files) >= 2,
-                             f"{len(cmf_files)} CMF files (expected 2)"))
+        if emits_cmf:
+            cmf_files = list(cmf_dir.glob("*.cmf*")) if cmf_dir.exists() else []
+            checks.append(_check("cmf_files_found", len(cmf_files) >= 2,
+                                 f"{len(cmf_files)} CMF files (expected 2)"))
 
     # OWL pattern checks: verify augment/extend patterns in extensions TTL
     ext_path = ont_dir / ctx.ontology_filename("extensions") if source else None
@@ -457,15 +466,43 @@ def _verify_stage_7(run_dir, state):
     fb_path = run_dir / "feedback-report.json"
     checks.append(_file_check("feedback_report_exists", fb_path))
 
+    # Freshness, not just existence: the orchestrated drivers delete a
+    # previous report before validating, but this entry point is
+    # documented for direct use, and a crashed validator leaves the old
+    # report in place to be read as this run's result.
     vr = _load_json(vr_path)
-    if vr:
-        vr_checks = vr.get("checks", [])
-        failures = [c for c in vr_checks if c.get("status") == "FAIL"]
-        checks.append(_check("validation_all_pass",
-                             len(failures) == 0,
-                             f"{len(failures)} checks failed"
-                             if failures else f"All {len(vr_checks)} checks passed",
-                             severity="warning"))
+    from ontology_mapper.validate_edge_package import stale_against_package
+    if vr is None:
+        # `stale_against_package` answers None for a report it could not
+        # read as well as for one that covers the package. Passing on that
+        # None would state coverage for a file nobody parsed.
+        checks.append(_check("validation_report_is_current", False,
+                             "validation-report.json is missing or unreadable"))
+    else:
+        try:
+            stale = stale_against_package(vr_path, _build_ctx(run_dir, state).pkg_dir,
+                                          vr)
+        except Exception as exc:
+            # A check that cannot run is reported, not dropped: a silent
+            # pass here says the report is current when nobody looked.
+            checks.append(_check("validation_report_is_current", False,
+                                 f"freshness check failed: {exc}"))
+        else:
+            # Reported either way, like every other check here: a row that
+            # appears only on failure cannot be told from one that never ran.
+            checks.append(_check("validation_report_is_current", not stale,
+                                 f"report does not cover {stale}" if stale
+                                 else "report covers the package as validated"))
+
+    # The pass rule is Stage 8's too (`report_not_passed`), so the verifier
+    # and finalize cannot disagree about one report. A missing or
+    # unreadable report is already failed above.
+    if vr is not None:
+        from ontology_mapper.validate_edge_package import report_not_passed
+        not_passed = report_not_passed(vr)
+        checks.append(_check("validation_all_pass", not_passed is None,
+                             f"validation-report.json {not_passed}" if not_passed
+                             else f"all {len(vr['checks'])} checks passed"))
     return checks
 
 
@@ -557,7 +594,7 @@ def verify(run_dir, stage):
     return {
         "stage": stage_label,
         "runDir": str(run_dir),
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": utc_stamp(),
         "checks": checks,
         "summary": {"total": len(checks), "pass": passed, "fail": failed, "warn": warned},
     }

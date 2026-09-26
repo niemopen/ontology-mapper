@@ -16,6 +16,8 @@ from ontology_mapper.pipeline_config import resolve_csv_namespace
 from auth import require_auth, get_org_slug
 from config import settings
 from models import CreateRunRequest, RunSummary
+from ontology_mapper.build_mapping_matrix import refuse_to_discard_review
+from ontology_mapper.pipeline import record_stage_failure, reopen_run
 
 router = APIRouter(tags=["runs"])
 
@@ -266,19 +268,19 @@ def _run_cmd(run_id: str, stage: str, cmd: list[str], cwd: str, env: dict) -> bo
 
 def _record_stage_start(run_dir: Path, stage: str):
     """Write started_at into the state file so mark-complete preserves it."""
-    from datetime import datetime, timezone
+    from ontology_mapper.run_dir_utils import utc_stamp
     state = _read_state(run_dir)
     if not state:
         return
     stages = state.setdefault("stages", {})
     entry = stages.get(stage)
     if entry:
-        entry["started_at"] = datetime.now(timezone.utc).isoformat()
+        entry["started_at"] = utc_stamp()
     else:
         stages[stage] = {
             "stage": stage,
             "status": "running",
-            "started_at": datetime.now(timezone.utc).isoformat(),
+            "started_at": utc_stamp(),
             "completed_at": None,
             "error": None,
             "artifacts": [],
@@ -396,12 +398,26 @@ def _run_pipeline_stages_6_8(run_id: str, run_dir: Path, cwd: str, env: dict) ->
     if not _mark_complete(run_id, "6", run_dir, cwd, env):
         return False
 
-    # Stage 7: Validate
+    # Stage 7: Validate. om-validate exits nonzero when a check fails, after
+    # writing the report; the feedback report maps those failures back to
+    # source decisions, so it is produced before the failed stage stops.
     _pipeline_status[run_id]["stage"] = "7"
+    # Only this run's report counts, and a previous Stage 8's certificate is
+    # withdrawn with it (ontology_mapper.pipeline.withdraw_conclusions).
+    reopen_run(run_dir, "7")
     _record_stage_start(run_dir, "7")
-    if not _run_cmd(run_id, "7", ["om-validate", "--run-dir", rd], cwd, env):
+    (run_dir / "feedback-report.json").unlink(missing_ok=True)
+    validated = _run_cmd(run_id, "7", ["om-validate", "--run-dir", rd], cwd, env)
+    if not validated:
+        record_stage_failure(run_dir, "7", _pipeline_status[run_id].get("error") or "om-validate failed")
+    if not validated and not (run_dir / "validation-report.json").exists():
+        return False  # the validator crashed; there is nothing to report on
+    validation_failure = None if validated else dict(_pipeline_status[run_id])
+    reported = _run_cmd(run_id, "7", ["python", "runner_tools/feedback_report.py", "--run-dir", rd], cwd, env)
+    if not validated:
+        _pipeline_status[run_id] = validation_failure  # the validation failure is the cause to show
         return False
-    if not _run_cmd(run_id, "7", ["python", "runner_tools/feedback_report.py", "--run-dir", rd], cwd, env):
+    if not reported:
         return False
     if not _mark_complete(run_id, "7", run_dir, cwd, env):
         return False
@@ -432,6 +448,8 @@ def _run_pipeline_background(run_id: str, run_dir: Path, org_runs_dir: Path, sta
             if not _run_pipeline_stages_1_4(run_id, run_dir, cwd, env):
                 return
             # Stages 1-4 done — Stage 5 (review) happens in the UI
+            from routes.review import snapshot_stage_4
+            snapshot_stage_4(run_dir)
             _pipeline_status[run_id] = {"status": "awaiting-review", "stage": "5", "error": None}
             return
 
@@ -458,6 +476,17 @@ async def execute_pipeline(
     run_dir = _find_run_dir(org, run_id)
     if run_id in _pipeline_status and _pipeline_status[run_id].get("status") == "running":
         raise HTTPException(status_code=409, detail="Pipeline already running")
+    try:
+        refuse_to_discard_review(run_dir / "mapping-matrix.json")
+    except SystemExit as exc:
+        raise HTTPException(
+            status_code=409,
+            detail="Saved review decisions would be overwritten. Continue the "
+                   "review, or reset it before executing stages 1-4 again. If "
+                   "the review came from outside the web, there is no Stage 4 "
+                   "snapshot to reset to: rebuild the matrix with "
+                   "`om-build-matrix --force`.",
+        ) from exc
     thread = threading.Thread(
         target=_run_pipeline_background,
         args=(run_id, run_dir, _org_runs_dir(org)),
@@ -485,6 +514,15 @@ async def continue_pipeline(
     stage_5 = state.get("stages", {}).get("5", {})
     if stage_5.get("status") != "completed":
         raise HTTPException(status_code=409, detail="Stage 5 (review) must be completed first")
+
+    # A reset or target change can reopen review after the stage was completed.
+    from routes.review import _load_matrix, stage_5_gate
+
+    can_continue, blockers = stage_5_gate(run_id, run_dir, _load_matrix(run_dir))
+    if not can_continue:
+        # A string, like the review routes: the frontend renders `detail`
+        # directly and JSON-stringifies anything else.
+        raise HTTPException(status_code=409, detail="; ".join(blockers))
 
     thread = threading.Thread(
         target=_run_pipeline_background,

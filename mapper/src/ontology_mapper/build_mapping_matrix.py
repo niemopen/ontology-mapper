@@ -11,10 +11,92 @@ This step formats those decisions into the matrix schema.
 """
 
 import json
+import shutil
 from pathlib import Path
-from datetime import datetime, timezone
+from uuid import uuid4
 
 from ontology_mapper.pipeline_context import load_context
+from ontology_mapper.run_dir_utils import utc_stamp
+
+
+# Preserve accepted decisions and legacy status spellings regardless of
+# provenance; a status alone does not prove human review.
+REVIEWED_STATUSES = frozenset({"accepted", "rejected", "modified"})
+
+
+def review_decisions_present(matrix):
+    """Return `(class_decisions, property_decisions, reviewed_at)`.
+
+    Either decisions or a saved-review marker require preservation. A
+    target-change cascade can reset every status to pending while retaining
+    the new target and marker. Ignore malformed records without hiding
+    evidence in their valid neighbors; this is not schema validation.
+    """
+    classes = properties = 0
+    if not isinstance(matrix, dict):
+        return 0, 0, None
+    entries = matrix.get("mappings")
+    if not isinstance(entries, list):
+        return 0, 0, matrix.get("humanReviewApplied")
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        status = entry.get("reviewStatus")
+        if isinstance(status, str) and status in REVIEWED_STATUSES:
+            classes += 1
+        props = entry.get("propertyMappings")
+        if not isinstance(props, list):
+            continue
+        for prop in props:
+            if not isinstance(prop, dict):
+                continue
+            status = prop.get("reviewStatus")
+            if isinstance(status, str) and status in REVIEWED_STATUSES:
+                properties += 1
+    return classes, properties, matrix.get("humanReviewApplied")
+
+
+def refuse_to_discard_review(matrix_path, force=False):
+    """Stop a rebuild from overwriting saved review evidence.
+
+    Returns the backup path when `force` moved an existing review aside,
+    otherwise None. Raises SystemExit when there is a review to protect
+    and no `force`.
+    """
+    if not matrix_path.exists():
+        return None
+    try:
+        existing = json.loads(matrix_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None         # an unreadable matrix holds no decisions to lose
+
+    classes, properties, reviewed_at = review_decisions_present(existing)
+    if not classes and not properties and not reviewed_at:
+        return None
+
+    described = f"{classes} class and {properties} property decision(s)"
+    if reviewed_at:
+        described += f", reviewed at {reviewed_at}"
+
+    if force:
+        stamp = utc_stamp().replace(":", "").replace("-", "") + "-" + uuid4().hex
+        backup = matrix_path.with_name(f"{matrix_path.stem}.pre-rebuild-{stamp}.json")
+        shutil.copy2(matrix_path, backup)
+        log_path = matrix_path.with_name("decision-log.json")
+        if log_path.exists():
+            shutil.copy2(log_path, log_path.with_name(f"decision-log.pre-rebuild-{stamp}.json"))
+        print(f"  Existing review ({described}) copied to {backup.name} before rebuild.")
+        return backup
+
+    raise SystemExit(
+        f"\n  ERROR: {matrix_path} already carries {described}.\n"
+        "  Rebuilding the matrix resets every decision to 'pending-review',\n"
+        "  which discards that review. Stage 4 will not do that silently.\n"
+        "\n"
+        "  If the review is still wanted, do not rebuild - re-run from Stage 5.\n"
+        "  If the alignment really has changed and the review must be redone,\n"
+        "  re-run om-build-matrix with --force, which copies the matrix and decision log aside first.\n"
+    )
 
 
 def load_stage_data(ctx):
@@ -148,6 +230,10 @@ def main():
     import argparse
     parser = argparse.ArgumentParser(description="Stage 4: Build mapping matrix from alignment report")
     parser.add_argument("--run-dir", default=None, help="Run directory path")
+    parser.add_argument(
+        "--force", action="store_true",
+        help="Rebuild even when the matrix carries Stage 5 review decisions. "
+             "The current matrix and decision log are copied aside first.")
     args = parser.parse_args()
 
     ctx = load_context(args.run_dir)
@@ -176,7 +262,7 @@ def main():
     # Write mapping matrix
     matrix_doc = {
         "stage": "4",
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "generatedAt": utc_stamp(),
         "targetOntology": target_ontology,
         "targetVersion": target_version,
         "actions": actions,
@@ -185,12 +271,16 @@ def main():
         "mappings": sorted(mappings, key=lambda m: m["sourceConcept"]),
     }
     matrix_path = run_dir / "mapping-matrix.json"
+    refuse_to_discard_review(matrix_path, force=args.force)
     matrix_path.write_text(json.dumps(matrix_doc, indent=2) + "\n", encoding="utf-8")
+    # A successful rebuild replaces the baseline used by the web reset flow.
+    # Its next read snapshots this output, not a previous Stage 4 generation.
+    matrix_path.with_suffix(".stage4.json").unlink(missing_ok=True)
 
     # Write decision log
     log_doc = {
         "stage": "4",
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "generatedAt": utc_stamp(),
         "totalDecisions": len(decision_log),
         "decisions": decision_log,
     }
@@ -211,7 +301,7 @@ def main():
         print(format_warnings(warnings))
         qg_report = {
             "stage": "4",
-            "generatedAt": datetime.now(timezone.utc).isoformat(),
+            "generatedAt": utc_stamp(),
             "warnings": warnings,
         }
         qg_path = run_dir / "quality-gate-report.json"

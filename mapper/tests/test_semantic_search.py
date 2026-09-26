@@ -23,6 +23,33 @@ import ontology_mapper.vector_index as vi
 from ontology_mapper.vector_index import OntologyEntry, build_index, save_index
 from ontology_mapper.semantic_search import search_property, search_type
 
+
+def test_per_concept_search_fills_top_k_with_classes_ranked_below_datatypes(
+        native_class_catalog, fake_type_retrieval):
+    """Datatypes ahead in the ranking must not consume the class budget."""
+    fake_type_retrieval(["alias:Restricted", "alias:Values", "alias:Choice",
+                         "alias:Record", "alias:Literal", "alias:InheritedLiteral"])
+    assert [c["id"] for c in search_type("source:Record", "", "example-1.0", top_k=2)] == [
+        "alias:Record", "alias:Literal"]
+    assert [c["id"] for c in search_property("source:value", "", "example-1.0", top_k=2)] == [
+        "alias:Restricted", "alias:Values"]
+
+
+def test_search_type_passes_no_predicate_without_a_native_policy(
+        native_class_catalog, tmp_path, monkeypatch):
+    """Only a native class policy justifies ranking the whole index."""
+    import json
+    (tmp_path / "plain_reference_catalog_1.0.json").write_text(
+        json.dumps({"version": "1.0", "namespaces": {}, "types": []}), encoding="utf-8")
+    calls = []
+    monkeypatch.setattr("ontology_mapper.semantic_search.query_index",
+                        lambda *args, **kwargs: calls.append(kwargs) or [{"matches": []}])
+    search_type("source:Record", "", "example-1.0")
+    search_type("source:Record", "", "plain-1.0")
+    search_type("source:Record", "", "no-catalog-1.0")
+    assert callable(calls[0]["eligible"])
+    assert calls[1]["eligible"] is None and calls[2]["eligible"] is None
+
 _original_resolve = vi.resolve_specs_dir
 
 
