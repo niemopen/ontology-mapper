@@ -156,7 +156,26 @@ def invalid_class_targets(matrix, target_ontology, catalog):
             except ClassTargetError as exc:
                 invalid.append((entry.get("sourceConcept", ""), target,
                                 f"{'/'.join(holders)} {exc}"))
+                continue
+            if entry.get("action") != "extend" and _is_implicit_root(target, target_ontology, catalog):
+                # The root is no declared CMF Class: extending it omits
+                # SubClassOf, but reuse and augment emit a reference to it
+                # that Stage 7 reports unbound.
+                invalid.append((entry.get("sourceConcept", ""), target,
+                                f"{'/'.join(holders)} Target '{target}' is the implicit "
+                                f"{target_ontology} root, not a declared class; it can "
+                                "only be a base, so choose extend (the default-root "
+                                "option) or a declared class."))
     return invalid
+
+
+def _is_implicit_root(target, target_ontology, catalog):
+    if not target or target == "[undecided]":
+        return False
+    namespaces = catalog.get("namespaces", {})
+    prefix, _, name = target_qname(target, namespaces).partition(":")
+    return (namespaces.get(prefix), name) in cmf_implicit_roots(
+        target_ontology, catalog.get("version", ""))
 
 
 def validate_class_target(target, target_ontology, catalog):

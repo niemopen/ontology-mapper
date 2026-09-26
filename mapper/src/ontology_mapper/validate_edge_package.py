@@ -145,12 +145,14 @@ def stale_against_package(report_path, pkg_dir, report=None):
             report = json.loads(report_path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             return None
+    if not isinstance(report, dict):
+        return str(report_path)  # No report object, so no claim about any file.
 
-    recorded = report.get("validatedArtifacts")
-    if recorded is not None:
-        # Present means the report speaks by content. An empty or malformed
-        # digest speaks for no file; reading it as the pre-digest report
-        # below let the clock pass a package nothing validated.
+    if "validatedArtifacts" in report:
+        # Present means the report speaks by content. An empty, null or
+        # malformed digest speaks for no file; reading it as the pre-digest
+        # report below let the clock pass a package nothing validated.
+        recorded = report["validatedArtifacts"]
         if not isinstance(recorded, dict):
             recorded = {}
         current = artifact_digests(pkg_dir)

@@ -1149,6 +1149,25 @@ class TestInvalidClassTargets:
         matrix = {"mappings": [{"sourceConcept": "src:Ok", "action": "reuse", "targetType": "nc:PersonType"}]}
         assert invalid_class_targets(matrix, "niem", self._catalog()) == []
 
+    def test_the_implicit_root_is_a_base_only(self):
+        """NIEM's root is no declared CMF Class: a class may extend it, which
+        the CMF expresses by omitting SubClassOf, but reusing or augmenting it
+        emits a reference Stage 7 reports unbound."""
+        from ontology_mapper.ontology_specific import invalid_class_targets
+        root_iri = "https://docs.oasis-open.org/niemopen/ns/model/structures/6.0/ObjectType"
+        matrix = {"mappings": [
+            {"sourceConcept": "src:Reuse", "action": "reuse", "targetType": "structures:ObjectType"},
+            {"sourceConcept": "src:Iri", "action": "reuse", "targetType": root_iri},
+            {"sourceConcept": "src:Aug", "action": "augment", "targetType": "nc:PersonType",
+             "augmentsType": "structures:ObjectType"},
+            {"sourceConcept": "src:Ext", "action": "extend", "targetType": "structures:ObjectType",
+             "baseType": "structures:ObjectType"},
+        ]}
+        reported = invalid_class_targets(matrix, "niem", self._catalog())
+        assert [c for c, _, _ in reported] == ["src:Reuse", "src:Iri", "src:Aug"]
+        assert reported[2][2].startswith("augmentsType ")
+        assert all("extend" in message for _, _, message in reported)
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

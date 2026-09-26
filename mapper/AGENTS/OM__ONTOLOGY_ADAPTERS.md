@@ -59,7 +59,11 @@ review exit (`check_stage_5_exit`: all three web routes, the review state's
 `canSubmit`, and the runner's Stage 6 entry `run_pipeline.refuse_invalid_class_targets`)
 reports it as a blocker, and the generator itself (`generate_edge_ontology.main`,
 reached by a Stage 6 resume, the web executor and a by-hand
-`om-generate-ontology`) refuses to generate from it. Codebook drift (Stage 7
+`om-generate-ontology`) refuses to generate from it. An implicit root (NIEM
+6.0's `structures:ObjectType`) is no declared Class, so the matrix check
+accepts it only as an extend base, which the CMF expresses by omitting
+`SubClassOf`; reuse or augment of it would emit a reference Stage 7 reports
+unbound, so it is a blocker at review exit and generation. Codebook drift (Stage 7
 Check 12) looks a legacy full-IRI target up by its catalog QName
 (`generation_utils.target_qname`), so a saved IRI is not reported missing. The
 predicate asks about every field the emitters read as a superclass, not only
