@@ -761,6 +761,28 @@ class TestTheReportSpeaksByContent:
         (pkg / "ontology" / "core.ttl").unlink()
         assert stale_against_package(report, pkg).endswith("core.ttl")
 
+    def test_an_empty_digest_covers_no_artifact(self, tmp_path):
+        """A report that records digests but lists none speaks for no file;
+        only a report without the field is a pre-digest report."""
+        import json
+        from ontology_mapper.validate_edge_package import stale_against_package
+
+        pkg = self._package(tmp_path)
+        report = self._report(tmp_path, pkg)
+        report.write_text(json.dumps({"allPassed": True, "validatedArtifacts": {}}),
+                          encoding="utf-8")
+        assert stale_against_package(report, pkg).endswith("core.ttl")
+
+    def test_a_malformed_digest_covers_no_artifact(self, tmp_path):
+        import json
+        from ontology_mapper.validate_edge_package import stale_against_package
+
+        pkg = self._package(tmp_path)
+        report = self._report(tmp_path, pkg)
+        report.write_text(json.dumps({"allPassed": True, "validatedArtifacts": []}),
+                          encoding="utf-8")
+        assert stale_against_package(report, pkg).endswith("core.ttl")
+
     def test_stage_8_own_output_is_not_evidence_of_staleness(self, tmp_path):
         """`governance/` and the root manifest are finalize's own work, so a
         second finalize must not read its first run as an invalidated report."""

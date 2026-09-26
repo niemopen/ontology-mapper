@@ -147,7 +147,12 @@ def stale_against_package(report_path, pkg_dir, report=None):
             return None
 
     recorded = report.get("validatedArtifacts")
-    if recorded:
+    if recorded is not None:
+        # Present means the report speaks by content. An empty or malformed
+        # digest speaks for no file; reading it as the pre-digest report
+        # below let the clock pass a package nothing validated.
+        if not isinstance(recorded, dict):
+            recorded = {}
         current = artifact_digests(pkg_dir)
         changed = [name for name, digest in current.items()
                    if recorded.get(name) != digest]
